@@ -470,14 +470,7 @@ void rho2bmp( lattice_ptr lattice, int time)
    min_rho = get_min_rho( lattice, subs);
 
 
-   sprintf( filename
-          , "%s/rho%dx%d_frame%04d_subs%02d_proc%04d.bmp"
-          , get_out_path(lattice)
-          , get_LX(lattice)
-          , get_LY(lattice)
-          , frame
-          , subs
-          , get_proc_id(lattice) );
+   gen_filename( lattice, filename, "rho", get_frame(lattice), subs, ".bmp");
    if( !( o = fopen( filename, "w+")))
    {
      printf("ERROR: fopen( \"%s\", \"w+\") = NULL.  Bye, bye!\n", filename);
@@ -809,36 +802,21 @@ printf("%s %d >> bitcount = %d\n",__FILE__,__LINE__, ENDIAN2(*bitcount_ptr));
   max_u[0] = get_max_ux(lattice,subs);
   max_u[1] = get_max_uy(lattice,subs);
 
-  sprintf( filename, "%s/u%dx%d_frame%04d_subs%02d_proc%04d.bmp"
-         , get_out_path(lattice)
-         , get_LX(lattice)
-         , get_LY(lattice)
-         , frame, subs
-         , get_proc_id(lattice));
+  gen_filename( lattice, filename, "u", get_frame(lattice), subs, ".bmp");
   if( !( o_u = fopen( filename, "w+")))
   {
     printf("ERROR: fopen( \"%s\", \"w+\") = NULL.  Bye, bye!\n", filename);
     process_exit(1);
   }
 
-  sprintf( filename
-         , "%s/u_x%dx%d_frame%04d_subs%02d_proc%04d.bmp"
-         , get_out_path(lattice)
-         , get_LX(lattice)
-         , get_LY(lattice)
-         , frame, subs, get_proc_id(lattice));
+  gen_filename( lattice, filename, "u_x", get_frame(lattice), subs, ".bmp");
   if( !( o_ux = fopen( filename, "w+")))
   {
     printf("ERROR: fopen( \"%s\", \"w+\") = NULL.  Bye, bye!\n", filename);
     process_exit(1);
   }
 
-  sprintf( filename
-         , "%s/u_y%dx%d_frame%04d_subs%02d_proc%04d.bmp"
-         , get_out_path(lattice)
-         , get_LX(lattice)
-         , get_LY(lattice)
-         , frame, subs, get_proc_id(lattice));
+  gen_filename( lattice, filename, "u_y", get_frame(lattice), subs, ".bmp");
   if( !( o_uy = fopen( filename, "w+")))
   {
     printf("ERROR: fopen( \"%s\", \"w+\") = NULL.  Bye, bye!\n", filename);
