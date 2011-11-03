@@ -21,7 +21,7 @@
 #endif
 
 #include "flags.h"
-#include "bc_flags.h"
+//#include "bc_flags.h"
 #include "process.h"
 #include "lattice.h"
 #include "forward_declarations.h"
@@ -93,7 +93,7 @@ real wt[19];
 #include "params.h"
 #include "process.c"
 #include "compute.c"
-#include "stream.c"
+//#include "stream.c"
 #ifdef __CUDACC__
 #include "k_stream_collide_stream.c"
 #include "k_collide.c"
