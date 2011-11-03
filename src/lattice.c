@@ -1985,6 +1985,7 @@ __constant__ int numdirs_c;
 __constant__ int ni_c;
 __constant__ int nj_c;
 __constant__ int nk_c;
+__constant__ int nixnj_c;
 __constant__ int numnodes_c;
 
 
@@ -2028,11 +2029,6 @@ __device__ void set_f1d_d( real* f_mem_d, int subs,
          + a*numnodes_c
          + i + ni_c*j + ni_c*nj_c*k] = value;
 }
-
-//TODO? put __constant__ real vx[19], vy[19], vz[19] here?
-//can't be dynamically allocated, but this may be OK - we have 64kB of const. mem.
-//maybe calc and put a vectors of weights in const. mem. as well?
-
 
 __device__ void calc_f_tilde_d(
                   real* f_mem_d

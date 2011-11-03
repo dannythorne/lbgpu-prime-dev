@@ -4,9 +4,18 @@ __global__ void k_stream_collide_stream( real* f_mem_d, real* mv_mem_d)
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
+//If ni and nj are both powers of two, the bitwise operations in the second
+//part of the following loop will evaluate more quickly.
+//TODO: Figure out how to implement this automatically.
+#if 1
   int i = n % ni_c;
-  int j = (n % (ni_c*nj_c)) / ni_c;
-  int k = n / (ni_c*nj_c);
+  int j = (n % (nixnj_c)) / ni_c;
+  int k = n / (nixnj_c);
+#else
+  int i = n & (ni_c-1);
+  int j = (n & (nixnj_c-1)) >> log2(ni_c);
+  int k = n >> log2(nixnj_c);
+#endif
 
   int a, subs;
 
