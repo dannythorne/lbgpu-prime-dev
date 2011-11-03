@@ -142,20 +142,7 @@ void dump_frame_summary( struct lattice_struct *lattice)
  {
   if( 1 || is_on_root_proc( lattice))
   {
-    if( get_num_procs( lattice) > 1)
-    {
-      sprintf( filename, "./out/frames%dx%dx%d_subs%02d_proc%04d.dat",
-        get_g_LX( lattice),
-        get_g_LY( lattice),
-        get_g_LZ( lattice), subs, get_proc_id( lattice));
-    }
-    else
-    {
-      sprintf( filename, "./out/frames%dx%dx%d_subs%02d.dat",
-        get_g_LX( lattice),
-        get_g_LY( lattice),
-        get_g_LZ( lattice), subs );
-    }
+    gen_filename( lattice, filename, "frames", -1, subs, ".dat");
 
   // On the first timestep, make sure we start with a new file.
   if( lattice->time==0)
@@ -618,7 +605,7 @@ void read_solids( lattice_ptr lattice, char *filename)
             }
             else
             {
-              printf(" ");
+              printf("-");
             }
           }
           printf(" ");
@@ -1028,16 +1015,18 @@ void write_raw_u(
   }
   for( n=0; n<ni*nj*nk; n++)
   {
-    printf("n=%d\n",n);
+// printf("n=%d\n",n);
     if( !is_solid( lattice, n))
     {
       // Xpix1[n] =
       //   (unsigned char)ROUND(255.*(a[stride*n]-a_min)/(a_max-a_min));
-      printf("&ux = %x\n",ux);
-      printf("  ux = %f\n",ux[stride*n]);
-      printf("  uy = %f\n",uy[stride*n]);
-      printf("  uz = %f\n",
-        ((get_NumDims(lattice)==2)?(0):(uz[stride*n]*uz[stride*n])));
+
+// printf("&ux = %x\n",ux);
+// printf("  ux = %f\n",ux[stride*n]);
+// printf("  uy = %f\n",uy[stride*n]);
+// printf("  uz = %f\n",
+//   ((get_NumDims(lattice)==2)?(0):(uz[stride*n]*uz[stride*n])));
+
       a = sqrt( ux[stride*n]*ux[stride*n]
               + uy[stride*n]*uy[stride*n]
               + ((get_NumDims(lattice)==2)?(0):(uz[stride*n]*uz[stride*n])));
@@ -2785,6 +2774,7 @@ void write_rho_txt( lattice_ptr lattice)
 
   for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
   {
+#if 0
     if( get_NumDims(lattice)==2)
     {
       sprintf( filename
@@ -2805,6 +2795,9 @@ void write_rho_txt( lattice_ptr lattice)
              , subs
              , get_proc_id(lattice) );
     }
+#else
+    gen_filename( lattice, filename, "rho", get_frame(lattice), subs, ".txt");
+#endif
 
     FILE* fout;
     fout = fopen(filename,"w+");

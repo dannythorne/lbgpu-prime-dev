@@ -287,6 +287,84 @@ real display_etime( lattice_ptr lattice)
   }
 }
 
+// THORNE 20111103
+// {
+void gen_filename(
+  lattice_ptr lattice
+, char* filename
+, const char* prefix
+, int frame
+, int subs
+, const char* suffix )
+{
+  char size_str[32];
+  char frame_str[32];
+  char subs_str[32];
+
+  if( get_NumDims(lattice)==2)
+  {
+    sprintf(size_str,"%dx%d",get_g_LX(lattice),get_g_LY(lattice));
+  }
+  else
+  {
+    sprintf(
+      size_str
+    , "%dx%dx%d"
+    , get_g_LX(lattice)
+    , get_g_LY(lattice)
+    , get_g_LY(lattice) );
+  }
+
+  if( frame >= 0)
+  {
+    sprintf( frame_str, "_frame%04d", frame);
+  }
+  else
+  {
+    frame_str[0] = '\0';
+  }
+
+  if( get_NumSubs(lattice) == 1)
+  {
+    subs_str[0] = '\0';
+  }
+  else
+  {
+    sprintf( subs_str, "_subs%02d", subs);
+  }
+
+  if( get_num_procs( lattice) > 1)
+  {
+    sprintf(
+      filename
+    ,"%s/%s%s%s%s_proc%04d%s"
+    , get_out_path( lattice)
+    , prefix
+    , size_str
+    , frame_str
+    , subs_str
+    , get_proc_id( lattice)
+    , suffix
+    );
+  }
+  else
+  {
+    sprintf(
+      filename
+    ,"%s/%s%s%s%s%s"
+    , get_out_path( lattice)
+    , prefix
+    , size_str
+    , frame_str
+    , subs_str
+    , suffix
+    );
+  }
+}
+// }
+
+
+
 #ifdef __CUDACC__
 // The following definitions of rho2bmp and u2bmp were relocated from lbio.c
 // for nvcc so that they will be defined when write_rho_image and write_u_image
@@ -1579,19 +1657,14 @@ void write_rho_image( lattice_ptr lattice, int subs)
   else
   {
 #if WRITE_MACRO_VAR_RAW_FILES
-    sprintf( filename, "./out/rho_%dx%dx%d_frame%04d_subs%02d_proc%04d.raw"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
+    char filename[1024];
+    gen_filename( lattice, filename, "rho", get_frame(lattice), subs, ".raw");
     write_raw(
       lattice,
       get_rho_ptr(lattice,subs,0),
       /*stride*/ 1,
-      max_u[0],
-      /*min_u[0]*/0.,
+      /*max_u[0]*/get_max_rho(lattice,subs),
+      /*min_u[0]*/get_min_rho(lattice,subs),
       filename);
 #endif
   }
@@ -1607,25 +1680,21 @@ void write_u_image( lattice_ptr lattice, int subs)
   else
   {
 #if WRITE_MACRO_VAR_RAW_FILES
-    sprintf( filename, "./out/u_%dx%dx%d_frame%04d_subs%02d_proc%04d.raw"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
+    char filename[1024];
+    gen_filename( lattice, filename, "u", get_frame(lattice), subs, ".raw");
     write_raw_u(
       lattice,
       get_ux_ptr(lattice,subs,0),
       get_uy_ptr(lattice,subs,0),
       get_uz_ptr(lattice,subs,0),
       /*stride*/ 1,
-      max_u[0],
-      /*min_u[0]*/0.,
-      max_u[1],
-      /*min_u[1]*/0.,
-      max_u[2],
-      /*min_u[2]*/0.,
+      /*max_u[0]*/get_max_ux(lattice,subs),
+      /*TODO: Want to hardcode min=0 for some reason???*/
+      /*min_u[0]*/get_min_ux(lattice,subs),
+      /*max_u[1]*/get_max_uy(lattice,subs),
+      /*min_u[1]*/get_min_uy(lattice,subs),
+      /*max_u[2]*/get_max_uz(lattice,subs),
+      /*min_u[2]*/get_min_uz(lattice,subs),
       filename);
 #endif
   }
@@ -1636,19 +1705,15 @@ void write_ux_image( lattice_ptr lattice, int subs)
   if( get_NumDims(lattice)==3)
   {
 #if WRITE_MACRO_VAR_RAW_FILES
-    sprintf( filename, "./out/u_x_%dx%dx%d_frame%04d_subs%02d_proc%04d.raw"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
+    char filename[1024];
+    gen_filename( lattice, filename, "u_x", get_frame(lattice), subs, ".raw");
     write_raw(
       lattice,
       get_ux_ptr(lattice,subs,0),
       /*stride*/ 1,
-      max_u[0],
-      /*min_u[0]*/0.,
+      /*max_u[0]*/get_max_ux(lattice,subs),
+      /*TODO: Want to hardcode min=0 for some reason???*/
+      /*min_u[0]*/get_min_ux(lattice,subs),
       filename);
 #endif
   }
@@ -1658,19 +1723,15 @@ void write_uy_image( lattice_ptr lattice, int subs)
   if( get_NumDims(lattice)==3)
   {
 #if WRITE_MACRO_VAR_RAW_FILES
-    sprintf( filename, "./out/u_y_%dx%dx%d_frame%04d_subs%02d_proc%04d.raw"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
+    char filename[1024];
+    gen_filename( lattice, filename, "u_y", get_frame(lattice), subs, ".raw");
     write_raw(
       lattice,
       get_uy_ptr(lattice,subs,0),
       /*stride*/ 1,
-      max_u[0],
-      /*min_u[0]*/0.,
+      /*max_u[0]*/get_max_uy(lattice,subs),
+      /*TODO: Want to hardcode min=0 for some reason???*/
+      /*min_u[0]*/get_min_uy(lattice,subs),
       filename);
 #endif
   }
@@ -1680,19 +1741,15 @@ void write_uz_image( lattice_ptr lattice, int subs)
   if( get_NumDims(lattice)==3)
   {
 #if WRITE_MACRO_VAR_RAW_FILES
-    sprintf( filename, "./out/u_z_%dx%dx%d_frame%04d_subs%02d_proc%04d.raw"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
+    char filename[1024];
+    gen_filename( lattice, filename, "u_z", get_frame(lattice), subs, ".raw");
     write_raw(
       lattice,
       get_uz_ptr(lattice,subs,0),
       /*stride*/ 1,
-      max_u[0],
-      /*min_u[0]*/0.,
+      /*max_u[0]*/get_max_uz(lattice,subs),
+      /*TODO: Want to hardcode min=0 for some reason???*/
+      /*min_u[0]*/get_min_uz(lattice,subs),
       filename);
 #endif
   }
@@ -1702,143 +1759,57 @@ void write_rho_dat( lattice_ptr lattice, int subs)
 {
 #if WRITE_MACRO_VAR_DAT_FILES
   char filename[1024];
-  if( get_NumDims(lattice)==2)
-  {
-    sprintf( filename, "./out/rho_%dx%d_frame%04d_subs%02d_proc%04d.dat"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
-    write_dat(
-      lattice,
-      get_rho_ptr(lattice,subs,0),
-      /*stride*/ 1,
-      /*max_u[1]*/0.,
-      /*min_u[1]*/0.,
-      filename);
-  }
-  else
-  {
-    sprintf( filename, "./out/rho_%dx%dx%d_frame%04d_subs%02d_proc%04d.dat"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
-    write_dat(
-      lattice,
-      get_rho_ptr(lattice,subs,0),
-      /*stride*/ 1,
-      /*max_u[1]*/0.,
-      /*min_u[1]*/0.,
-      filename);
-  }
+  gen_filename( lattice, filename, "rho", get_frame(lattice), subs, ".dat");
+  write_dat(
+    lattice
+  , get_rho_ptr(lattice,subs,0)
+  , /*stride*/ 1
+  , /*max_u[1]*/0.
+  , /*min_u[1]*/0.
+  , filename );
 #endif
 }
 void write_ux_dat( lattice_ptr lattice, int subs)
 {
 #if WRITE_MACRO_VAR_DAT_FILES
   char filename[1024];
-  if( get_NumDims(lattice)==2)
-  {
-    sprintf( filename, "./out/u_x_%dx%d_frame%04d_subs%02d_proc%04d.dat"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
-    write_dat(
-      lattice,
-      get_ux_ptr(lattice,subs,0),
-      /*stride*/ 1,
-      /*max_u[1]*/0.,
-      /*min_u[1]*/0.,
-      filename);
-  }
-  else
-  {
-    sprintf( filename, "./out/u_x_%dx%dx%d_frame%04d_subs%02d_proc%04d.dat"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
-    write_dat(
-      lattice,
-      get_ux_ptr(lattice,subs,0),
-      /*stride*/ 1,
-      /*max_u[1]*/0.,
-      /*min_u[1]*/0.,
-      filename);
-  }
+  gen_filename( lattice, filename, "u_x", get_frame(lattice), subs, ".dat");
+  write_dat(
+    lattice,
+    get_ux_ptr(lattice,subs,0),
+    /*stride*/ 1,
+    /*max_u[1]*/0.,
+    /*min_u[1]*/0.,
+    filename);
 #endif
 }
 void write_uy_dat( lattice_ptr lattice, int subs)
 {
 #if WRITE_MACRO_VAR_DAT_FILES
   char filename[1024];
-  if( get_NumDims(lattice)==2)
-  {
-    sprintf( filename, "./out/u_y_%dx%d_frame%04d_subs%02d_proc%04d.dat"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
-    write_dat(
-      lattice,
-      get_uy_ptr(lattice,subs,0),
-      /*stride*/ 1,
-      /*max_u[1]*/0.,
-      /*min_u[1]*/0.,
-      filename);
-  }
-  else
-  {
-    sprintf( filename, "./out/u_y_%dx%dx%d_frame%04d_subs%02d_proc%04d.dat"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
-    write_dat(
-      lattice,
-      get_uy_ptr(lattice,subs,0),
-      /*stride*/ 1,
-      /*max_u[1]*/0.,
-      /*min_u[1]*/0.,
-      filename);
-  }
+  gen_filename( lattice, filename, "u_y", get_frame(lattice), subs, ".dat");
+  write_dat(
+    lattice,
+    get_uy_ptr(lattice,subs,0),
+    /*stride*/ 1,
+    /*max_u[1]*/0.,
+    /*min_u[1]*/0.,
+    filename);
 #endif
 }
 void write_uz_dat( lattice_ptr lattice, int subs)
 {
 #if WRITE_MACRO_VAR_DAT_FILES
   char filename[1024];
-  if( get_NumDims(lattice)==2)
-  {
-  }
-  else
-  {
-    sprintf( filename, "./out/u_z_%dx%dx%d_frame%04d_subs%02d_proc%04d.dat"
-    , get_ni(lattice)
-    , get_nj(lattice)
-    , get_nk(lattice)
-    , get_frame(lattice)
-    , subs
-    , get_proc_id( lattice));
-    write_dat(
-      lattice,
-      get_uz_ptr(lattice,subs,0),
-      /*stride*/ 1,
-      /*max_u[2]*/0.,
-      /*min_u[2]*/0.,
-      filename);
-  }
+  if( get_NumDims(lattice)==2) { return;}
+  gen_filename( lattice, filename, "u_z", get_frame(lattice), subs, ".dat");
+  write_dat(
+    lattice,
+    get_uz_ptr(lattice,subs,0),
+    /*stride*/ 1,
+    /*max_u[2]*/0.,
+    /*min_u[2]*/0.,
+    filename);
 #endif
 }
 

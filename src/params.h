@@ -44,6 +44,8 @@ void read_params( lattice_ptr lattice, const char *infile)
   int    blank;
   real dblank;
   int    subs;
+
+  // Store different scanf format specifier for single and double precision.
   const char* rspec = ((sizeof(real)==sizeof(float))?("%f"):("%lf"));
 
 //default

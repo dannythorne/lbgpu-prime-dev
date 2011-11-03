@@ -664,7 +664,6 @@ void init_problem( lattice_ptr lattice)
             break;
           }
 
-
 #if 0 // ============================ TODO ====================================
 
           case 1: // Random
@@ -1064,9 +1063,6 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
           *(fptr[0]) = ( /*feq[a]*/
             W0*rho_val*(1. - 1.5*usq)
           ) / get_tau(lattice,subs);
-
-printf("%f\n",rho_val);
-printf("%f\n",*(fptr[0]));
 
           for( a=1; a<=4; a++)
           {

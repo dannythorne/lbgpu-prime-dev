@@ -33,11 +33,11 @@
 // important when setting LX or LY to unity for a 2D simulation
 #define INTEGER_IC_BOUND 1
 
-#define NUM_DIMENSIONS 2
+#define NUM_DIMENSIONS 3
 
 // NUM_FLUID_COMPONENTS specifies the number of fluid components.
 // Flag: NUM_FLUID_COMPONENTS
-#define NUM_FLUID_COMPONENTS 1
+#define NUM_FLUID_COMPONENTS 2
 
 //if it is SPONGE, the total computational domain firstly initiallized
 //as randomly distributed fluid1 and fluid2 , however, the upper and
@@ -155,7 +155,7 @@
 // Write .raw files for viewing with imagej, volsuite, 3dview, etc...
 // In 2D mode, write bmp files instead of raw files.
 // Flag: WRITE_MACRO_VAR_RAW_FILES
-#define WRITE_MACRO_VAR_RAW_FILES 0 && !(NUM_DIMENSIONS==2)
+#define WRITE_MACRO_VAR_RAW_FILES 1 && !(NUM_DIMENSIONS==2)
 #define WRITE_MACRO_VAR_BMP_FILES 1 && NUM_DIMENSIONS==2
 
 #define WRITE_PLOT_FILE 0
