@@ -106,6 +106,10 @@ void stream_collide_stream( lattice_ptr lattice)
             uz  = get_uz (lattice,subs,n);
           }
 
+          ux += get_gaccel_ux( lattice, subs);
+          uy += get_gaccel_uy( lattice, subs);
+          uz += get_gaccel_uz( lattice, subs);
+
           usq = ux*ux + uy*uy + uz*uz;
 
 #if 1

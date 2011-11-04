@@ -96,6 +96,10 @@ void collide( lattice_ptr lattice)
           uy /= rho;
           uz /= rho;
 
+          ux += get_gaccel_ux( lattice, subs);
+          uy += get_gaccel_uy( lattice, subs);
+          uz += get_gaccel_uz( lattice, subs);
+
           usq = ux*ux + uy*uy + uz*uz;
 
 #if 1

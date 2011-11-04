@@ -1952,6 +1952,26 @@ int is_end_of_frame( lattice_ptr lattice, int time)
   return !(time%get_FrameRate(lattice));
 }
 
+real get_gaccel_ux( lattice_ptr lattice, int subs)
+{
+  return lattice->param.gforce[subs][0];
+}
+real get_gaccel_uy( lattice_ptr lattice, int subs)
+{
+  return lattice->param.gforce[subs][1];
+}
+real get_gaccel_uz( lattice_ptr lattice, int subs)
+{
+  if( get_NumDims(lattice))
+  {
+    return lattice->param.gforce[subs][2];
+  }
+  else
+  {
+    return 0.;
+  }
+}
+
 #if 0
 real* get_fptr( lattice_ptr lattice, int subs, int i, int j, int k, int a)
 {
