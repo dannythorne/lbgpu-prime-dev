@@ -2051,7 +2051,12 @@ __constant__ int nk_c;
 __constant__ int nixnj_c;
 __constant__ int numnodes_c;
 
+__device__ int k_is_not_solid( int n)
+{
+  return 1; // TODO
+}
 
+#if 0
 __device__ real get_f1d_d( real* f_mem_d, int subs, int i, int j, int k, int a)
 {
   if( i<0) { i+=ni_c;}
@@ -2068,6 +2073,72 @@ __device__ real get_f1d_d( real* f_mem_d, int subs, int i, int j, int k, int a)
 
 //  return lattice_d->vars[subs].f1d[a][i + ni*j + ni*nj*k];
 }
+#else
+__device__ real get_f1d_d(
+  real* f_mem_d
+, int subs
+, int i0
+, int j0
+, int k0
+, int di
+, int dj
+, int dk
+, int a )
+{
+  int ni = ni_c;
+  int nj = nj_c;
+  int nk = nk_c;
+
+  if( di!=0 || dj!=0 || dk!=0)
+  {
+    // Getting f from neighboring node (i+di,j+dj,k+dk). This is for the
+    // stream_collide_stream step.
+    int i = i0+di;
+    int j = j0+dj;
+    int k = k0+dk;
+
+    if( i<0) { i+=ni;}
+    if( j<0) { j+=nj;}
+    if( k<0) { k+=nk;}
+
+    if( i>=ni) { i%=ni;}
+    if( j>=nj) { j%=nj;}
+    if( k>=nk) { k%=nk;}
+
+    int n = i + ni*j + ni*nj*k;
+
+    if( k_is_not_solid( n))
+    {
+      return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
+    }
+    else
+    {
+      // If neighboring node is a solid, return the f at node (i0,j0,k0) that
+      // would be streamed out for halfway bounceback.
+      return f_mem_d[ subs*numnodes_c*numdirs_c
+                    + (a+((!(a%2))?(-1):(1)))*numnodes_c
+                    + i0 + ni*j0 + ni*nj*k0
+                    ];
+    }
+  }
+  else
+  {
+    // Getting f from node (i0,j0,k0). This is for the even collide steps that
+    // wrap up what the stream_collide_stream step started.
+    if( i0<0) { i0+=ni;}
+    if( j0<0) { j0+=nj;}
+    if( k0<0) { k0+=nk;}
+
+    if( i0>=ni) { i0%=ni;}
+    if( j0>=nj) { j0%=nj;}
+    if( k0>=nk) { k0%=nk;}
+
+    return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c
+                  + i0 + ni*j0 + ni*nj*k0];
+  }
+}
+#endif
+
 __device__ void set_mv_d( real* mv_mem_d, int subs,
                           int i, int j, int k, int a, real value)
 {
