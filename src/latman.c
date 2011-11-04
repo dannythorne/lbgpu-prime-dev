@@ -287,6 +287,9 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
   cudaMalloc( (void**)&mv_mem_d, mv_mem_size*sizeof(real));
 
+  solids_mem_size = get_NumNodes( *lattice);
+  cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(int));
+
 #endif
 
   // Allocate pointers to the individual f arrays.
@@ -1270,6 +1273,7 @@ void destruct_lattice( lattice_ptr lattice)
 #ifdef __CUDACC__
   cudaFree(f_mem_d);
   cudaFree(mv_mem_d);
+  cudaFree(solids_mem_d);
 #endif
 
 #endif

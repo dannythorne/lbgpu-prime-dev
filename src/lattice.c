@@ -2051,9 +2051,9 @@ __constant__ int nk_c;
 __constant__ int nixnj_c;
 __constant__ int numnodes_c;
 
-__device__ int k_is_not_solid( int n)
+__device__ int k_is_not_solid( real* solids_mem_d, int n)
 {
-  return 1; // TODO
+  return !(solids_mem_d[n]);
 }
 
 #if 0
@@ -2076,6 +2076,7 @@ __device__ real get_f1d_d( real* f_mem_d, int subs, int i, int j, int k, int a)
 #else
 __device__ real get_f1d_d(
   real* f_mem_d
+, real* solids_mem_d
 , int subs
 , int i0
 , int j0
@@ -2107,7 +2108,7 @@ __device__ real get_f1d_d(
 
     int n = i + ni*j + ni*nj*k;
 
-    if( k_is_not_solid( n))
+    if( k_is_not_solid( solids_mem_d, n))
     {
       return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
     }

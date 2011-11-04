@@ -1,6 +1,10 @@
 extern __shared__ real fptr[];
 
-__global__ void k_stream_collide_stream( real* f_mem_d, real* mv_mem_d)
+__global__
+void k_stream_collide_stream(
+  real* f_mem_d
+, real* mv_mem_d
+, real* solids_mem_d )
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -28,7 +32,8 @@ __global__ void k_stream_collide_stream( real* f_mem_d, real* mv_mem_d)
     for( a=0; a<numdirs_c; a++)
     {
       fptr[threadIdx.x + a*blockDim.x]
-        = get_f1d_d( f_mem_d, subs, i,j,k, -vx_c[a],-vy_c[a],-vz_c[a], a );
+        = get_f1d_d( f_mem_d, solids_mem_d
+                   , subs, i,j,k, -vx_c[a],-vy_c[a],-vz_c[a], a );
     }
 
 //Initialize shared memory values for calculating macro vars.

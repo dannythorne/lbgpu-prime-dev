@@ -1,7 +1,11 @@
 extern __shared__ real fptr[];
 
 
-__global__ void k_collide( real* f_mem_d, real* mv_mem_d)
+__global__
+void k_collide(
+  real* f_mem_d
+, real* mv_mem_d
+, real* solids_mem_d )
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -33,18 +37,21 @@ __global__ void k_collide( real* f_mem_d, real* mv_mem_d)
 //the calc.  For Compute 1.3 and greater, it probably doesn't matter.
 
 #if 1
-    fptr[threadIdx.x] = get_f1d_d(f_mem_d,subs, i,j,k, 0,0,0, 0);
+    fptr[threadIdx.x] = get_f1d_d( f_mem_d, solids_mem_d
+                                 , subs, i,j,k, 0,0,0, 0);
 
     for( a=1; a<numdirs_c; a+=2)
     {
       fptr[threadIdx.x + a*blockDim.x]
-        = get_f1d_d(f_mem_d,subs, i,j,k, 0,0,0, a+1);
+        = get_f1d_d( f_mem_d, solids_mem_d
+                   , subs, i,j,k, 0,0,0, a+1);
     }
 
     for( a=2; a<numdirs_c; a+=2)
     {
       fptr[threadIdx.x + a*blockDim.x]
-        = get_f1d_d(f_mem_d,subs, i,j,k, 0,0,0, a-1);
+        = get_f1d_d( f_mem_d, solids_mem_d
+                   , subs, i,j,k, 0,0,0, a-1);
     }
 
 //Initialize shared memory values for calculating macro vars.

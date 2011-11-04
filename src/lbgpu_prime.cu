@@ -14,6 +14,8 @@ typedef double real; // To be relocated (in flags.in?).
   int f_mem_size;
   real* mv_mem_d;
   int mv_mem_size;
+  real* solids_mem_d;
+  int solids_mem_size;
 #endif
 
 #include "lbgpu_prime.h"
@@ -90,11 +92,13 @@ int main( int argc, char **argv)
 
 #ifdef __CUDACC__
     //k_stream_collide_stream<<<gridDim, gridBlock>>>(f_mem_d, mv_mem_d);
-    k_stream_collide_stream<<<
+    k_stream_collide_stream
+    <<<
         gridDim
       , blockDim
       , blocksize*sizeof(real)*( get_NumVelDirs(lattice)
-                               + get_NumDims(lattice)+1)>>>(f_mem_d, mv_mem_d);
+                               + get_NumDims(lattice)+1)
+    >>>( f_mem_d, mv_mem_d, solids_mem_d);
 #else
     stream_collide_stream(lattice);
 #endif
@@ -104,11 +108,13 @@ int main( int argc, char **argv)
 #ifdef __CUDACC__
     //k_collide<<<gridDim, gridBlock>>>(f_mem_d, mv_mem_d);
     //printf(" Executing a kernel... \n");
-    k_collide<<<
+    k_collide
+    <<<
         gridDim
       , blockDim
       , blocksize*sizeof(real)*( get_NumVelDirs(lattice)
-                               + get_NumDims(lattice)+1)>>>(f_mem_d, mv_mem_d);
+                               + get_NumDims(lattice)+1)
+    >>>( f_mem_d, mv_mem_d, solids_mem_d);
 #else
     collide( lattice);
 #endif
