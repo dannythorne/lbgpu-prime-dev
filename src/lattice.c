@@ -1962,7 +1962,7 @@ real get_gaccel_uy( lattice_ptr lattice, int subs)
 }
 real get_gaccel_uz( lattice_ptr lattice, int subs)
 {
-  if( get_NumDims(lattice))
+  if( get_NumDims(lattice)==3)
   {
     return lattice->param.gforce[subs][2];
   }
