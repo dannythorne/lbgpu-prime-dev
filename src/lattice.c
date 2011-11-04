@@ -1952,6 +1952,7 @@ int is_end_of_frame( lattice_ptr lattice, int time)
   return !(time%get_FrameRate(lattice));
 }
 
+#if 0
 real* get_fptr( lattice_ptr lattice, int subs, int i, int j, int k, int a)
 {
   int ni = get_ni(lattice);
@@ -1968,6 +1969,68 @@ real* get_fptr( lattice_ptr lattice, int subs, int i, int j, int k, int a)
 
   return lattice->vars[subs].f1d[a] + i + ni*j + ni*nj*k;
 }
+#else
+real* get_fptr(
+  lattice_ptr lattice
+, int subs
+, int i0
+, int j0
+, int k0
+, int di
+, int dj
+, int dk
+, int a )
+{
+  int ni = get_ni(lattice);
+  int nj = get_nj(lattice);
+  int nk = get_nk(lattice);
+
+  if( di!=0 || dj!=0 || dk!=0)
+  {
+    // Getting f from neighboring node (i+di,j+dj,k+dk). This is for the
+    // stream_collide_stream step.
+    int i = i0+di;
+    int j = j0+dj;
+    int k = k0+dk;
+
+    if( i<0) { i+=ni;}
+    if( j<0) { j+=nj;}
+    if( k<0) { k+=nk;}
+
+    if( i>=ni) { i%=ni;}
+    if( j>=nj) { j%=nj;}
+    if( k>=nk) { k%=nk;}
+
+    int n = i + ni*j + ni*nj*k;
+
+    if( is_not_solid( lattice, n))
+    {
+      return lattice->vars[subs].f1d[a] + n;
+    }
+    else
+    {
+      // If neighboring node is a solid, return the f at node (i0,j0,k0) that
+      // would be streamed out for halfway bounceback.
+      return lattice->vars[subs].f1d[a+((!(a%2))?(-1):(1))]
+           + i0 + ni*j0 + ni*nj*k0;
+    }
+  }
+  else
+  {
+    // Getting f from node (i0,j0,k0). This is for the even collide steps that
+    // wrap up what the stream_collide_stream step started.
+    if( i0<0) { i0+=ni;}
+    if( j0<0) { j0+=nj;}
+    if( k0<0) { k0+=nk;}
+
+    if( i0>=ni) { i0%=ni;}
+    if( j0>=nj) { j0%=nj;}
+    if( k0>=nk) { k0%=nk;}
+
+    return lattice->vars[subs].f1d[a] + i0 + ni*j0 + ni*nj*k0;
+  }
+}
+#endif
 
 #ifdef __CUDACC__
 

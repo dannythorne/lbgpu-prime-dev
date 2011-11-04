@@ -66,7 +66,7 @@ int main( int argc, char **argv)
   for( subs = 0; subs < get_NumSubs(lattice); subs++)
   {
     cudaMemcpy( f_mem_d + subs * get_NumNodes(lattice) * get_NumVelDirs(lattice)
-              , get_fptr(lattice, subs, 0, 0, 0, 0)
+              , get_fptr(lattice, subs, 0, 0, 0, 0, 0, 0, 0)
               , get_NumVelDirs(lattice)
                *get_NumNodes(lattice)
                *sizeof(real)

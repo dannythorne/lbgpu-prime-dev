@@ -54,27 +54,27 @@ void collide( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          fptr[C ] = get_fptr(lattice,subs, i, j, k, C );
-          fptr[E ] = get_fptr(lattice,subs, i, j, k, E );
-          fptr[W ] = get_fptr(lattice,subs, i, j, k, W );
-          fptr[N ] = get_fptr(lattice,subs, i, j, k, N );
-          fptr[S ] = get_fptr(lattice,subs, i, j, k, S );
-          fptr[NE] = get_fptr(lattice,subs, i, j, k, NE);
-          fptr[SW] = get_fptr(lattice,subs, i, j, k, SW);
-          fptr[NW] = get_fptr(lattice,subs, i, j, k, NW);
-          fptr[SE] = get_fptr(lattice,subs, i, j, k, SE);
+          fptr[C ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, C );
+          fptr[E ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, E );
+          fptr[W ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, W );
+          fptr[N ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, N );
+          fptr[S ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, S );
+          fptr[NE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, NE);
+          fptr[SW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, SW);
+          fptr[NW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, NW);
+          fptr[SE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, SE);
          if( get_NumDims(lattice)==3)
          {
-          fptr[T ] = get_fptr(lattice,subs, i, j, k, T );
-          fptr[B ] = get_fptr(lattice,subs, i, j, k, B );
-          fptr[TE] = get_fptr(lattice,subs, i, j, k, TE);
-          fptr[BW] = get_fptr(lattice,subs, i, j, k, BW);
-          fptr[TW] = get_fptr(lattice,subs, i, j, k, TW);
-          fptr[BE] = get_fptr(lattice,subs, i, j, k, BE);
-          fptr[TN] = get_fptr(lattice,subs, i, j, k, TN);
-          fptr[BS] = get_fptr(lattice,subs, i, j, k, BS);
-          fptr[TS] = get_fptr(lattice,subs, i, j, k, TS);
-          fptr[BN] = get_fptr(lattice,subs, i, j, k, BN);
+          fptr[T ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, T );
+          fptr[B ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, B );
+          fptr[TE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TE);
+          fptr[BW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BW);
+          fptr[TW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TW);
+          fptr[BE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BE);
+          fptr[TN] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TN);
+          fptr[BS] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BS);
+          fptr[TS] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TS);
+          fptr[BN] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BN);
          }
 
           rho = 0.;

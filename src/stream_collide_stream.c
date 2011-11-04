@@ -53,27 +53,27 @@ void stream_collide_stream( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          fptr[C ] = get_fptr(lattice,subs, i-vx[C ], j-vy[C ], k-vz[C ], C );
-          fptr[E ] = get_fptr(lattice,subs, i-vx[E ], j-vy[E ], k-vz[E ], E );
-          fptr[W ] = get_fptr(lattice,subs, i-vx[W ], j-vy[W ], k-vz[W ], W );
-          fptr[N ] = get_fptr(lattice,subs, i-vx[N ], j-vy[N ], k-vz[N ], N );
-          fptr[S ] = get_fptr(lattice,subs, i-vx[S ], j-vy[S ], k-vz[S ], S );
-          fptr[NE] = get_fptr(lattice,subs, i-vx[NE], j-vy[NE], k-vz[NE], NE);
-          fptr[SW] = get_fptr(lattice,subs, i-vx[SW], j-vy[SW], k-vz[SW], SW);
-          fptr[NW] = get_fptr(lattice,subs, i-vx[NW], j-vy[NW], k-vz[NW], NW);
-          fptr[SE] = get_fptr(lattice,subs, i-vx[SE], j-vy[SE], k-vz[SE], SE);
+          fptr[C ] = get_fptr(lattice,subs, i,j,k,-vx[C ],-vy[C ],-vz[C ],C );
+          fptr[E ] = get_fptr(lattice,subs, i,j,k,-vx[E ],-vy[E ],-vz[E ],E );
+          fptr[W ] = get_fptr(lattice,subs, i,j,k,-vx[W ],-vy[W ],-vz[W ],W );
+          fptr[N ] = get_fptr(lattice,subs, i,j,k,-vx[N ],-vy[N ],-vz[N ],N );
+          fptr[S ] = get_fptr(lattice,subs, i,j,k,-vx[S ],-vy[S ],-vz[S ],S );
+          fptr[NE] = get_fptr(lattice,subs, i,j,k,-vx[NE],-vy[NE],-vz[NE],NE);
+          fptr[SW] = get_fptr(lattice,subs, i,j,k,-vx[SW],-vy[SW],-vz[SW],SW);
+          fptr[NW] = get_fptr(lattice,subs, i,j,k,-vx[NW],-vy[NW],-vz[NW],NW);
+          fptr[SE] = get_fptr(lattice,subs, i,j,k,-vx[SE],-vy[SE],-vz[SE],SE);
          if( get_NumDims(lattice)==3)
          {
-          fptr[T ] = get_fptr(lattice,subs, i-vx[T ], j-vy[T ], k-vz[T ], T );
-          fptr[B ] = get_fptr(lattice,subs, i-vx[B ], j-vy[B ], k-vz[B ], B );
-          fptr[TE] = get_fptr(lattice,subs, i-vx[TE], j-vy[TE], k-vz[TE], TE);
-          fptr[BW] = get_fptr(lattice,subs, i-vx[BW], j-vy[BW], k-vz[BW], BW);
-          fptr[TW] = get_fptr(lattice,subs, i-vx[TW], j-vy[TW], k-vz[TW], TW);
-          fptr[BE] = get_fptr(lattice,subs, i-vx[BE], j-vy[BE], k-vz[BE], BE);
-          fptr[TN] = get_fptr(lattice,subs, i-vx[TN], j-vy[TN], k-vz[TN], TN);
-          fptr[BS] = get_fptr(lattice,subs, i-vx[BS], j-vy[BS], k-vz[BS], BS);
-          fptr[TS] = get_fptr(lattice,subs, i-vx[TS], j-vy[TS], k-vz[TS], TS);
-          fptr[BN] = get_fptr(lattice,subs, i-vx[BN], j-vy[BN], k-vz[BN], BN);
+          fptr[T ] = get_fptr(lattice,subs, i,j,k,-vx[T ],-vy[T ],-vz[T ],T );
+          fptr[B ] = get_fptr(lattice,subs, i,j,k,-vx[B ],-vy[B ],-vz[B ],B );
+          fptr[TE] = get_fptr(lattice,subs, i,j,k,-vx[TE],-vy[TE],-vz[TE],TE);
+          fptr[BW] = get_fptr(lattice,subs, i,j,k,-vx[BW],-vy[BW],-vz[BW],BW);
+          fptr[TW] = get_fptr(lattice,subs, i,j,k,-vx[TW],-vy[TW],-vz[TW],TW);
+          fptr[BE] = get_fptr(lattice,subs, i,j,k,-vx[BE],-vy[BE],-vz[BE],BE);
+          fptr[TN] = get_fptr(lattice,subs, i,j,k,-vx[TN],-vy[TN],-vz[TN],TN);
+          fptr[BS] = get_fptr(lattice,subs, i,j,k,-vx[BS],-vy[BS],-vz[BS],BS);
+          fptr[TS] = get_fptr(lattice,subs, i,j,k,-vx[TS],-vy[TS],-vz[TS],TS);
+          fptr[BN] = get_fptr(lattice,subs, i,j,k,-vx[BN],-vy[BN],-vz[BN],BN);
          }
 
           if( 1)//get_time(lattice)>1)
