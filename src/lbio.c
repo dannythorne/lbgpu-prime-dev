@@ -2293,6 +2293,123 @@ printf("%s %d >> bitcount = %d\n",__FILE__,__LINE__, ENDIAN2(*bitcount_ptr));
 #endif /* SAY_HI */
 
 } /* u2bmp( lattice_ptr lattice, int time) */
+// W R I T E _ E M P T Y _ B M P  {{{
+//##############################################################################
+// void write_empty_bmp( char *filename, int time)
+//
+void write_empty_bmp( lattice_ptr lattice)
+{
+  FILE   *in,
+         *o;
+  int    i, j,
+         n, m;
+  int    pad,
+         bytes_per_row;
+  char   k;
+  char   b;
+  struct bitmap_file_header bmfh;
+  struct bitmap_info_header bmih;
+  struct rgb_quad rgb;
+  int    *int_ptr;
+  short  int *short_int_ptr;
+  int    *width_ptr;
+  int    *height_ptr;
+  short  int *bitcount_ptr;
+  char   filename[1024];
+  char   red_val,
+         green_val,
+         blue_val,
+         val;
+  real fval;
+  real min_rho, max_rho;
+  int    num_colors;
+
+#if SAY_HI
+  printf("write_empty_bmp() -- Hi!\n");
+#endif /* SAY_HI */
+
+   bmfh.bfType[0] = 'B';
+   bmfh.bfType[1] = 'M';
+   *((int*)bmfh.bfSize)= get_LY(lattice)*(
+       (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) // bytes per row
+       + ( 4 - (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) % 4) % 4 // pad
+       );
+   *((short int*)bmfh.bfReserved1) = 0;
+   *((short int*)bmfh.bfReserved2) = 0;
+   *((int*)bmfh.bfOffBits) = 54; // 14 byte file header and 40 byte info header
+
+   *((int*)bmih.biSize) = 40;
+   *((int*)bmih.biWidth) = get_LX(lattice);
+   *((int*)bmih.biHeight) = get_LY(lattice);
+   *((short int*)bmih.biPlanes) = 1;
+   *((short int*)bmih.biBitCount) = 24;
+   *((int*)bmih.biCompression) = 0;
+   *((int*)bmih.biSizeImage) = 0;
+   *((int*)bmih.biXPelsPerMeter) = 0;
+   *((int*)bmih.biYPelsPerMeter) = 0;
+   *((int*)bmih.biClrUsed) = 0;
+   *((int*)bmih.biClrImportant) = 0;
+
+   width_ptr = (int*)bmih.biWidth;
+   height_ptr = (int*)bmih.biHeight;
+   bitcount_ptr = (short int*)bmih.biBitCount;
+
+   // Bytes per row of the bitmap.
+   bytes_per_row =
+     ((int)ceil(( ( ((real)(ENDIAN4(*width_ptr)))
+                  * ((real)(ENDIAN2(*bitcount_ptr))) )/8.)));
+
+   // Bitmaps pad rows to preserve 4-byte boundaries.
+   // The length of a row in the file will be bytes_per_row + pad .
+   pad = ((4) - bytes_per_row%4)%4;
+
+   sprintf(filename,"./in/%dx%d.bmp",get_ni(lattice),get_nj(lattice));
+
+   if( !( o = fopen( filename, "w+")))
+   {
+     printf("ERROR: fopen( \"%s\", \"w+\") = NULL.  Bye, bye!\n", filename);
+     process_exit(1);
+   }
+
+   fwrite( &bmfh, sizeof(struct bitmap_file_header), 1, o );
+   fwrite( &bmih, sizeof(struct bitmap_info_header), 1, o );
+
+   for( j=0; j<get_LY(lattice); j++)
+   {
+     for( i=0; i<get_LX(lattice); i++)
+     {
+       red_val   = (char)255;
+       green_val = (char)255;
+       blue_val  = (char)255;
+       val       = (char)255;
+
+       if( fwrite( &blue_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+       if( fwrite( &green_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+       if( fwrite( &red_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+
+     } /* for( i=0; i<get_LX(lattice); i++) */
+
+     // Pad for 4-byte boundaries.
+     val = (char)0;
+     for( i=0; i<pad; i++)
+     {
+       if( fwrite( &val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+     }
+
+   } /* for( j=0; j<get_LY(lattice); j++) */
+
+   fclose(o);
+
+#if VERBOSITY_LEVEL > 0
+   printf("write_empty_bmp() -- Wrote file \"%s\".\n", filename);
+#endif /* VERBOSITY_LEVEL > 0 */
+
+#if SAY_HI
+  printf("write_empty_bmp() -- Bye!\n");
+  printf("\n");
+#endif /* SAY_HI */
+
+} /* write_empty_bmp( lattice_ptr lattice, int time) */
 #endif
 
 
@@ -2858,22 +2975,26 @@ void spy_bmp( lattice_ptr lattice, char *filename, int **matrix)
 
   if( !( in = fopen( filename, "r")))
   {
-#if 1
+#if 0
     printf("%s %d >> spy_bmp() -- Error opening file \"%s\".\n",
       __FILE__, __LINE__, filename);
     process_exit(1);
 #else
     printf(" %s::spy_bmp() %d >> File \"%s\" cannot be opened for reading.\n",
         __FILE__, __LINE__, filename);
-    if( !( o = fopen( filename, "w+")))
-    {
-      // TODO: Write blank bmp file.
-    }
+  //if( !( o = fopen( filename, "w+")))
+  //{
+      // Write blank bmp file.
+      write_empty_bmp( lattice);
+      if( !( o = fopen( filename, "r")))
+      {
+        printf("%s %d >> spy_bmp() -- Error opening file \"%s\".\n",
+          __FILE__, __LINE__, filename);
+        process_exit(1);
+      }
+  //}
     printf(" %s::spy_bmp() %d >> Wrote a blank \"%s\" file.\n",
         __FILE__, __LINE__, filename);
-    printf(" %s::spy_bmp() %d >> Returning all zeros!\n", __FILE__, __LINE__);
-    fclose( o);
-    return;
 #endif
   }
 
