@@ -96,45 +96,21 @@ void collide( lattice_ptr lattice)
           uy /= rho;
           uz /= rho;
 
-          ux += get_gaccel_ux( lattice, subs);
-          uy += get_gaccel_uy( lattice, subs);
-          uz += get_gaccel_uz( lattice, subs);
+          if( !skip_collision_step( lattice))
+          {
+            ux += get_gaccel_ux( lattice, subs);
+            uy += get_gaccel_uy( lattice, subs);
+            uz += get_gaccel_uz( lattice, subs);
 
-          usq = ux*ux + uy*uy + uz*uz;
+            usq = ux*ux + uy*uy + uz*uz;
 
 #if 1
-          *(fptr[0]) = *(fptr[0])*(1-1./get_tau(lattice,subs))
-                    + ( /*feq[a]*/
-                        W0 * rho*(1. - 1.5*usq)
-                      ) / get_tau(lattice,subs);
+            *(fptr[0]) = *(fptr[0])*(1-1./get_tau(lattice,subs))
+                      + ( /*feq[a]*/
+                          W0 * rho*(1. - 1.5*usq)
+                        ) / get_tau(lattice,subs);
 
-          for( a=1; a<=4; a++)
-          {
-            udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
-                    +(real)vy[a+((a%2)?(1):(-1))]*uy
-                    +(real)vz[a+((a%2)?(1):(-1))]*uz);
-
-            *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
-                    + ( /*feq[a]*/
-                        W1*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                      ) / get_tau(lattice,subs);
-          }
-
-          for( ; a<=8; a++)
-          {
-            udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
-                    +(real)vy[a+((a%2)?(1):(-1))]*uy
-                    +(real)vz[a+((a%2)?(1):(-1))]*uz);
-
-            *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
-                    + ( /*feq[a]*/
-                        W2*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                      ) / get_tau(lattice,subs);
-          }
-
-          if( get_NumDims(lattice)==3)
-          {
-            for( ; a<=10; a++)
+            for( a=1; a<=4; a++)
             {
               udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
                       +(real)vy[a+((a%2)?(1):(-1))]*uy
@@ -146,7 +122,7 @@ void collide( lattice_ptr lattice)
                         ) / get_tau(lattice,subs);
             }
 
-            for( ; a<get_NumVelDirs(lattice); a++)
+            for( ; a<=8; a++)
             {
               udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
                       +(real)vy[a+((a%2)?(1):(-1))]*uy
@@ -157,32 +133,38 @@ void collide( lattice_ptr lattice)
                           W2*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
                         ) / get_tau(lattice,subs);
             }
-          }
+
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
+                        +(real)vy[a+((a%2)?(1):(-1))]*uy
+                        +(real)vz[a+((a%2)?(1):(-1))]*uz);
+
+                *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
+                        + ( /*feq[a]*/
+                            W1*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                          ) / get_tau(lattice,subs);
+              }
+
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
+                        +(real)vy[a+((a%2)?(1):(-1))]*uy
+                        +(real)vz[a+((a%2)?(1):(-1))]*uz);
+
+                *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
+                        + ( /*feq[a]*/
+                            W2*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                          ) / get_tau(lattice,subs);
+              }
+            }
 #else
-          // Just assign the weighted rhos for debugging.
-          *(fptr[0]) = W0*rho;
+            // Just assign the weighted rhos for debugging.
+            *(fptr[0]) = W0*rho;
 
-          for( a=1; a<=4; a++)
-          {
-            udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
-                    +(real)vy[a+((a%2)?(1):(-1))]*uy
-                    +(real)vz[a+((a%2)?(1):(-1))]*uz);
-
-            *(fptr[a]) = W1*rho;
-          }
-
-          for( ; a<=8; a++)
-          {
-            udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
-                    +(real)vy[a+((a%2)?(1):(-1))]*uy
-                    +(real)vz[a+((a%2)?(1):(-1))]*uz);
-
-            *(fptr[a]) = W2*rho;
-          }
-
-          if( get_NumDims(lattice)==3)
-          {
-            for( ; a<=10; a++)
+            for( a=1; a<=4; a++)
             {
               udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
                       +(real)vy[a+((a%2)?(1):(-1))]*uy
@@ -191,7 +173,7 @@ void collide( lattice_ptr lattice)
               *(fptr[a]) = W1*rho;
             }
 
-            for( ; a<get_NumVelDirs(lattice); a++)
+            for( ; a<=8; a++)
             {
               udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
                       +(real)vy[a+((a%2)?(1):(-1))]*uy
@@ -199,8 +181,29 @@ void collide( lattice_ptr lattice)
 
               *(fptr[a]) = W2*rho;
             }
-          }
+
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
+                        +(real)vy[a+((a%2)?(1):(-1))]*uy
+                        +(real)vz[a+((a%2)?(1):(-1))]*uz);
+
+                *(fptr[a]) = W1*rho;
+              }
+
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux
+                        +(real)vy[a+((a%2)?(1):(-1))]*uy
+                        +(real)vz[a+((a%2)?(1):(-1))]*uz);
+
+                *(fptr[a]) = W2*rho;
+              }
+            }
 #endif
+          }
 
           // Swap opposing fs to undo the swap in stream_collide_stream.
           for( a=1; a<get_NumVelDirs(lattice); a+=2)
@@ -224,6 +227,10 @@ void collide( lattice_ptr lattice)
               uz += (*(fptr[a]))*vz[a];
             }
           }
+
+          ux /= rho;
+          uy /= rho;
+          uz /= rho;
 
           set_rho(lattice,subs,n,rho);
           set_ux(lattice,subs,n,ux);

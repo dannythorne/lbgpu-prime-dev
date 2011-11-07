@@ -1967,6 +1967,11 @@ int do_diagnostic_init_of_rho( lattice_ptr lattice)
 
 int do_diagnostic_init_of_u( lattice_ptr lattice)
 {
+  return 1; // TODO: params.in or flags.in
+}
+
+int skip_collision_step( lattice_ptr lattice)
+{
   return 0; // TODO: params.in or flags.in
 }
 
@@ -2155,8 +2160,8 @@ real* get_fptr(
   }
   else
   {
-    // Getting f from node (i0,j0,k0). This is for the even collide steps that
-    // wrap up what the stream_collide_stream step started.
+    // Getting f from node (i0,j0,k0). This is for the even collide step that
+    // wraps up what the stream_collide_stream step started.
     if( i0<0) { i0+=ni;}
     if( j0<0) { j0+=nj;}
     if( k0<0) { k0+=nk;}
@@ -2189,7 +2194,7 @@ __constant__ int nk_c;
 __constant__ int nixnj_c;
 __constant__ int numnodes_c;
 
-__device__ int k_is_not_solid( real* solids_mem_d, int n)
+__device__ int d_is_not_solid( real* solids_mem_d, int n)
 {
   return !(solids_mem_d[n]);
 }
@@ -2246,7 +2251,7 @@ __device__ real get_f1d_d(
 
     int n = i + ni*j + ni*nj*k;
 
-    if( k_is_not_solid( solids_mem_d, n))
+    if( d_is_not_solid( solids_mem_d, n))
     {
       return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
     }
@@ -2262,8 +2267,8 @@ __device__ real get_f1d_d(
   }
   else
   {
-    // Getting f from node (i0,j0,k0). This is for the even collide steps that
-    // wrap up what the stream_collide_stream step started.
+    // Getting f from node (i0,j0,k0). This is for the even collide step that
+    // wraps up what the stream_collide_stream step started.
     if( i0<0) { i0+=ni;}
     if( j0<0) { j0+=nj;}
     if( k0<0) { k0+=nk;}
@@ -2347,6 +2352,19 @@ __device__ void apply_accel_mv(
   }
 #endif
 }
+
+__device__
+int d_skip_collision_step()
+{
+  return 0; // TODO: params.in or flags.in
+}
+
+__device__
+int d_skip_updating_macrovars()
+{
+  return 0; // TODO: params.in or flags.in
+}
+
 #endif
 
 #if 0

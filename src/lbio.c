@@ -69,6 +69,7 @@ void output_frame( lattice_ptr lattice)
   if( write_debug_txt_files(lattice))
   {
     write_rho_txt(lattice);
+    write_u_txt(lattice);
   }
 
 #if 0
@@ -2912,6 +2913,58 @@ void write_rho_txt( lattice_ptr lattice)
     }
 
     fclose(fout);
+  }
+}
+
+void write_u_txt( lattice_ptr lattice)
+{
+  int i, j, k;
+  int ni = get_ni(lattice);
+  int nj = get_nj(lattice);
+  int nk = get_nk(lattice);
+  int n;
+  int subs;
+  char filename_ux[1024];
+  char filename_uy[1024];
+  char filename_uz[1024];
+  FILE* uxout;
+  FILE* uyout;
+  FILE* uzout;
+
+  for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
+  {
+    gen_filename( lattice, filename_ux, "ux", get_frame(lattice), subs, ".txt");
+    gen_filename( lattice, filename_uy, "uy", get_frame(lattice), subs, ".txt");
+    gen_filename( lattice, filename_uz, "uz", get_frame(lattice), subs, ".txt");
+
+    uxout = fopen(filename_ux,"w+");
+    uyout = fopen(filename_uy,"w+");
+    uzout = fopen(filename_uz,"w+");
+
+    n = 0;
+    for( k=0; k<nk; k++)
+    {
+      for( j=0; j<nj; j++)
+      {
+        for( i=0; i<ni; i++)
+        {
+          fprintf(uxout," %18.16f",get_ux(lattice,subs,n));
+          fprintf(uyout," %18.16f",get_uy(lattice,subs,n));
+          fprintf(uzout," %18.16f",get_uz(lattice,subs,n));
+          n++;
+        }
+        fprintf(uxout,"\n");
+        fprintf(uyout,"\n");
+        fprintf(uzout,"\n");
+      }
+      fprintf(uxout,"\n");
+      fprintf(uyout,"\n");
+      fprintf(uzout,"\n");
+    }
+
+    fclose(uxout);
+    fclose(uyout);
+    fclose(uzout);
   }
 }
 

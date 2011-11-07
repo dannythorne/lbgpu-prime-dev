@@ -97,6 +97,7 @@ void write_plt_single(
        real *a,
        char   *filename);
 void write_rho_txt( lattice_ptr lattice);
+void write_u_txt( lattice_ptr lattice);
 void slice( lattice_ptr lattice);
 void private_slice( lattice_ptr lattice, int i0, int j0, int i1, int j1);
 #if NON_LOCAL_FORCES

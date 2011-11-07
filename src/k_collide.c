@@ -9,9 +9,9 @@ void k_collide(
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
-//If ni and nj are both powers of two, the bitwise operations in the second
-//part of the following loop will evaluate more quickly.
-//TODO: Figure out how to implement this automatically.
+// If ni and nj are both powers of two, the bitwise operations in the second
+// part of the following loop will evaluate more quickly.
+// TODO: Figure out how to implement this automatically.
 #if 1
   int i = n % ni_c;
   int j = (n % (nixnj_c)) / ni_c;
@@ -27,15 +27,14 @@ void k_collide(
 #if 1
   for( subs=0; subs<numsubs_c; subs++)
   {
-
-//Populate shared memory for a given node with global memory values from
-//that node.  Note that in global memory, each distribution function is swapped
-//with its opposite partner.  The correct ordering will be restored while
-//loading into shared memory using the fact that opposite pairs are stored
-//adjacently in v.  Hopefully this will occur without bank conflicts.
-//For Compute 1.0/1.1 devices, this is preferable to restoring the order after
-//the calc.  For Compute 1.3 and greater, it probably doesn't matter.
-
+    // Populate shared memory for a given node with global memory values from
+    // that node.  Note that in global memory, each distribution function is
+    // swapped with its opposite partner.  The correct ordering will be
+    // restored while loading into shared memory using the fact that opposite
+    // pairs are stored adjacently in v.  Hopefully this will occur without
+    // bank conflicts.  For Compute 1.0/1.1 devices, this is preferable to
+    // restoring the order after the calc.  For Compute 1.3 and greater, it
+    // probably doesn't matter.
 #if 1
     fptr[threadIdx.x] = get_f1d_d( f_mem_d, solids_mem_d
                                  , subs, i,j,k, 0,0,0, 0);
@@ -54,7 +53,7 @@ void k_collide(
                    , subs, i,j,k, 0,0,0, a-1);
     }
 
-//Initialize shared memory values for calculating macro vars.
+    // Initialize shared memory values for calculating macro vars.
     fptr[threadIdx.x + numdirs_c*blockDim.x] = 0.;
     fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
     fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] = 0.;
@@ -63,7 +62,7 @@ void k_collide(
       fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
     }
 
-//Calculate macroscopic variables.
+    // Calculate macroscopic variables.
     for( a=0; a<numdirs_c; a++)
     {
       fptr[threadIdx.x + numdirs_c*blockDim.x]
@@ -100,29 +99,32 @@ void k_collide(
     }
 #endif
 
-//Store macroscopic variables in global memory.
-  for( a=0; a<=numdims_c; a++)
-  {
-    set_mv_d( mv_mem_d
-            , subs, i, j, k, a
-            , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
-
-    if( /*debug*/0)
+    if( !d_skip_updating_macrovars())
     {
-      set_mv_d( mv_mem_d, subs, i, j, k, a, 7.);
+      // Store macroscopic variables in global memory.
+      for( a=0; a<=numdims_c; a++)
+      {
+        set_mv_d( mv_mem_d
+                , subs, i, j, k, a
+                , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
+
+        if( /*debug*/0)
+        {
+          set_mv_d( mv_mem_d, subs, i, j, k, a, 7.);
+        }
+      }
     }
-  }
 
 #if 1
-//Modify macroscopic variables with a body force
-  for( a=1; a<=numdims_c; a++)
-  {
-    apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
-  }
+    // Modify macroscopic variables with a body force
+    for( a=1; a<=numdims_c; a++)
+    {
+      apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
+    }
 #endif
 
 #if 1
-//Calculate u-squared since it is used many times
+    // Calculate u-squared since it is used many times
     real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
              * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
 
@@ -135,19 +137,24 @@ void k_collide(
            * fptr[threadIdx.x + (numdirs_c+3)*blockDim.x];
     }
 
-//Calculate the collision operator and add to f resulting from first streaming
-    for( a=0; a<numdirs_c; a++)
+    if( !d_skip_collision_step())
     {
-      calc_f_tilde_d( f_mem_d, subs, a, threadIdx.x, blockDim.x, fptr, usq);
+      // Calculate the collision operator and add to f resulting from first
+      // streaming
+      for( a=0; a<numdirs_c; a++)
+      {
+        calc_f_tilde_d( f_mem_d, subs, a, threadIdx.x, blockDim.x, fptr, usq);
+      }
     }
 
-//Finally, save results back to global memory in the local node.
-//The ordering was already corrected in the first step, so nothing to
-//worry about here.
+    // Finally, save results back to global memory in the local node.  The
+    // ordering was already corrected in the first step, so nothing to worry
+    // about here.
     for( a=0; a<numdirs_c; a++)
     {
       set_f1d_d( f_mem_d, subs, i, j, k, a, fptr[threadIdx.x + a*blockDim.x]);
     }
+
 #endif
 //  __syncthreads();
   }

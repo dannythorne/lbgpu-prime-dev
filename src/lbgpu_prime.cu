@@ -136,7 +136,8 @@ int main( int argc, char **argv)
 #else
       for( subs = 0; subs < get_NumSubs(lattice); subs++)
       {
-        printf(" transferring for subs %d \n", subs);
+        printf("Transferring subs %d "
+               "macrovars from device to host for output. \n", subs);
         cudaMemcpy( get_rho_ptr(lattice, subs, 0)
                   , mv_mem_d + subs * get_NumNodes(lattice)
                     * (1 + get_NumDims(lattice))

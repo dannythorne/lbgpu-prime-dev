@@ -971,14 +971,16 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
 
       if( do_diagnostic_init_of_rho(lattice))
       {
-        set_rho( lattice, subs, n
-               , get_rho_A(lattice,subs)*(n+1)/10);
+        set_rho( lattice, subs, n, get_rho_A(lattice,subs)*(n+1)/10);
       }
       if( do_diagnostic_init_of_u(lattice))
       {
-        set_ux( lattice, subs, n, 0.);//(real)(n+1)/get_NumNodes(lattice)/100);
-        set_uy( lattice, subs, n, 0.00001);//(real)(n+1)/get_NumNodes(lattice)/100);
-        set_uz( lattice, subs, n, 0.);//(real)(n+1)/get_NumNodes(lattice)/100);
+        //set_ux( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        set_ux( lattice, subs, n, 0.00001);
+        //set_uy( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        set_uy( lattice, subs, n, 0.00000);
+        //set_uz( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        set_uz( lattice, subs, n, 0.);
       }
 
 #if 0 // ============================ TODO ====================================

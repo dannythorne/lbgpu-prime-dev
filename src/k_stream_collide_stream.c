@@ -81,27 +81,30 @@ void k_stream_collide_stream(
         fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
     }
 
-//Store macroscopic variables in global memory.
-  for( a=0; a<=numdims_c; a++)
-  {
-    set_mv_d( mv_mem_d
-            , subs, i, j, k, a
-            , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
-    if( /*debug*/0)
+    if( !d_skip_updating_macrovars())
     {
-      set_mv_d( mv_mem_d, subs, i, j, k, a, 6.);
+      // Store macroscopic variables in global memory.
+      for( a=0; a<=numdims_c; a++)
+      {
+        set_mv_d( mv_mem_d
+                , subs, i, j, k, a
+                , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
+        if( /*debug*/0)
+        {
+          set_mv_d( mv_mem_d, subs, i, j, k, a, 6.);
+        }
+      }
     }
-  }
 
 #if 1
-//Modify macroscopic variables with a body force
-  for( a=1; a<=numdims_c; a++)
-  {
-    apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
-  }
+    // Modify macroscopic variables with a body force
+    for( a=1; a<=numdims_c; a++)
+    {
+      apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
+    }
 #endif
 
-//Calculate u-squared since it is used many times
+    // Calculate u-squared since it is used many times
     real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
              * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
 
@@ -114,16 +117,20 @@ void k_stream_collide_stream(
            * fptr[threadIdx.x + (numdirs_c+3)*blockDim.x];
     }
 
-//Calculate the collision operator and add to f resulting from first streaming
-    for( a=0; a<numdirs_c; a++)
+    if( !d_skip_collision_step())
     {
-      calc_f_tilde_d( f_mem_d, subs, a, threadIdx.x, blockDim.x, fptr, usq);
+      // Calculate the collision operator and add to f resulting from first
+      // streaming
+      for( a=0; a<numdirs_c; a++)
+      {
+        calc_f_tilde_d( f_mem_d, subs, a, threadIdx.x, blockDim.x, fptr, usq);
+      }
     }
 
-//Finally, save results back to global memory in adjacent nodes.
-//This is a second streaming operation.  Note that the 'swap' that
-//occurs in the CPU code is combined with this operation without penalty.
-//This utilizes the rearrangement of the v vectors into opposite pairs.
+    // Finally, save results back to global memory in adjacent nodes.  This is
+    // a second streaming operation.  Note that the 'swap' that occurs in the
+    // CPU code is combined with this operation without penalty.  This utilizes
+    // the rearrangement of the v vectors into opposite pairs.
     set_f1d_d( f_mem_d
              , subs, i+vx_c[0], j+vy_c[0], k+vz_c[0], 0
              , fptr[threadIdx.x + 0*blockDim.x]);

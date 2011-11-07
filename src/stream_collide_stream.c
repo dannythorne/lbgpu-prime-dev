@@ -76,71 +76,39 @@ void stream_collide_stream( lattice_ptr lattice)
           fptr[BN] = get_fptr(lattice,subs, i,j,k,-vx[BN],-vy[BN],-vz[BN],BN);
          }
 
-          if( 1)//get_time(lattice)>1)
+          rho = 0.;
+          ux = 0.;
+          uy = 0.;
+          uz = 0.;
+          for( a=0; a<get_NumVelDirs(lattice); a++)
           {
-            rho = 0.;
-            ux = 0.;
-            uy = 0.;
-            uz = 0.;
-            for( a=0; a<get_NumVelDirs(lattice); a++)
+            rho+= (*(fptr[a]));
+            ux += (*(fptr[a]))*vx[a];
+            uy += (*(fptr[a]))*vy[a];
+            if( get_NumDims(lattice)==3)
             {
-              rho+= (*(fptr[a]));
-              ux += (*(fptr[a]))*vx[a];
-              uy += (*(fptr[a]))*vy[a];
-              if( get_NumDims(lattice)==3)
-              {
-                uz += (*(fptr[a]))*vz[a];
-              }
+              uz += (*(fptr[a]))*vz[a];
             }
-            ux /= rho;
-            uy /= rho;
-            uz /= rho;
           }
-          else
+          ux /= rho;
+          uy /= rho;
+          uz /= rho;
+
+          if( !skip_collision_step( lattice))
           {
-            // For first time step, use initial values of macroscopic
-            // variables.
-            rho = get_rho(lattice,subs,n);
-            ux  = get_ux (lattice,subs,n);
-            uy  = get_uy (lattice,subs,n);
-            uz  = get_uz (lattice,subs,n);
-          }
+            ux += get_gaccel_ux( lattice, subs);
+            uy += get_gaccel_uy( lattice, subs);
+            uz += get_gaccel_uz( lattice, subs);
 
-          ux += get_gaccel_ux( lattice, subs);
-          uy += get_gaccel_uy( lattice, subs);
-          uz += get_gaccel_uz( lattice, subs);
-
-          usq = ux*ux + uy*uy + uz*uz;
+            usq = ux*ux + uy*uy + uz*uz;
 
 #if 1
-          *(fptr[0]) = *(fptr[0])*(1-1./get_tau(lattice,subs))
-                    + ( /*feq[a]*/
-                        W0 * rho*(1. - 1.5*usq)
-                      ) / get_tau(lattice,subs);
+            *(fptr[0]) = *(fptr[0])*(1-1./get_tau(lattice,subs))
+                      + ( /*feq[a]*/
+                          W0 * rho*(1. - 1.5*usq)
+                        ) / get_tau(lattice,subs);
 
-          for( a=1; a<=4; a++)
-          {
-            udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
-
-            *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
-                    + ( /*feq[a]*/
-                        W1*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                      ) / get_tau(lattice,subs);
-          }
-
-          for( ; a<=8; a++)
-          {
-            udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
-
-            *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
-                    + ( /*feq[a]*/
-                        W2*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                      ) / get_tau(lattice,subs);
-          }
-
-          if( get_NumDims(lattice)==3)
-          {
-            for( ; a<=10; a++)
+            for( a=1; a<=4; a++)
             {
               udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
 
@@ -150,7 +118,7 @@ void stream_collide_stream( lattice_ptr lattice)
                         ) / get_tau(lattice,subs);
             }
 
-            for( ; a<get_NumVelDirs(lattice); a++)
+            for( ; a<=8; a++)
             {
               udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
 
@@ -159,42 +127,65 @@ void stream_collide_stream( lattice_ptr lattice)
                           W2*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
                         ) / get_tau(lattice,subs);
             }
-          }
+
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
+
+                *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
+                        + ( /*feq[a]*/
+                            W1*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                          ) / get_tau(lattice,subs);
+              }
+
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
+
+                *(fptr[a]) = *(fptr[a])*(1-1./get_tau(lattice,subs))
+                        + ( /*feq[a]*/
+                            W2*rho*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                          ) / get_tau(lattice,subs);
+              }
+            }
 #else
-          // Just assign the weighted rhos for debugging.
-          *(fptr[0]) = W0*rho;
+            // Just assign the weighted rhos for debugging.
+            *(fptr[0]) = W0*rho;
 
-          for( a=1; a<=4; a++)
-          {
-            udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
-
-            *(fptr[a]) = W1*rho;
-          }
-
-          for( ; a<=8; a++)
-          {
-            udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
-
-            *(fptr[a]) = W2*rho;
-          }
-
-          if( get_NumDims(lattice)==3)
-          {
-            for( ; a<=10; a++)
+            for( a=1; a<=4; a++)
             {
               udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
 
               *(fptr[a]) = W1*rho;
             }
 
-            for( ; a<get_NumVelDirs(lattice); a++)
+            for( ; a<=8; a++)
             {
               udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
 
               *(fptr[a]) = W2*rho;
             }
-          }
+
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
+
+                *(fptr[a]) = W1*rho;
+              }
+
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a]*ux+(real)vy[a]*uy+(real)vz[a]*uz);
+
+                *(fptr[a]) = W2*rho;
+              }
+            }
 #endif
+          }
 
           // Swap fs of opposing neighbors, thus streaming into the correct
           // neighbor nodes although storing in the opposite direction.
