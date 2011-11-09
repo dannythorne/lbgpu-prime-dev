@@ -25,26 +25,12 @@ void process_matrix( struct lattice_struct *lattice, int **matrix)
 {
   // Variable declarations.
   int i,  j;
-  int in, jn;
-  int ip, jp;
   int ei, ej;
   int n;
 
   // Ending indices.
   ei = get_LX(lattice)-1;
   ej = get_LY(lattice)-1;
-
-#if 0 // Dump the matrix contents to the screen.
-  for( j=0; j<=ej; j++)
-  {
-    for( i=0; i<=ei; i++)
-    {
-      printf(" %d", matrix[j][i]);
-    }
-    printf("\n");
-  }
-  //process_exit(1);
-#endif
 
   for( j=0; j<=ej; j++)
   {
@@ -54,7 +40,8 @@ void process_matrix( struct lattice_struct *lattice, int **matrix)
     {
       set_is_solid( lattice, n, matrix[j][i]);
 
-    } /* for( i=0; i<=ei; i++) */
+    } /* for( i=0; i<=ei; i++, n++) */
+
   } /* for( j=0; j<=ej; j++) */
 
 } /* void process_matrix( struct lattice_struct *lattice, int **matrix) */
@@ -69,13 +56,9 @@ void process_matrix( struct lattice_struct *lattice, int **matrix)
 void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 {
   // Variable declarations
-  int    **matrix;
   int    i,
          j;
-  int    n;
   int    subs;
-  int    width,
-         height;
   char   filename[1024];
   char   dirname[1024];
 
@@ -412,6 +395,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     {
       printf("%s %d >> Reading file \"%s\".\n",__FILE__,__LINE__,filename);
       bmp_read_header( in, &bmih);
+      int n;
       for( n=0; n<(*lattice)->NumNodes; n++)
       {
         bmp_read_entry( in, &bmih, &r, &g, &b);
@@ -491,6 +475,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     {
       printf("%s %d >> Reading file \"%s\".\n",__FILE__,__LINE__,filename);
       bmp_read_header( in, &bmih);
+      int n;
       for( n=0; n<(*lattice)->NumNodes; n++)
       {
         bmp_read_entry( in, &bmih, &r, &g, &b);
@@ -594,13 +579,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 //
 void init_problem( lattice_ptr lattice)
 {
-  int    a, n, i, j, k, ni, nj, nk, id1, id2, newz1, newz2, k1,k2;
-  real x, u_max, K, drho, m;
-  real *macro_var_ptr;
-  real *f, *feq, *ftemp, ftemp2[19];
-  real *rho, *u_x, *u_y, *u_z;
-
-  real fcountone;
+  int    a, n, i, j, k, ni, nj, nk;
 
 #if STORE_UEQ
   real *ueq_x, *ueq_y, *ueq_z;
@@ -609,9 +588,6 @@ void init_problem( lattice_ptr lattice)
   real *force;
 #endif /* NON_LOCAL_FORCES */
   int    subs;
-  real kappa;
-  real ti;
-  real y;
 
 #if VERBOSITY_LEVEL > 0
   printf("init_problem() -- Initilizing problem...\n");
@@ -712,10 +688,10 @@ void init_problem( lattice_ptr lattice)
           {
 #if PARALLEL
 #if 0
-            id1 =  (int)floor(lattice->param.z1/(real)(nk);
-            newz1 =  (int)(lattice->param.z1) % (nk);
-            id2 =  (int)floor(lattice->param.z2/(real)(nk));
-            newz2 =  (int)(lattice->param.z2) % (nk);
+            int id1 =  (int)floor(lattice->param.z1/(real)(nk);
+            int newz1 =  (int)(lattice->param.z1) % (nk);
+            int id2 =  (int)floor(lattice->param.z2/(real)(nk));
+            int newz2 =  (int)(lattice->param.z2) % (nk);
             if(id2>get_num_procs(lattice))
             {
               id2 = get_num_procs(lattice);
@@ -1021,8 +997,6 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
     }
 
     real usq, udotx;
-
-    real temp;
 
     real** fptr;
 
@@ -1724,6 +1698,7 @@ int get_sizeof_lattice_structure( lattice_ptr lattice)
 
 #else
 // TODO
+  return -1;
 #endif
 } /* int get_sizeof_lattice_structure( lattice_ptr lattice) */
 
@@ -1771,6 +1746,7 @@ int get_sizeof_lattice( lattice_ptr lattice)
 
 #else
 // TODO
+  return -1;
 #endif
 } /* int get_sizeof_lattice( lattice_ptr lattice) */
 

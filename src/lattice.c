@@ -43,7 +43,7 @@ void set_NumNodes( lattice_ptr lattice)
   lattice->NumNodes = get_LX( lattice)*get_LY( lattice)*get_LZ( lattice);
 }
 
-int set_NumDims( lattice_ptr lattice, int value)
+void set_NumDims( lattice_ptr lattice, int value)
 {
   lattice->NumDims = value;
 }
@@ -57,7 +57,7 @@ int* get_NumDims_ptr( lattice_ptr lattice)
   return &(lattice->NumDims);
 }
 
-int set_NumVelDirs( lattice_ptr lattice, int value)
+void set_NumVelDirs( lattice_ptr lattice, int value)
 {
   lattice->NumVelDirs = value;
 }
@@ -71,7 +71,7 @@ int* get_NumVelDirs_ptr( lattice_ptr lattice)
   return &(lattice->NumVelDirs);
 }
 
-int set_NumSubs( lattice_ptr lattice, int value)
+void set_NumSubs( lattice_ptr lattice, int value)
 {
   lattice->NumSubs = value;
 }
@@ -272,7 +272,7 @@ void set_toc( lattice_ptr lattice, real t)
   lattice->toc =  t;
 }
 
-real display_etime( lattice_ptr lattice)
+void display_etime( lattice_ptr lattice)
 {
   if( is_on_root_proc(lattice))
   {
@@ -360,11 +360,10 @@ void gen_filename(
   }
 }
 
-#ifdef __CUDACC__
-// The following definitions of rho2bmp and u2bmp were relocated from lbio.c
-// for nvcc so that they will be defined when write_rho_image and write_u_image
-// are defined. This is due to the ad hoc way we are compiling the multiple
-// source code files and the way that nvcc works.
+#if 1 // __CUDACC__
+// The definitions of rho2bmp and u2bmp need to be relocated here from lbio.c
+// until the way this project is compiled is fixed to allow separate
+// compilation and linking.
 
 // Some compilers, e.g., VC++, don't have the usual round() function
 // in their math library.  Alternatively, ROUND can be defined as
@@ -391,22 +390,14 @@ void gen_filename(
 //
 void rho2bmp( lattice_ptr lattice, int time)
 {
-  FILE   *in,
-         *o;
+  FILE   *o;
   int    i, j,
-         n, m;
+         n;
   int    pad,
          bytes_per_row;
-  int    frame;
-  char   k;
-  char   b;
   struct bitmap_file_header bmfh;
   struct bitmap_info_header bmih;
-  struct rgb_quad rgb;
-  int    *int_ptr;
-  short  int *short_int_ptr;
   int    *width_ptr;
-  int    *height_ptr;
   short  int *bitcount_ptr;
   char   filename[1024];
   char   red_val,
@@ -416,7 +407,6 @@ void rho2bmp( lattice_ptr lattice, int time)
   real fval;
   real min_rho, max_rho;
   int    subs;
-  int    num_colors;
 
 #if SAY_HI
   printf("rho2bmp() -- Hi!\n");
@@ -424,8 +414,6 @@ void rho2bmp( lattice_ptr lattice, int time)
 
  for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
  {
-   frame = time/lattice->param.FrameRate;
-
    bmfh.bfType[0] = 'B';
    bmfh.bfType[1] = 'M';
    *((int*)bmfh.bfSize)= get_LY(lattice)*(
@@ -449,7 +437,6 @@ void rho2bmp( lattice_ptr lattice, int time)
    *((int*)bmih.biClrImportant) = 0;
 
    width_ptr = (int*)bmih.biWidth;
-   height_ptr = (int*)bmih.biHeight;
    bitcount_ptr = (short int*)bmih.biBitCount;
 
    // Bytes per row of the bitmap.
@@ -661,32 +648,25 @@ void rho2bmp( lattice_ptr lattice, int time)
 //
 void u2bmp( lattice_ptr lattice, int time)
 {
-  FILE   *in,
-         *o_u,
+  FILE   *o_u,
          *o_ux,
          *o_uy;
   int    i, j,
-         n, m;
+         n;
   int    pad,
          bytes_per_row;
   int    frame;
-  char   k;
-  char   b;
   struct bitmap_file_header bmfh;
   struct bitmap_info_header bmih;
-  struct rgb_quad rgb;
-  int    *int_ptr;
-  short  int *short_int_ptr;
   int    *width_ptr;
-  int    *height_ptr;
   short  int *bitcount_ptr;
   char   filename[1024];
   char   red_val,
          green_val,
          blue_val,
          val;
-  real max_u[2], maxu;
-  real u_x, u_y, u;
+  real max_u[2]; //, maxu, u;
+  real u_x, u_y;
   int    subs;
 
 #if SAY_HI
@@ -698,66 +678,6 @@ void u2bmp( lattice_ptr lattice, int time)
 
   frame = time/lattice->param.FrameRate;
 
-#if 0
-  sprintf( filename, "./in/%dx%d_proc%04d.bmp",
-      get_LX(lattice), get_LY(lattice), get_proc_id(lattice));
-  if( !( in = fopen( filename, "r")))
-  {
-    printf("%s %d >> u2bmp() -- Error opening file \"%s\".\n",
-      __FILE__,__LINE__,filename);
-    process_exit(1);
-  }
-
-  // n = fread( void *BUF, size_t SIZE, size_t COUNT, FILE *FP);
-
-  n = fread( &bmfh, sizeof(struct bitmap_file_header), 1, in );
-  if( strncmp(bmfh.bfType,"BM",2))
-  {
-    printf("ERROR: Can't process this file type.  Exiting!\n");
-    printf("\n");
-    process_exit(1);
-  }
-  n = fread( &bmih, sizeof(struct bitmap_info_header), 1, in );
-  int_ptr = (int*)bmih.biCompression;
-  if( *int_ptr != 0)
-  {
-    printf("ERROR: Can't handle compression.  Exiting!\n");
-    printf("\n");
-    process_exit(1);
-  }
-
-#if 0
-  *((int*)(bmih.biWidth)) = ENDIAN4(((int)(*((int*)(bmih.biWidth)))));
-  *((int*)(bmih.biHeight)) = ENDIAN4(((int)(*((int*)(bmih.biHeight)))));
-  *((short int*)(bmih.biBitCount)) = ENDIAN2(((short int)(*((short int*)(bmih.biBitCount)))));
-#endif
-
-  width_ptr    = (int*)bmih.biWidth;
-  height_ptr   = (int*)bmih.biHeight;
-  bitcount_ptr = (short int*)bmih.biBitCount;
-
-printf("%s %d >> width    = %d\n",__FILE__,__LINE__, ENDIAN4(*width_ptr)   );
-printf("%s %d >> height   = %d\n",__FILE__,__LINE__, ENDIAN4(*height_ptr)  );
-printf("%s %d >> bitcount = %d\n",__FILE__,__LINE__, ENDIAN2(*bitcount_ptr));
-
-  // Read palette entries, if applicable.
-  if( ENDIAN2(*bitcount_ptr) < 24)
-  {
-    n = (int)pow(2.,(real)ENDIAN2(*bitcount_ptr)); // Num palette entries.
-    for( i=0; i<n; i++)
-    {
-      k = fread( &rgb, sizeof(struct rgb_quad), 1, in );
-      if( k!=1)
-      {
-        printf("Error reading palette entry %d.  Exiting!\n", i);
-        process_exit(1);
-      }
-    }
-  }
-
-  fclose(in);
-
-#else
   bmfh.bfType[0] = 'B';
   bmfh.bfType[1] = 'M';
   *((int*)bmfh.bfSize)= get_LY(lattice)*(
@@ -781,10 +701,7 @@ printf("%s %d >> bitcount = %d\n",__FILE__,__LINE__, ENDIAN2(*bitcount_ptr));
   *((int*)bmih.biClrImportant) = 0;
 
   width_ptr = (int*)bmih.biWidth;
-  height_ptr = (int*)bmih.biHeight;
   bitcount_ptr = (short int*)bmih.biBitCount;
-
-#endif
 
   // Bytes per row of the bitmap.
   bytes_per_row =
@@ -844,8 +761,8 @@ printf("%s %d >> bitcount = %d\n",__FILE__,__LINE__, ENDIAN2(*bitcount_ptr));
         u_x = (get_ux(lattice,subs,n));
         u_y = (get_uy(lattice,subs,n));
 
-        u = sqrt(u_x*u_x + u_y*u_y);
-        maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
+        //u = sqrt(u_x*u_x + u_y*u_y);
+        //maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
 
         if( is_solid(lattice,n))
         {
@@ -1190,6 +1107,7 @@ printf("%s %d >> bitcount = %d\n",__FILE__,__LINE__, ENDIAN2(*bitcount_ptr));
   sprintf( filename, "./in/%dx%d_proc%04d.bmp",
       get_LX(lattice), get_LY(lattice), get_proc_id(lattice));
 #endif
+  FILE *in;
   if( !( in = fopen( filename, "r")))
   {
     printf("%s %d >> u2bmp() -- Error opening file \"%s\".\n",
@@ -1623,30 +1541,19 @@ printf("%s %d >> bitcount = %d\n",__FILE__,__LINE__, ENDIAN2(*bitcount_ptr));
 //
 void write_empty_bmp( lattice_ptr lattice)
 {
-  FILE   *in,
-         *o;
-  int    i, j,
-         n, m;
+  FILE   *o;
+  int    i, j;
   int    pad,
          bytes_per_row;
-  char   k;
-  char   b;
   struct bitmap_file_header bmfh;
   struct bitmap_info_header bmih;
-  struct rgb_quad rgb;
-  int    *int_ptr;
-  short  int *short_int_ptr;
   int    *width_ptr;
-  int    *height_ptr;
   short  int *bitcount_ptr;
   char   filename[1024];
   char   red_val,
          green_val,
          blue_val,
          val;
-  real fval;
-  real min_rho, max_rho;
-  int    num_colors;
 
 #if SAY_HI
   printf("write_empty_bmp() -- Hi!\n");
@@ -1675,7 +1582,6 @@ void write_empty_bmp( lattice_ptr lattice)
    *((int*)bmih.biClrImportant) = 0;
 
    width_ptr = (int*)bmih.biWidth;
-   height_ptr = (int*)bmih.biHeight;
    bitcount_ptr = (short int*)bmih.biBitCount;
 
    // Bytes per row of the bitmap.

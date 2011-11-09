@@ -36,10 +36,7 @@
 //
 void output_frame( lattice_ptr lattice)
 {
-  real s, u[3];
-  real nu;
-  real L;
-  int    n, subs;
+  int subs;
 
 #if VERBOSITY_LEVEL > 0
   printf("\n");
@@ -87,6 +84,10 @@ void output_frame( lattice_ptr lattice)
 #endif /* VERBOSITY_LEVEL > 0 */
 
 #if 0
+  real s;
+  real u[3];
+  real nu;
+  real L;
   nu = (1./3.)*(lattice->param.tau[0] - .5);
   L = lattice->param.length_scale;
 
@@ -290,25 +291,9 @@ void dump_frame_summary( struct lattice_struct *lattice)
 //
 void dump_macro_vars( struct lattice_struct *lattice, int time)
 {
-  char   filename[1024],filename2[1024], fn3[1024];
-  FILE   *o, *o_u, *o_rho, *o_ux, *o_uy, *o_ueq, *o_ueq_x, *o_ueq_y, *sat;
-  int    *node_ptr;
-  int    i, j, n, count, count1, count2, basek;
-  real *macro_vars_ptr;
-  real *ueq;
-  int    frame;
   real min_u[3], max_u[3],  ave_u[3];
   real min_rho, max_rho,   ave_rho;
-  real rho_ratio, u_x_ratio, u_y_ratio;
-  int    subs;
-  int    ni, nj, nk;
-  int    j_slice, k_slice;
-
-  frame = get_frame(lattice);
-
-  ni = lattice->param.LX;
-  nj = lattice->param.LY;
-  nk = lattice->param.LZ;
+  int subs;
 
   for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
   {
@@ -316,13 +301,13 @@ void dump_macro_vars( struct lattice_struct *lattice, int time)
     min_rho = get_min_rho( lattice, subs);
     ave_rho = get_ave_rho( lattice, subs);
 
-   if( is_on_root_proc( lattice))
+    if( is_on_root_proc( lattice))
     {
-    printf("%s %d %04d >> "
-      "min_rho = %20.17f, max_rho = %20.17f, ave_rho = %20.17f\n",
-      __FILE__,__LINE__, get_proc_id(lattice),
-      min_rho, max_rho, ave_rho);
-   } /* if( is_on_root_proc( lattice)) */
+      printf("%s %d %04d >> "
+        "min_rho = %20.17f, max_rho = %20.17f, ave_rho = %20.17f\n",
+        __FILE__,__LINE__, get_proc_id(lattice),
+        min_rho, max_rho, ave_rho);
+    } /* if( is_on_root_proc( lattice)) */
 
     write_rho_image( lattice, subs);
     write_u_image( lattice, subs);
@@ -356,62 +341,74 @@ void dump_macro_vars( struct lattice_struct *lattice, int time)
       ave_u[0], ave_u[1], ave_u[2] );
     } /* if( is_on_root_proc( lattice)) */
 
-//------------------------------------------------------------------------------------------
+#if WRITE_VMAG
+//------------------------------------------------------------------------------
 //
 //  Write Vmag files for post processing large domains that have memory issues
 //
 //  edit: peter
 //
-#if WRITE_VMAG
+    int ni, nj, nk;
+    ni = lattice->param.LX;
+    nj = lattice->param.LY;
+    nk = lattice->param.LZ;
 
-int eye;
-real vx, vy, vz, vxsq, vysq, vzsq;
-real mag=0;
-real vmagmax=0, vmagmin=0;
-real vmag[ni*nj*nk];
-real vmagscale[ni*nj*nk];
+    int eye;
+    real vx, vy, vz, vxsq, vysq, vzsq;
+    real mag=0;
+    real vmagmax=0, vmagmin=0;
+    real vmag[ni*nj*nk];
+    real vmagscale[ni*nj*nk];
 
-  for(eye=0; eye<(ni*nj*nk);eye++)
-  {
-    vx=lattice->macro_vars[subs][eye].u[0];
-    vxsq = vx*vx;
-    vy=lattice->macro_vars[subs][eye].u[1];
-    vysq = vy*vy;
-    vz=lattice->macro_vars[subs][eye].u[2];
-    vzsq = vz*vz;
-    mag = sqrt(vxsq+vysq+vzsq);
-    vmag[eye] = mag;
-    if(vmag[eye]>vmagmax)
+    for(eye=0; eye<(ni*nj*nk);eye++)
     {
-      vmagmax = vmag[eye];
+      vx=lattice->macro_vars[subs][eye].u[0];
+      vxsq = vx*vx;
+      vy=lattice->macro_vars[subs][eye].u[1];
+      vysq = vy*vy;
+      vz=lattice->macro_vars[subs][eye].u[2];
+      vzsq = vz*vz;
+      mag = sqrt(vxsq+vysq+vzsq);
+      vmag[eye] = mag;
+      if(vmag[eye]>vmagmax)
+      {
+        vmagmax = vmag[eye];
+      }
+      if(vmag[eye]<vmagmin)
+      {
+        vmagmin = vmag[eye];
+      }
     }
-    if(vmag[eye]<vmagmin)
-    {
-      vmagmin = vmag[eye];
-    }
-  }
 
-char *ffilename[1024];
-FILE *out;
-  sprintf( ffilename,"./out/vmag_proc%04d.txt", get_proc_id( lattice));
-  out = fopen( ffilename, "w");
+    char *ffilename[1024];
+    FILE *out;
+    sprintf( ffilename,"./out/vmag_proc%04d.txt", get_proc_id( lattice));
+    out = fopen( ffilename, "w");
     for(eye=0; eye<(ni*nj*nk);eye++)
     {
       fprintf(out,"%f\n",vmag[eye]);
-    //  vmagscale[eye] = (255.*vmag[eye] / vmagmax);
-    //  printf("vmag [%d] = %1.10f,   vmagscale[%d] = %3.5f \n", eye, vmag[eye], eye, vmagscale[eye]);
+      // vmagscale[eye] = (255.*vmag[eye] / vmagmax);
+      // printf( "vmag [%d] = %1.10f,   vmagscale[%d] = %3.5f \n"
+      //       , eye, vmag[eye], eye, vmagscale[eye]);
     }
-  fclose(out);
-//printf("vmagmax = %f, vmagmin = %f \n", vmagmax, vmagmin);
-//printf("velocity [%d] = %1.10f, Squared = %1.10f \n", eye, lattice->macro_vars[subs][eye].u[0], (lattice->macro_vars[subs][eye].u[0]*lattice->macro_vars[subs][eye].u[0]));
+    fclose(out);
+    //printf("vmagmax = %f, vmagmin = %f \n", vmagmax, vmagmin);
+    //printf( "velocity [%d] = %1.10f, Squared = %1.10f \n"
+    //      , eye, lattice->macro_vars[subs][eye].u[0]
+    //      , (lattice->macro_vars[subs][eye].u[0]
+    //        *lattice->macro_vars[subs][eye].u[0]) );
 #endif /*WRITE_VMAG*/
-//-------------------------------------------------------------------------------------------
-
+//------------------------------------------------------------------------------
   } /* for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++) */
 
 #if WRITE_PLOT_FILE
-    if(NUM_FLUID_COMPONENTS == 2)
-    {
+  char   filename[1024],filename2[1024], fn3[1024];
+  FILE   *sat;
+
+  int frame = get_frame(lattice);
+
+  if(NUM_FLUID_COMPONENTS == 2)
+  {
     sprintf( filename, "./out/plt_%dx%dx%d_frame%04d_proc%04d.dat",
         ni, nj, nk, frame, get_proc_id( lattice));
     sprintf( filename2, "./out/R2_%dx%dx%d_frame%04d_proc%04d.dat",
@@ -424,7 +421,7 @@ FILE *out;
       filename, filename2);
 
     //get saturation
-   basek = 0;
+   int basek = 0;
 #if PARALLEL
   basek = get_g_SZ( lattice);
 #endif
@@ -454,11 +451,14 @@ FILE *out;
     process_exit(1);
    }
   }
-  count =0;
-  count1 =0;
-  count2 =0;
 
- for( n=0; n<ni*nj*nk; n++)
+  int count =0;
+  int count1 =0;
+  int count2 =0;
+
+  int n;
+
+  for( n=0; n<ni*nj*nk; n++)
   {
 
      if( (N2Z(n,ni,nj,nk)+basek >lattice->param.z1 &&
@@ -480,11 +480,11 @@ FILE *out;
       (get_rho_ptr(lattice,0,0)),
       (get_rho_ptr(lattice,1,0)),
       filename);
- fclose(sat);
-    }
+  fclose(sat);
+  }
 
-    else
-    {
+  else
+  {
     sprintf( filename, "./out/plt_%dx%dx%d_frame%04d_proc%04d.dat",
         ni, nj, nk, frame, get_proc_id( lattice));
     printf("Huang tecplot 1 component\n");
@@ -492,7 +492,7 @@ FILE *out;
       lattice,
       &(get_rho(lattice,0,0)),
       filename);
-    }
+  }
 #endif
 
 } /* void dump_macro_vars( struct lattice_struct *lattice, int time) */
@@ -503,11 +503,8 @@ void read_solids( lattice_ptr lattice, char *filename)
   unsigned char *raw;
   int n;
   int g_n;
-  int subs;
   FILE *fd;
-#if 1
-  int i, j, k, p;
-#endif
+  int i, j, k;
 
   for( n=0; n<lattice->NumNodes; n++)
   {
@@ -584,6 +581,7 @@ void read_solids( lattice_ptr lattice, char *filename)
     )
   {
 #if PARALLEL
+  int p;
   for( p=0; p<get_num_procs( lattice); p++)
   {
     MPI_Barrier( MPI_COMM_WORLD);
@@ -1056,12 +1054,11 @@ void write_raw_u(
 } /* void write_raw( lattice_ptr lattice, real *a,  ... */
 
 
-#ifdef __CUDACC__
-// The definitions of rho2bmp and u2bmp need to be relocated to lattice.c for
-// nvcc so that they will be defined when write_rho_image and write_u_image
-// are defined. This is due to the ad hoc way we are compiling the multiple
-// source code files and the way that nvcc works.
-#else
+#if 0
+// The definitions of rho2bmp and u2bmp need to be relocated to lattice.c until
+// the way this project is compiled is fixed to allow separate compilation and
+// linking.
+
 // R H O 2 B M P  {{{
 //##############################################################################
 // void rho2bmp( char *filename, int time)
@@ -2980,7 +2977,7 @@ void write_u_txt( lattice_ptr lattice)
 //
 void spy_bmp( lattice_ptr lattice, char *filename, int **matrix)
 {
-  FILE *in, *o;
+  FILE *in;
   int i, j, n, m;
   int g_i, g_j;
   int pad, bytes_per_row;
@@ -2990,12 +2987,9 @@ void spy_bmp( lattice_ptr lattice, char *filename, int **matrix)
   struct bitmap_info_header bmih;
   struct rgb_quad rgb;
   int *int_ptr;
-  short int *short_int_ptr;
   int *width_ptr;
   int *height_ptr;
   short int *bitcount_ptr;
-  char ctemp;
-  int  itemp;
   int **spy;
 
   printf("spy_bmp() -- Hi!\n");
@@ -3028,30 +3022,19 @@ void spy_bmp( lattice_ptr lattice, char *filename, int **matrix)
 
   if( !( in = fopen( filename, "r")))
   {
-#if 0
-    printf("%s %d >> spy_bmp() -- Error opening file \"%s\".\n",
-      __FILE__, __LINE__, filename);
-    process_exit(1);
-#else
-    printf(" %s::spy_bmp() %d >> File \"%s\" cannot be opened for reading.\n",
-        __FILE__, __LINE__, filename);
-  //if( !( o = fopen( filename, "w+")))
-  //{
-      // Write blank bmp file.
-      write_empty_bmp( lattice);
-      if( !( o = fopen( filename, "r")))
-      {
-        printf("%s %d >> spy_bmp() -- Error opening file \"%s\".\n",
-          __FILE__, __LINE__, filename);
-        process_exit(1);
-      }
-  //}
-    printf(" %s::spy_bmp() %d >> Wrote a blank \"%s\" file.\n",
-        __FILE__, __LINE__, filename);
-#endif
+    printf(" %s::spy_bmp() %d >> File \"%s\" cannot be opened for reading.\n"
+          , __FILE__, __LINE__, filename);
+    // Write blank bmp file.
+    write_empty_bmp( lattice);
+    if( !( in = fopen( filename, "r")))
+    {
+      printf("%s %d >> spy_bmp() -- Error opening file \"%s\".\n"
+            , __FILE__, __LINE__, filename);
+      process_exit(1);
+    }
+    printf(" %s::spy_bmp() %d >> Wrote a blank \"%s\" file.\n"
+          , __FILE__, __LINE__, filename);
   }
-
-  // n = fread( void *BUF, size_t SIZE, size_t COUNT, FILE *FP);
 
   n = fread( &bmfh, sizeof(struct bitmap_file_header), 1, in );
   if( strncmp(bmfh.bfType,"BM",2))

@@ -22,8 +22,7 @@ typedef double real; // To be relocated (in flags.in?).
 
 int main( int argc, char **argv)
 {
-  int n, subs;
-  real k;
+  int subs;
   int time, frame;
 
   struct lattice_struct *lattice;

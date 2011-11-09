@@ -90,7 +90,7 @@
 // NON_LOCAL_FORCES toggles any mechanisms for computing and storing
 // non-local (interaction) forces.
 // Flag: NON_LOCAL_FORCES
-#define NON_LOCAL_FORCES ( 1 && !(INAMURO_SIGMA_COMPONENT&&!ZHANG_AND_CHEN_ENERGY_TRANSPORT))
+#define NON_LOCAL_FORCES ( 0 && !(INAMURO_SIGMA_COMPONENT&&!ZHANG_AND_CHEN_ENERGY_TRANSPORT))
 
 // The phase force weighting factors:
 //   WM = weights in the direction of major axes
