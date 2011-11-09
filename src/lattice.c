@@ -2135,10 +2135,6 @@ __device__ real get_f1d_d(
 , int dk
 , int a )
 {
-  int ni = ni_c;
-  int nj = nj_c;
-  int nk = nk_c;
-
   if( di!=0 || dj!=0 || dk!=0)
   {
     // Getting f from neighboring node (i+di,j+dj,k+dk). This is for the
@@ -2147,15 +2143,15 @@ __device__ real get_f1d_d(
     int j = j0+dj;
     int k = k0+dk;
 
-    if( i<0) { i+=ni;}
-    if( j<0) { j+=nj;}
-    if( k<0) { k+=nk;}
+    if( i<0) { i+=ni_c;}
+    if( j<0) { j+=nj_c;}
+    if( k<0) { k+=nk_c;}
 
-    if( i>=ni) { i%=ni;}
-    if( j>=nj) { j%=nj;}
-    if( k>=nk) { k%=nk;}
+    if( i>=ni_c) { i%=ni_c;}
+    if( j>=nj_c) { j%=nj_c;}
+    if( k>=nk_c) { k%=nk_c;}
 
-    int n = i + ni*j + ni*nj*k;
+    int n = i + ni_c*j + nixnj_c*k;
 
     if( d_is_not_solid( solids_mem_d, n))
     {
@@ -2167,7 +2163,7 @@ __device__ real get_f1d_d(
       // would be streamed out for halfway bounceback.
       return f_mem_d[ subs*numnodes_c*numdirs_c
                     + (a+((!(a%2))?(-1):(1)))*numnodes_c
-                    + i0 + ni*j0 + ni*nj*k0
+                    + i0 + ni_c*j0 + nixnj_c*k0
                     ];
     }
   }
@@ -2175,16 +2171,17 @@ __device__ real get_f1d_d(
   {
     // Getting f from node (i0,j0,k0). This is for the even collide step that
     // wraps up what the stream_collide_stream step started.
-    if( i0<0) { i0+=ni;}
-    if( j0<0) { j0+=nj;}
-    if( k0<0) { k0+=nk;}
+    if( i0<0) { i0+=ni_c;}
+    if( j0<0) { j0+=nj_c;}
+    if( k0<0) { k0+=nk_c;}
 
-    if( i0>=ni) { i0%=ni;}
-    if( j0>=nj) { j0%=nj;}
-    if( k0>=nk) { k0%=nk;}
+    if( i0>=ni_c) { i0%=ni_c;}
+    if( j0>=nj_c) { j0%=nj_c;}
+    if( k0>=nk_c) { k0%=nk_c;}
 
-    return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c
-                  + i0 + ni*j0 + ni*nj*k0];
+    return f_mem_d[ subs*numnodes_c*numdirs_c
+                  + a*numnodes_c
+                  + i0 + ni_c*j0 + nixnj_c*k0 ];
   }
 }
 #endif
@@ -2194,7 +2191,7 @@ __device__ void set_mv_d( real* mv_mem_d, int subs,
 {
   mv_mem_d[ subs*numnodes_c*(1 + numdims_c)
           + a*numnodes_c
-          + i + ni_c*j + ni_c*nj_c*k] = value;
+          + i + ni_c*j + nixnj_c*k ] = value;
 
 }
 
@@ -2211,7 +2208,7 @@ __device__ void set_f1d_d( real* f_mem_d, int subs,
 
   f_mem_d[ subs*numnodes_c*numdirs_c
          + a*numnodes_c
-         + i + ni_c*j + ni_c*nj_c*k] = value;
+         + i + ni_c*j + nixnj_c*k ] = value;
 }
 
 __device__ void calc_f_tilde_d(
@@ -2239,7 +2236,9 @@ __device__ void calc_f_tilde_d(
                                           + 1.5*usq
                                      ) / tau_c[subs];
 }
-//maybe later an equivalent function for the forcing term in the LBE, as per Guo.
+// Maybe later an equivalent function for the forcing term in the LBE, as per
+// Guo.
+
 __device__ void apply_accel_mv(
                   int subs
                 , int cmpnt   //1, 2 or 3
@@ -2262,7 +2261,7 @@ __device__ void apply_accel_mv(
 __device__
 int d_skip_collision_step()
 {
-  return 0; // TODO: params.in or flags.in
+  return 1; // TODO: params.in or flags.in
 }
 
 __device__

@@ -952,7 +952,7 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
       if( do_diagnostic_init_of_u(lattice))
       {
         //set_ux( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
-        set_ux( lattice, subs, n, 0.00001);
+        set_ux( lattice, subs, n, 0.12345);
         //set_uy( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
         set_uy( lattice, subs, n, 0.00000);
         //set_uz( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
@@ -1014,27 +1014,27 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
       {
         for( i=0; i<ni; i++)
         {
-          fptr[C ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, C );
-          fptr[E ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, E );
-          fptr[W ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, W );
-          fptr[N ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, N );
-          fptr[S ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, S );
-          fptr[NE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, NE);
-          fptr[SW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, SW);
-          fptr[NW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, NW);
-          fptr[SE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, SE);
+          fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
+          fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
+          fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
+          fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
+          fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
+          fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
+          fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
+          fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
+          fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
          if( get_NumDims(lattice)==3)
          {
-          fptr[T ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, T );
-          fptr[B ] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, B );
-          fptr[TE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TE);
-          fptr[BW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BW);
-          fptr[TW] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TW);
-          fptr[BE] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BE);
-          fptr[TN] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TN);
-          fptr[BS] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BS);
-          fptr[TS] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, TS);
-          fptr[BN] = get_fptr(lattice,subs, i, j, k, 0, 0, 0, BN);
+          fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
+          fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
+          fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
+          fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
+          fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
+          fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
+          fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
+          fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
+          fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
+          fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
          }
 
           rho_val = get_rho(lattice,subs,n);
@@ -1160,6 +1160,9 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
         } // i
       } // j
     } // k
+
+    free(fptr);
+
 #if 0 // ============================ TODO ====================================
 #if NON_LOCAL_FORCES
     for( n=0; n<lattice->NumNodes; n++)

@@ -1,6 +1,5 @@
 extern __shared__ real fptr[];
 
-
 __global__
 void k_collide(
   real* f_mem_d
@@ -9,14 +8,14 @@ void k_collide(
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
-// If ni and nj are both powers of two, the bitwise operations in the second
-// part of the following loop will evaluate more quickly.
-// TODO: Figure out how to implement this automatically.
 #if 1
   int i = n % ni_c;
   int j = (n % (nixnj_c)) / ni_c;
   int k = n / (nixnj_c);
 #else
+  // If ni and nj are both powers of two, these bitwise operations will
+  // evaluate more quickly than the above more general arithmetic.
+  // TODO: Figure out how to implement this automatically.
   int i = n & (ni_c-1);
   int j = (n & (nixnj_c-1)) >> log2(ni_c);
   int k = n >> log2(nixnj_c);
@@ -37,40 +36,49 @@ void k_collide(
     // probably doesn't matter.
 #if 1
     fptr[threadIdx.x] = get_f1d_d( f_mem_d, solids_mem_d
-                                 , subs, i,j,k, 0,0,0, 0);
+                                 , subs
+                                 , i,j,k
+                                 , 0,0,0
+                                 , 0 );
 
     for( a=1; a<numdirs_c; a+=2)
     {
       fptr[threadIdx.x + a*blockDim.x]
         = get_f1d_d( f_mem_d, solids_mem_d
-                   , subs, i,j,k, 0,0,0, a+1);
+                   , subs
+                   , i,j,k
+                   , 0,0,0
+                   , a+1 );
     }
 
     for( a=2; a<numdirs_c; a+=2)
     {
       fptr[threadIdx.x + a*blockDim.x]
         = get_f1d_d( f_mem_d, solids_mem_d
-                   , subs, i,j,k, 0,0,0, a-1);
+                   , subs
+                   , i,j,k
+                   , 0,0,0
+                   , a-1 );
     }
 
     // Initialize shared memory values for calculating macro vars.
-    fptr[threadIdx.x + numdirs_c*blockDim.x] = 0.;
+    fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;
     fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
     fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] = 0.;
-    if( numdims_c==3)
-    {
-      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
-    }
+   if( numdims_c==3)
+   {
+    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
+   }
 
     // Calculate macroscopic variables.
     for( a=0; a<numdirs_c; a++)
     {
-      fptr[threadIdx.x + numdirs_c*blockDim.x]
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x]
         += fptr[threadIdx.x + a*blockDim.x];
 
       if( /*debug*/0)
       {
-        fptr[threadIdx.x + numdirs_c*blockDim.x] = 9.;
+        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 9.;
       }
 
       fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
@@ -79,11 +87,11 @@ void k_collide(
       fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
         += vy_c[a]*fptr[threadIdx.x + a*blockDim.x];
 
-      if( numdims_c==3)
-      {
-        fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
-          += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
-      }
+     if( numdims_c==3)
+     {
+      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
+        += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
+     }
     }
 
     fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] /=
@@ -92,11 +100,11 @@ void k_collide(
     fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] /=
       fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
 
-    if( numdims_c==3)
-    {
-      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] /=
-        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
-    }
+   if( numdims_c==3)
+   {
+    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] /=
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+   }
 #endif
 
     if( !d_skip_updating_macrovars())
@@ -124,21 +132,21 @@ void k_collide(
 #endif
 
 #if 1
-    // Calculate u-squared since it is used many times
-    real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
-             * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
-
-             + fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
-             * fptr[threadIdx.x + (numdirs_c+2)*blockDim.x];
-
-    if( numdims_c==3)
-    {
-      usq += fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
-           * fptr[threadIdx.x + (numdirs_c+3)*blockDim.x];
-    }
-
     if( !d_skip_collision_step())
     {
+      // Calculate u-squared since it is used many times
+      real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
+               * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
+
+               + fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
+               * fptr[threadIdx.x + (numdirs_c+2)*blockDim.x];
+
+      if( numdims_c==3)
+      {
+          usq += fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
+               * fptr[threadIdx.x + (numdirs_c+3)*blockDim.x];
+      }
+
       // Calculate the collision operator and add to f resulting from first
       // streaming
       for( a=0; a<numdirs_c; a++)
@@ -154,6 +162,70 @@ void k_collide(
     {
       set_f1d_d( f_mem_d, subs, i, j, k, a, fptr[threadIdx.x + a*blockDim.x]);
     }
+
+#if 0 // TODO: Should recompute macrovars before outputting them.
+
+    // Initialize shared memory values for calculating macro vars.
+    fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;
+    fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
+    fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] = 0.;
+   if( numdims_c==3)
+   {
+    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
+   }
+
+    // Calculate macroscopic variables.
+    for( a=0; a<numdirs_c; a++)
+    {
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x]
+        += fptr[threadIdx.x + a*blockDim.x];
+
+      if( /*debug*/0)
+      {
+        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 9.;
+      }
+
+      fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
+        += vx_c[a]*fptr[threadIdx.x + a*blockDim.x];
+
+      fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
+        += vy_c[a]*fptr[threadIdx.x + a*blockDim.x];
+
+     if( numdims_c==3)
+     {
+      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
+        += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
+     }
+    }
+
+    fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] /=
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+
+    fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] /=
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+
+   if( numdims_c==3)
+   {
+    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] /=
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+   }
+
+    if( !d_skip_updating_macrovars())
+    {
+      // Store macroscopic variables in global memory.
+      for( a=0; a<=numdims_c; a++)
+      {
+        set_mv_d( mv_mem_d
+                , subs, i, j, k, a
+                , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
+
+        if( /*debug*/0)
+        {
+          set_mv_d( mv_mem_d, subs, i, j, k, a, 7.);
+        }
+      }
+    }
+#endif
 
 #endif
 //  __syncthreads();

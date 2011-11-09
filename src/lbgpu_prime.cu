@@ -49,9 +49,22 @@ int main( int argc, char **argv)
   process_tic( lattice);
 
 #ifdef __CUDACC__
-  int blocksize = 3; // TODO: Wasn't this 64?
-  dim3 blockDim(blocksize, 1, 1);
-  dim3 gridDim(get_NumNodes( lattice) / blocksize, 1, 1);
+  int blocksize = 3; // TODO: What is the best value for this?
+
+  if( get_NumNodes( lattice) % blocksize)
+  {
+    printf("\n%s %d ERROR: NumNodes %d must be divisible by blocksize %d. "
+           "NumNodes %% blocksize = %d. (Exiting.)\n\n"
+          , __FILE__
+          , __LINE__
+          , get_NumNodes( lattice)
+          , blocksize
+          , get_NumNodes( lattice) % blocksize);
+    process_exit(1);
+  }
+
+  dim3 blockDim( blocksize, 1, 1);
+  dim3 gridDim( get_NumNodes( lattice) / blocksize, 1, 1);
 #endif
 
 #ifdef __CUDACC__
@@ -66,8 +79,8 @@ int main( int argc, char **argv)
 #else
   for( subs = 0; subs < get_NumSubs(lattice); subs++)
   {
-    cudaMemcpy( f_mem_d + subs * get_NumNodes(lattice) * get_NumVelDirs(lattice)
-              , get_fptr(lattice, subs, 0, 0, 0, 0, 0, 0, 0)
+    cudaMemcpy( f_mem_d + subs*get_NumNodes(lattice)*get_NumVelDirs(lattice)
+              , get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
               , get_NumVelDirs(lattice)
                *get_NumNodes(lattice)
                *sizeof(real)
@@ -90,13 +103,12 @@ int main( int argc, char **argv)
     // http://www.tc.umn.edu/~bail0253/
 
 #ifdef __CUDACC__
-    //k_stream_collide_stream<<<gridDim, gridBlock>>>(f_mem_d, mv_mem_d);
     k_stream_collide_stream
     <<<
         gridDim
       , blockDim
       , blocksize*sizeof(real)*( get_NumVelDirs(lattice)
-                               + get_NumDims(lattice)+1)
+                               + get_NumDims(lattice)+1 )
     >>>( f_mem_d, mv_mem_d, solids_mem_d);
 #else
     stream_collide_stream(lattice);
@@ -105,14 +117,12 @@ int main( int argc, char **argv)
     set_time( lattice, ++time);
 
 #ifdef __CUDACC__
-    //k_collide<<<gridDim, gridBlock>>>(f_mem_d, mv_mem_d);
-    //printf(" Executing a kernel... \n");
     k_collide
     <<<
         gridDim
       , blockDim
       , blocksize*sizeof(real)*( get_NumVelDirs(lattice)
-                               + get_NumDims(lattice)+1)
+                               + get_NumDims(lattice)+1 )
     >>>( f_mem_d, mv_mem_d, solids_mem_d);
 #else
     collide( lattice);
@@ -123,46 +133,38 @@ int main( int argc, char **argv)
       set_frame( lattice, ++frame);
 
 #ifdef __CUDACC__
-      //printf(" Executing a memcpy of %d nodes... \n", get_NumNodes(lattice));
-      //real testptr;
-      //cudaMemcpy(&testptr, mv_mem_d , sizeof(real), cudaMemcpyDeviceToHost);
-      //printf(" Value being assigned to mv_mem_d is %f \n", testptr);
-#if 0
-      cudaMemcpy( get_rho_ptr(lattice, 0, 0)
-                , mv_mem_d
-                , get_NumNodes(lattice)*sizeof(real)
-                , cudaMemcpyDeviceToHost);
-#else
       for( subs = 0; subs < get_NumSubs(lattice); subs++)
       {
         printf("Transferring subs %d "
                "macrovars from device to host for output. \n", subs);
         cudaMemcpy( get_rho_ptr(lattice, subs, 0)
-                  , mv_mem_d + subs * get_NumNodes(lattice)
-                    * (1 + get_NumDims(lattice))
+                  , mv_mem_d
+                    + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
+                    + 0*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
                   , cudaMemcpyDeviceToHost);
         cudaMemcpy( get_ux_ptr(lattice, subs, 0)
-                  , mv_mem_d + subs * get_NumNodes(lattice)
-                    * (1 + get_NumDims(lattice)) + get_NumNodes(lattice)
+                  , mv_mem_d
+                    + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
+                    + 1*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
                   , cudaMemcpyDeviceToHost);
         cudaMemcpy( get_uy_ptr(lattice, subs, 0)
-                  , mv_mem_d + subs * get_NumNodes(lattice)
-                    * (1 + get_NumDims(lattice)) + 2*get_NumNodes(lattice)
+                  , mv_mem_d
+                    + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
+                    + 2*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
                   , cudaMemcpyDeviceToHost);
-        if(get_NumDims(lattice) == 3)
-        {
-          cudaMemcpy( get_uz_ptr(lattice, subs, 0)
-                    , mv_mem_d + subs * get_NumNodes(lattice)
-                    * (1 + get_NumDims(lattice)) + 3*get_NumNodes(lattice)
-                    , get_NumNodes(lattice)*sizeof(real)
-                    , cudaMemcpyDeviceToHost);
-        }
-
+       if(get_NumDims(lattice) == 3)
+       {
+        cudaMemcpy( get_uz_ptr(lattice, subs, 0)
+                  , mv_mem_d
+                    + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
+                    + 3*get_NumNodes(lattice)
+                  , get_NumNodes(lattice)*sizeof(real)
+                  , cudaMemcpyDeviceToHost);
+       }
       }
-#endif
 #endif
 
       output_frame( lattice);

@@ -8,14 +8,14 @@ void k_stream_collide_stream(
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
-//If ni and nj are both powers of two, the bitwise operations in the second
-//part of the following loop will evaluate more quickly.
-//TODO: Figure out how to implement this automatically.
 #if 1
   int i = n % ni_c;
-  int j = (n % (nixnj_c)) / ni_c;
-  int k = n / (nixnj_c);
+  int j = (n % nixnj_c) / ni_c;
+  int k = n / nixnj_c;
 #else
+  // If ni and nj are both powers of two, these bitwise operations will
+  // evaluate more quickly than the above more general arithmetic.
+  // TODO: Figure out how to implement this automatically.
   int i = n & (ni_c-1);
   int j = (n & (nixnj_c-1)) >> log2(ni_c);
   int k = n >> log2(nixnj_c);
@@ -26,34 +26,36 @@ void k_stream_collide_stream(
 #if 1
   for( subs=0; subs<numsubs_c; subs++)
   {
-
-//Populate shared memory for a given node with global memory values from
-//surrounding nodes.  This is a streaming operation.
+    // Populate shared memory for a given node with global memory values from
+    // surrounding nodes.  This is a streaming operation.
     for( a=0; a<numdirs_c; a++)
     {
       fptr[threadIdx.x + a*blockDim.x]
         = get_f1d_d( f_mem_d, solids_mem_d
-                   , subs, i,j,k, -vx_c[a],-vy_c[a],-vz_c[a], a );
+                   , subs
+                   , i,j,k
+                   , -vx_c[a],-vy_c[a],-vz_c[a]
+                   , a );
     }
 
-//Initialize shared memory values for calculating macro vars.
-    fptr[threadIdx.x + numdirs_c*blockDim.x] = 0.;
+    // Initialize shared memory values for calculating macro vars.
+    fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;
     fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
     fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] = 0.;
-    if( numdims_c==3)
-    {
-      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
-    }
+   if( numdims_c==3)
+   {
+    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
+   }
 
-//Calculate macroscopic variables.
+    // Calculate macroscopic variables.
     for( a=0; a<numdirs_c; a++)
     {
-      fptr[threadIdx.x + numdirs_c*blockDim.x]
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x]
         += fptr[threadIdx.x + a*blockDim.x];
 
       if( /*debug*/0)
       {
-        fptr[threadIdx.x + numdirs_c*blockDim.x] = 8.;
+        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 8.;
       }
 
       fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
@@ -62,11 +64,11 @@ void k_stream_collide_stream(
       fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
         += vy_c[a]*fptr[threadIdx.x + a*blockDim.x];
 
-      if( numdims_c==3)
-      {
-        fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
-          += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
-      }
+     if( numdims_c==3)
+     {
+      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
+        += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
+     }
     }
 
     fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] /=
@@ -88,7 +90,7 @@ void k_stream_collide_stream(
       {
         set_mv_d( mv_mem_d
                 , subs, i, j, k, a
-                , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
+                , fptr[ threadIdx.x + (numdirs_c + a)*blockDim.x] );
         if( /*debug*/0)
         {
           set_mv_d( mv_mem_d, subs, i, j, k, a, 6.);
@@ -104,21 +106,21 @@ void k_stream_collide_stream(
     }
 #endif
 
-    // Calculate u-squared since it is used many times
-    real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
-             * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
-
-             + fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
-             * fptr[threadIdx.x + (numdirs_c+2)*blockDim.x];
-
-    if( numdims_c==3)
-    {
-      usq += fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
-           * fptr[threadIdx.x + (numdirs_c+3)*blockDim.x];
-    }
-
     if( !d_skip_collision_step())
     {
+      // Calculate u-squared since it is used many times
+      real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
+               * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
+
+               + fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
+               * fptr[threadIdx.x + (numdirs_c+2)*blockDim.x];
+
+      if( numdims_c==3)
+      {
+          usq += fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
+               * fptr[threadIdx.x + (numdirs_c+3)*blockDim.x];
+      }
+
       // Calculate the collision operator and add to f resulting from first
       // streaming
       for( a=0; a<numdirs_c; a++)

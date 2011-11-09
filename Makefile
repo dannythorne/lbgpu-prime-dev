@@ -36,7 +36,7 @@ all:
 	gcc -x c -g -p -o lb3d -D__device__='' -D__constant__='' ./src/lbgpu_prime.cu -lm
 
 cuda:
-	nvcc -v -g -G -o lb3d ./src/lbgpu_prime.cu -lm -arch=sm_13
+	nvcc -v -o lb3d ./src/lbgpu_prime.cu -lm -arch=sm_21
 
 mpi:
 	mpicc -DPARALLEL=1 -o lb3d ./src/lb3d_prime.c -lm

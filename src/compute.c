@@ -1217,7 +1217,7 @@ void compute_min_rho( lattice_ptr lattice, int subs)
   real *min_rho = get_min_rho_ptr(lattice,subs);
   real rho;
 
-  compute_max_u( lattice, subs);
+  compute_max_rho( lattice, subs);
 
   *min_rho = get_max_rho(lattice,subs);
 
