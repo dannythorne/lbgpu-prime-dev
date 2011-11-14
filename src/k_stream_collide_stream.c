@@ -99,16 +99,17 @@ void k_stream_collide_stream(
       }
     }
 
-#if 1
-    // Modify macroscopic variables with a body force
-    for( a=1; a<=numdims_c; a++)
-    {
-      apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
-    }
-#endif
-
     if( !d_skip_collision_step())
     {
+      if( !d_skip_body_force_term())
+      {
+        // Modify macroscopic variables with a body force
+        for( a=1; a<=numdims_c; a++)
+        {
+          apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
+        }
+      }
+
       // Calculate u-squared since it is used many times
       real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
                * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]

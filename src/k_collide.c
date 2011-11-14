@@ -34,7 +34,7 @@ void k_collide(
     // bank conflicts.  For Compute 1.0/1.1 devices, this is preferable to
     // restoring the order after the calc.  For Compute 1.3 and greater, it
     // probably doesn't matter.
-#if 1
+
     fptr[threadIdx.x] = get_f1d_d( f_mem_d, solids_mem_d
                                  , subs
                                  , i,j,k
@@ -105,7 +105,6 @@ void k_collide(
     fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] /=
       fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
    }
-#endif
 
     if( !d_skip_updating_macrovars())
     {
@@ -123,17 +122,17 @@ void k_collide(
       }
     }
 
-#if 1
-    // Modify macroscopic variables with a body force
-    for( a=1; a<=numdims_c; a++)
-    {
-      apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
-    }
-#endif
-
-#if 1
     if( !d_skip_collision_step())
     {
+      if( !d_skip_body_force_term())
+      {
+        // Modify macroscopic variables with a body force
+        for( a=1; a<=numdims_c; a++)
+        {
+          apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
+        }
+      }
+
       // Calculate u-squared since it is used many times
       real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
                * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
@@ -227,7 +226,6 @@ void k_collide(
     }
 #endif
 
-#endif
 //  __syncthreads();
   }
 #else

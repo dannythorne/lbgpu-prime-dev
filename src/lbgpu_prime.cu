@@ -79,7 +79,7 @@ int main( int argc, char **argv)
 #else
   cudaMemcpy( solids_mem_d
             , get_solids_ptr(lattice, 0)
-            , get_NumNodes(lattice)*sizeof(int)
+            , get_NumNodes(lattice)*sizeof(unsigned char)
             , cudaMemcpyHostToDevice);
 
   for( subs = 0; subs < get_NumSubs(lattice); subs++)

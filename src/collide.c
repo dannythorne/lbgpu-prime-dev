@@ -98,9 +98,12 @@ void collide( lattice_ptr lattice)
 
           if( !skip_collision_step( lattice))
           {
-            ux += get_gaccel_ux( lattice, subs);
-            uy += get_gaccel_uy( lattice, subs);
-            uz += get_gaccel_uz( lattice, subs);
+            if( !skip_body_force_term( lattice))
+            {
+              ux += get_gaccel_ux( lattice, subs);
+              uy += get_gaccel_uy( lattice, subs);
+              uz += get_gaccel_uz( lattice, subs);
+            }
 
             usq = ux*ux + uy*uy + uz*uz;
 
