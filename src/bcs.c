@@ -57,7 +57,7 @@ void bcs( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           ftemp = lattice->pdf[subs][n].ftemp;
 
 #if STORE_UEQ
@@ -68,7 +68,7 @@ void bcs( lattice_ptr lattice)
           //       lattice->macro_vars[subs][n].u[2] =  0. ;
 #endif /* STORE_UEQ */
 
-          n1 = XYZ2N( i, j, k-1, ni, nj);
+          n1 = IJK2N( i, j, k-1, ni, nj);
           ftemp1 = lattice->pdf[subs][n1].ftemp;
 
           switch(NUM_FLUID_COMPONENTS)
@@ -144,10 +144,10 @@ void bcs( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           ftemp = lattice->pdf[subs][n].ftemp;
 
-          n1 = XYZ2N( i, j, k+1, ni, nj);
+          n1 = IJK2N( i, j, k+1, ni, nj);
           ftemp1   = lattice->pdf[subs][n1].ftemp;
 
           switch(NUM_FLUID_COMPONENTS)
@@ -278,7 +278,7 @@ void bcs( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           ftemp = lattice->pdf[subs][n].ftemp;
 
           // Top, Inflow
@@ -365,7 +365,7 @@ void bcs( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           ftemp = lattice->pdf[subs][n].ftemp;
 
           // Bottom, rho_out
@@ -444,7 +444,7 @@ void bcs( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           ftemp = lattice->pdf[subs][n].ftemp;
 
           if( !lattice->solids[subs][n].is_solid)
@@ -491,7 +491,7 @@ void bcs( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           ftemp = lattice->pdf[subs][n].ftemp;
 
           if( !lattice->solids[subs][n].is_solid)
@@ -545,7 +545,7 @@ printf("%s %d >> BOOM!",__FILE__,__LINE__);
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           f = lattice->pdf[subs][n].f;
 
 #if STORE_UEQ
@@ -558,7 +558,7 @@ printf("%s %d >> BOOM!",__FILE__,__LINE__);
           //       lattice->macro_vars[subs][n].u[2] =  0. ;
 #endif /* STORE_UEQ */
 
-          n1 = XYZ2N( i, j, k-1, ni, nj);
+          n1 = IJK2N( i, j, k-1, ni, nj);
           f1 = lattice->pdf[subs][n1].f;
           feq1 = lattice->pdf[subs][n1].feq;
 
@@ -635,10 +635,10 @@ printf("%s %d >> BOOM!",__FILE__,__LINE__);
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           f = lattice->pdf[subs][n].f;
 
-          n1 = XYZ2N( i, j, k+1, ni, nj);
+          n1 = IJK2N( i, j, k+1, ni, nj);
           f1   = lattice->pdf[subs][n1].f;
           feq1 = lattice->pdf[subs][n1].feq;
 
@@ -708,12 +708,12 @@ printf("%s %d >> BOOM!",__FILE__,__LINE__);
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           f = lattice->pdf[subs][n].f;
           //  feq =  lattice->pdf[subs][n].feq;
 
 
-          n1 = XYZ2N( i, j, k-1, ni, nj);
+          n1 = IJK2N( i, j, k-1, ni, nj);
           f1 = lattice->pdf[subs][n1].f;
           feq1 = lattice->pdf[subs][n1].feq;
 
@@ -772,11 +772,11 @@ printf("%s %d >> BOOM!",__FILE__,__LINE__);
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           f = lattice->pdf[subs][n].f;
           //  feq =  lattice->pdf[subs][n].feq;
 
-          n1 = XYZ2N( i, j, k+1, ni, nj);
+          n1 = IJK2N( i, j, k+1, ni, nj);
           f1 = lattice->pdf[subs][n1].f;
           feq1 = lattice->pdf[subs][n1].feq;
 

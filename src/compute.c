@@ -458,7 +458,7 @@ void compute_phase_force( lattice_ptr lattice, int subs)
     {
       for( i=0; i<ni; i++)
       {
-        n = XYZ2N( i, j, k, ni, nj);
+        n = IJK2N( i, j, k, ni, nj);
         rho = lattice->macro_vars[subs][n].rho;
 
         if( rho!=0 && !( lattice->solids[subs][n].is_solid))
@@ -479,7 +479,7 @@ void compute_phase_force( lattice_ptr lattice, int subs)
     {
       for( i=0; i<ni; i++)
       {
-        n = XYZ2N( i, j, k, ni, nj);
+        n = IJK2N( i, j, k, ni, nj);
         force = lattice->force[subs][n].force;
 
         force[0] = 0.;
@@ -494,7 +494,7 @@ void compute_phase_force( lattice_ptr lattice, int subs)
             ja = ( j+vy[a]<nj)?( ( j+vy[a]>=0)?( j+vy[a]):( nj-1)):( 0   );
             ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
             if( !( lattice->solids[subs][
-                  XYZ2N( ia, ja, ka, ni, nj)].is_solid ))
+                  IJK2N( ia, ja, ka, ni, nj)].is_solid ))
             {
               force[0] += WM*vx[a]*psi[ ka][ ja][ ia];
               force[1] += WM*vy[a]*psi[ ka][ ja][ ia];
@@ -508,7 +508,7 @@ void compute_phase_force( lattice_ptr lattice, int subs)
             ja = ( j+vy[a]<nj)?( ( j+vy[a]>=0)?( j+vy[a]):( nj-1)):( 0   );
             ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
             if( !( lattice->solids[subs][
-                  XYZ2N( ia, ja, ka, ni, nj)].is_solid ))
+                  IJK2N( ia, ja, ka, ni, nj)].is_solid ))
             {
               force[0] += WD*vx[a]*psi[ ka][ ja][ ia];
               force[1] += WD*vy[a]*psi[ ka][ ja][ ia];
@@ -611,7 +611,7 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
           force[subs] = lattice->force[subs][n].force;
 
           force[subs][0] = 0.;
@@ -629,7 +629,7 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
         if( k+vz[a]<nk &&  k+vz[a]>=0 )
         {
         ka = k+vz[a];
-        na = XYZ2N( ia, ja, ka, ni, nj);
+        na = IJK2N( ia, ja, ka, ni, nj);
               if( !( lattice->solids[subs][ na].is_solid ))
                {
                 rho = lattice->macro_vars[subs][na].rho;
@@ -664,7 +664,7 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
 
 #else
         ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
-        na = XYZ2N( ia, ja, ka, ni, nj);
+        na = IJK2N( ia, ja, ka, ni, nj);
               if( !( lattice->solids[subs][ na].is_solid ))
               {
                 rho = lattice->macro_vars[subs][na].rho;
@@ -684,7 +684,7 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
         if( k+vz[a]<nk &&  k+vz[a]>=0 )
         {
         ka = k+vz[a];
-        na = XYZ2N( ia, ja, ka, ni, nj);
+        na = IJK2N( ia, ja, ka, ni, nj);
               if( !( lattice->solids[subs][ na].is_solid ))
                {
                 rho = lattice->macro_vars[subs][na].rho;
@@ -720,7 +720,7 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
 
 #else
               ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
-              na = XYZ2N( ia, ja, ka, ni, nj);
+              na = IJK2N( ia, ja, ka, ni, nj);
               if( !( lattice->solids[subs][ na].is_solid ))
               {
                 rho = lattice->macro_vars[subs][na].rho;
@@ -748,7 +748,7 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
       {
         for( i=0; i<ni; i++)
         {
-          n = XYZ2N( i, j, k, ni, nj);
+          n = IJK2N( i, j, k, ni, nj);
 
           if( !( lattice->solids[0][ n].is_solid ))
           {
@@ -866,7 +866,7 @@ void compute_single_fluid_solid_force( lattice_ptr lattice, int subs)
     {
       for( i=0; i<ni; i++)
       {
-        n = XYZ2N( i, j, k, ni, nj);
+        n = IJK2N( i, j, k, ni, nj);
         rho = lattice->macro_vars[subs][n].rho;
 
         if( rho!=0 && !( lattice->solids[subs][n].is_solid))
@@ -887,7 +887,7 @@ void compute_single_fluid_solid_force( lattice_ptr lattice, int subs)
     {
       for( i=0; i<ni; i++)
       {
-        n = XYZ2N( i, j, k, ni, nj);
+        n = IJK2N( i, j, k, ni, nj);
         sforce = lattice->force[subs][n].sforce;
 
         sforce[0] = 0.;
@@ -902,7 +902,7 @@ void compute_single_fluid_solid_force( lattice_ptr lattice, int subs)
             ja = ( j+vy[a]<nj)?( ( j+vy[a]>=0)?( j+vy[a]):( nj-1)):( 0   );
             ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
             if(  ( lattice->solids[subs][
-                  XYZ2N( ia, ja, ka, ni, nj)].is_solid ))
+                  IJK2N( ia, ja, ka, ni, nj)].is_solid ))
             {
               sforce[0] += WM*vx[a];
               sforce[1] += WM*vy[a];
@@ -916,7 +916,7 @@ void compute_single_fluid_solid_force( lattice_ptr lattice, int subs)
             ja = ( j+vy[a]<nj)?( ( j+vy[a]>=0)?( j+vy[a]):( nj-1)):( 0   );
             ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
             if(  ( lattice->solids[subs][
-                  XYZ2N( ia, ja, ka, ni, nj)].is_solid ))
+                  IJK2N( ia, ja, ka, ni, nj)].is_solid ))
             {
               sforce[0] += WD*vx[a];
               sforce[1] += WD*vy[a];
@@ -996,7 +996,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
     {
       for( i=0; i<ni; i++)
       {
-        n = XYZ2N( i, j, k, ni, nj);
+        n = IJK2N( i, j, k, ni, nj);
         sforce[0] = lattice->force[0][n].sforce;
         sforce[1] = lattice->force[1][n].sforce;
 
@@ -1014,7 +1014,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
         if( k+vz[a]<nk &&  k+vz[a]>=0 )
         {
         ka = k+vz[a];
-        na = XYZ2N( ia, ja, ka, ni, nj);
+        na = IJK2N( ia, ja, ka, ni, nj);
               if( ( lattice->solids[0][ na].is_solid ))
                {
                 sum_x += WM*vx[a];
@@ -1046,7 +1046,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
 #else
             ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
             if(  ( lattice->solids[0][
-                  XYZ2N( ia, ja, ka, ni, nj)].is_solid ))
+                  IJK2N( ia, ja, ka, ni, nj)].is_solid ))
             {
               sum_x += WM*vx[a];
               sum_y += WM*vy[a];
@@ -1064,7 +1064,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
         if( k+vz[a]<nk &&  k+vz[a]>=0 )
         {
         ka = k+vz[a];
-        na = XYZ2N( ia, ja, ka, ni, nj);
+        na = IJK2N( ia, ja, ka, ni, nj);
               if( ( lattice->solids[0][ na].is_solid ))
                {
                 sum_x += WD*vx[a];
@@ -1096,7 +1096,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
 #else
             ka = ( k+vz[a]<nk)?( ( k+vz[a]>=0)?( k+vz[a]):( nk-1)):( 0   );
             if(  ( lattice->solids[0][
-                  XYZ2N( ia, ja, ka, ni, nj)].is_solid ))
+                  IJK2N( ia, ja, ka, ni, nj)].is_solid ))
             {
               sum_x += WD*vx[a];
               sum_y += WD*vy[a];

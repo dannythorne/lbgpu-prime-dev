@@ -14,7 +14,7 @@ typedef double real; // To be relocated (in flags.in?).
   int f_mem_size;
   real* mv_mem_d;
   int mv_mem_size;
-  real* solids_mem_d;
+  unsigned char* solids_mem_d;
   int solids_mem_size;
 #endif
 
@@ -77,6 +77,11 @@ int main( int argc, char **argv)
              *sizeof(real)
             , cudaMemcpyHostToDevice);
 #else
+  cudaMemcpy( solids_mem_d
+            , get_solids_ptr(lattice, 0)
+            , get_NumNodes(lattice)*sizeof(int)
+            , cudaMemcpyHostToDevice);
+
   for( subs = 0; subs < get_NumSubs(lattice); subs++)
   {
     cudaMemcpy( f_mem_d + subs*get_NumNodes(lattice)*get_NumVelDirs(lattice)
@@ -162,6 +167,15 @@ int main( int argc, char **argv)
                     + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
                     + 3*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
+                  , cudaMemcpyDeviceToHost);
+       }
+       if( do_write_f_txt_file( lattice))
+       {
+        cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
+                  , f_mem_d + subs*get_NumNodes(lattice)*get_NumVelDirs(lattice)
+                  , get_NumVelDirs(lattice)
+                   *get_NumNodes(lattice)
+                   *sizeof(real)
                   , cudaMemcpyDeviceToHost);
        }
       }

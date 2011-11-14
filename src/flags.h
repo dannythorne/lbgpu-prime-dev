@@ -109,10 +109,10 @@
 
 #define Q 19
 
-#define N2X(N,NX,NY,NZ) (N)%(NX)
-#define N2Y(N,NX,NY,NZ) (int)floor((real)((N)%((NX)*(NY)))/(real)(NX))
-#define N2Z(N,NX,NY,NZ) (int)floor((real)(N)/(real)((NX)*(NY)))
-#define XYZ2N(X,Y,Z,NX,NY) ( (Z)*(NX)*(NY) + (Y)*(NX) + (X))
+#define N2I(N,NI,NJ,NK) (N)%(NI)
+#define N2J(N,NI,NJ,NK) (int)floor((real)((N)%((NI)*(NJ)))/(real)(NI))
+#define N2K(N,NI,NJ,NK) (int)floor((real)(N)/(real)((NI)*(NJ)))
+#define IJK2N(I,J,K,NI,NJ) ( (K)*(NI)*(NJ) + (J)*(NI) + (I))
 
 // Toggle manage_body_force call at beginning of time loop for
 // gradually increasing/decreasing gravity.

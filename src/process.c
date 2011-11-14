@@ -166,29 +166,29 @@ void process_send_recv_begin( lattice_ptr lattice, const int subs)
 #if SAVE_MEMO
 #else
       lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].f[ T];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[ T];
       lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].f[ B];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[ B];
       n++;
       lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].f[TW];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TW];
       lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].f[BW];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BW];
       n++;
       lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].f[TE];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TE];
       lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].f[BE];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BE];
       n++;
       lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].f[TN];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TN];
       lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].f[BN];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BN];
       n++;
       lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].f[TS];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TS];
       lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].f[BS];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BS];
       n++;
 #endif
     } /* if( i=0; i<ni; i++) */
@@ -426,29 +426,29 @@ void process_send_recv_end( lattice_ptr lattice, const int subs)
       ip = ( i<ni-1)?( i+1):( 0   );
       in = ( i>0   )?( i-1):( ni-1);
 
-      lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].ftemp[ T] =
+      lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[ T] =
         lattice->process.z_pos_pdf_to_recv[n];
-      lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].ftemp[ B] =
+      lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[ B] =
         lattice->process.z_neg_pdf_to_recv[n];
       n++;
-      lattice->pdf[subs][ XYZ2N( in, j , 0, ni, nj)].ftemp[TW] =
+      lattice->pdf[subs][ IJK2N( in, j , 0, ni, nj)].ftemp[TW] =
         lattice->process.z_pos_pdf_to_recv[n];
-      lattice->pdf[subs][ XYZ2N( in, j , k, ni, nj)].ftemp[BW] =
+      lattice->pdf[subs][ IJK2N( in, j , k, ni, nj)].ftemp[BW] =
         lattice->process.z_neg_pdf_to_recv[n];
       n++;
-      lattice->pdf[subs][ XYZ2N( ip, j , 0, ni, nj)].ftemp[TE] =
+      lattice->pdf[subs][ IJK2N( ip, j , 0, ni, nj)].ftemp[TE] =
         lattice->process.z_pos_pdf_to_recv[n];
-      lattice->pdf[subs][ XYZ2N( ip, j , k, ni, nj)].ftemp[BE] =
+      lattice->pdf[subs][ IJK2N( ip, j , k, ni, nj)].ftemp[BE] =
         lattice->process.z_neg_pdf_to_recv[n];
       n++;
-      lattice->pdf[subs][ XYZ2N( i , jp, 0, ni, nj)].ftemp[TN] =
+      lattice->pdf[subs][ IJK2N( i , jp, 0, ni, nj)].ftemp[TN] =
         lattice->process.z_pos_pdf_to_recv[n];
-      lattice->pdf[subs][ XYZ2N( i , jp, k, ni, nj)].ftemp[BN] =
+      lattice->pdf[subs][ IJK2N( i , jp, k, ni, nj)].ftemp[BN] =
         lattice->process.z_neg_pdf_to_recv[n];
       n++;
-      lattice->pdf[subs][ XYZ2N( i , jn, 0, ni, nj)].ftemp[TS] =
+      lattice->pdf[subs][ IJK2N( i , jn, 0, ni, nj)].ftemp[TS] =
         lattice->process.z_pos_pdf_to_recv[n];
-      lattice->pdf[subs][ XYZ2N( i , jn, k, ni, nj)].ftemp[BS] =
+      lattice->pdf[subs][ IJK2N( i , jn, k, ni, nj)].ftemp[BS] =
         lattice->process.z_neg_pdf_to_recv[n];
       n++;
 
@@ -465,29 +465,29 @@ void process_send_recv_end( lattice_ptr lattice, const int subs)
     for( i=0; i<ni; i++)
     {
       lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].ftemp[ T];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[ T];
       lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].ftemp[ B];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[ B];
       n++;
       lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].ftemp[TW];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TW];
       lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].ftemp[BW];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BW];
       n++;
       lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].ftemp[TE];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TE];
       lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].ftemp[BE];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BE];
       n++;
       lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].ftemp[TN];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TN];
       lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].ftemp[BN];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BN];
       n++;
       lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , k, ni, nj)].ftemp[TS];
+        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TS];
       lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ XYZ2N( i , j , 0, ni, nj)].ftemp[BS];
+        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BS];
       n++;
 
     } /* if( i=0; i<ni; i++) */
@@ -536,9 +536,9 @@ void rho_send_recv_begin( lattice_ptr lattice, const int subs)
 #else
 
       lattice->process.z_pos_rho_to_send[n] =
-        lattice->macro_vars[a][ XYZ2N( i , j , k, ni, nj)].rho;
+        lattice->macro_vars[a][ IJK2N( i , j , k, ni, nj)].rho;
       lattice->process.z_neg_rho_to_send[n] =
-        lattice->macro_vars[a][ XYZ2N( i , j , 0, ni, nj)].rho;
+        lattice->macro_vars[a][ IJK2N( i , j , 0, ni, nj)].rho;
       n++;
 #endif
     } /* if( i=0; i<ni; i++) */
@@ -729,9 +729,9 @@ void solid_send_recv_begin( lattice_ptr lattice, const int subs)
 
 #else
       lattice->process.z_pos_solid_to_send[n] =
-        lattice->solids[subs][ XYZ2N( i , j , k, ni, nj)].is_solid;
+        lattice->solids[subs][ IJK2N( i , j , k, ni, nj)].is_solid;
       lattice->process.z_neg_solid_to_send[n] =
-        lattice->solids[subs][ XYZ2N( i , j , 0, ni, nj)].is_solid;
+        lattice->solids[subs][ IJK2N( i , j , 0, ni, nj)].is_solid;
       n++;
 #endif
     } /* if( i=0; i<ni; i++) */
@@ -1060,11 +1060,11 @@ void gather_north_pointing_pdfs(
         {
 #if SAVE_MEMO
 #else
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[ T]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[TW]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[TE]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[TN]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[TS]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[ T]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TW]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TE]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TN]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TS]; n++;
 #endif
         } /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
@@ -1077,11 +1077,11 @@ void gather_north_pointing_pdfs(
         {
 #if SAVE_MEMO
 #else
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[ T]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[TW]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[TE]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[TN]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[TS]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[ T]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TW]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TE]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TN]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TS]; n++;
 #endif
         } /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
@@ -1092,11 +1092,11 @@ void gather_north_pointing_pdfs(
       {
         for( i=0; i<ni; i++)
         {
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[ T]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[TW]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[TE]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[TN]; n++;
-          north[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[TS]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[ T]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TW]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TE]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TN]; n++;
+          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TS]; n++;
 
         } /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
@@ -1132,11 +1132,11 @@ void gather_south_pointing_pdfs(
         {
 #if SAVE_MEMO
 #else
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[ B]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[BW]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[BE]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[BN]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].feq[BS]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[ B]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BW]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BE]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BN]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BS]; n++;
 #endif
         } /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
@@ -1149,11 +1149,11 @@ void gather_south_pointing_pdfs(
         {
 #if SAVE_MEMO
 #else
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[ B]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[BW]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[BE]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[BN]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].f[BS]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[ B]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BW]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BE]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BN]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BS]; n++;
 #endif
         } /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
@@ -1164,11 +1164,11 @@ void gather_south_pointing_pdfs(
       {
         for( i=0; i<ni; i++)
         {
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[ B]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[BW]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[BE]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[BN]; n++;
-          south[n] = lattice->pdf[subs][ XYZ2N(i,j,k, ni, nj)].ftemp[BS]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[ B]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BW]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BE]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BN]; n++;
+          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BS]; n++;
 
         } /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */

@@ -63,10 +63,17 @@ void output_frame( lattice_ptr lattice)
   dump_macro_vars( lattice, lattice->time);
 #endif /* WRITE_MACRO_VAR_DAT_FILES || WRITE_MACRO_VAR_RAW_FILES */
 
-  if( write_debug_txt_files(lattice))
+  if( do_write_rho_txt_file(lattice))
   {
     write_rho_txt(lattice);
+  }
+  if( do_write_u_txt_file(lattice))
+  {
     write_u_txt(lattice);
+  }
+  if( do_write_f_txt_file(lattice))
+  {
+    write_f_txt(lattice);
   }
 
 #if 0
@@ -461,8 +468,8 @@ void dump_macro_vars( struct lattice_struct *lattice, int time)
   for( n=0; n<ni*nj*nk; n++)
   {
 
-     if( (N2Z(n,ni,nj,nk)+basek >lattice->param.z1 &&
-          N2Z(n,ni,nj,nk)+basek <lattice->param.z2    ) )
+     if( (N2K(n,ni,nj,nk)+basek >lattice->param.z1 &&
+          N2K(n,ni,nj,nk)+basek <lattice->param.z2    ) )
      {
        count++;
       if ( get_rho(lattice,0,n)> (lattice->param.rho_A[0]+lattice->param.rho_A[1])/2.) count1 ++;
@@ -596,7 +603,7 @@ void read_solids( lattice_ptr lattice, char *filename)
           for( i=0; i<get_LX( lattice); i++)
           {
             if( is_solid( lattice
-                        , XYZ2N( i, j, k
+                        , IJK2N( i, j, k
                                , get_LX( lattice)
                                , get_LY( lattice)) ) )
             {
@@ -772,19 +779,19 @@ void read_ns( lattice_ptr lattice, char *filename)
         {
           for( i=0; i<get_LX( lattice); i++)
           {
-            if(    lattice->ns[XYZ2N(i,j,k,ni,nj)].ns > 32
+            if(    lattice->ns[IJK2N(i,j,k,ni,nj)].ns > 32
                 &&
-                   lattice->ns[XYZ2N(i,j,k,ni,nj)].ns < 127)
+                   lattice->ns[IJK2N(i,j,k,ni,nj)].ns < 127)
             {
-              printf("%c", (char)(lattice->ns[XYZ2N(i,j,k,ni,nj)].ns));
+              printf("%c", (char)(lattice->ns[IJK2N(i,j,k,ni,nj)].ns));
             }
             else
             {
-              if(    lattice->ns[XYZ2N(i,j,k,ni,nj)].ns-128 > 32
+              if(    lattice->ns[IJK2N(i,j,k,ni,nj)].ns-128 > 32
                   &&
-                     lattice->ns[XYZ2N(i,j,k,ni,nj)].ns-128 != 127)
+                     lattice->ns[IJK2N(i,j,k,ni,nj)].ns-128 != 127)
               {
-                printf("%c", (char)(lattice->ns[XYZ2N(i,j,k,ni,nj)].ns-128));
+                printf("%c", (char)(lattice->ns[IJK2N(i,j,k,ni,nj)].ns-128));
               }
               else
               {
@@ -899,7 +906,7 @@ void read_ns( lattice_ptr lattice, char *filename)
           for( i=0; i<get_LX( lattice); i++)
           {
             if( is_solid( lattice,
-                          XYZ2N( i, j, k,
+                          IJK2N( i, j, k,
                                  get_LX( lattice),
                                  get_LY( lattice)) ) )
             {
@@ -2645,25 +2652,25 @@ void write_plt(
      }
 
      if(  get_proc_id(lattice) == get_num_procs(lattice)-1 &&
-N2Z(n,ni,nj,nk)+basek == (get_num_procs(lattice) *lattice->param.LZ-1) )
+N2K(n,ni,nj,nk)+basek == (get_num_procs(lattice) *lattice->param.LZ-1) )
      {
        v_in= v_in + a[4*n+3];
        v_inupr= v_inupr +lattice->ueq[n].u[2];
 
-    fprintf(FL3,"%4d %4d %7.4f  %2.9f  %2.9f %2.9f \n",N2X(n,ni,nj,nk),N2Y(n,ni,nj,nk), a[4*n], a[4*n+1], a[4*n+2], a[4*n+3] ); //MS changed format from 8.5 to 2.9
+    fprintf(FL3,"%4d %4d %7.4f  %2.9f  %2.9f %2.9f \n",N2I(n,ni,nj,nk),N2J(n,ni,nj,nk), a[4*n], a[4*n+1], a[4*n+2], a[4*n+3] ); //MS changed format from 8.5 to 2.9
      }
-     if(get_proc_id(lattice) == 0 && N2Z(n,ni,nj,nk)+basek == 1)
+     if(get_proc_id(lattice) == 0 && N2K(n,ni,nj,nk)+basek == 1)
      {
        v_out= v_out + a[4*n+3];
              v_outupr= v_outupr +lattice->ueq[n].u[2];
-    fprintf(FL4,"%4d %4d %7.4f  %2.9f  %2.9f %2.9f \n",N2X(n,ni,nj,nk),N2Y(n,ni,nj,nk), a[4*n], a[4*n+1], a[4*n+2], a[4*n+3] ); //MS changed format from 8.5 to 2.9
+    fprintf(FL4,"%4d %4d %7.4f  %2.9f  %2.9f %2.9f \n",N2I(n,ni,nj,nk),N2J(n,ni,nj,nk), a[4*n], a[4*n+1], a[4*n+2], a[4*n+3] ); //MS changed format from 8.5 to 2.9
 
      }
-     if( (N2Z(n,ni,nj,nk)+basek >lattice->param.z1 &&
-    N2Z(n,ni,nj,nk)+basek <lattice->param.z2
+     if( (N2K(n,ni,nj,nk)+basek >lattice->param.z1 &&
+    N2K(n,ni,nj,nk)+basek <lattice->param.z2
            ) && (a[4*n] > (lattice->param.rho_A[0]+lattice->param.rho_A[1])/2.) )
      {count++;}
-//  fprintf( infile, "%4d  %4d %4d  %7.4f  %7.4f  %2d\n", N2X(n,ni,nj,nk),N2Y(n,ni,nj,nk), N2Z(n,ni,nj,nk),
+//  fprintf( infile, "%4d  %4d %4d  %7.4f  %7.4f  %2d\n", N2I(n,ni,nj,nk),N2J(n,ni,nj,nk), N2K(n,ni,nj,nk),
 //  a[/*stride*/ 4*n], lattice->macro_vars[1][n].rho , lattice->solids[0][n].is_solid/255  );
   fprintf( infile, " %7.4f \n",   a[/*stride*/ 4*n]  );
   fprintf( infile2, " %7.4f \n",   b[/*stride*/ 4*n]  );
@@ -2729,7 +2736,7 @@ void write_plt_uvw(
 
 //   if(NUM_FLUID_COMPONENTS ==2)
    {
-  fprintf( infile, "%4d  %4d %4d  %7.4f  %7.4f  %7.4f\n", N2X(n,ni,nj,nk),N2Y(n,ni,nj,nk), N2Z(n,ni,nj,nk),
+  fprintf( infile, "%4d  %4d %4d  %7.4f  %7.4f  %7.4f\n", N2I(n,ni,nj,nk),N2J(n,ni,nj,nk), N2K(n,ni,nj,nk),
     b[/*stride*/ 4*n+1], b[/*stride*/ 4*n+2], b[/*stride*/ 4*n+3]  );
    }
 
@@ -2823,10 +2830,10 @@ void write_plt_single(
    else
      {
        if(  (get_proc_id(lattice) == get_num_procs(lattice)-1) &&
-           N2Z(n,ni,nj,nk)+basek == get_num_procs(lattice) *lattice->param.LZ-1) v_in= v_in + a[4*n+3];
-       if(  (get_proc_id(lattice) == 0) && N2Z(n,ni,nj,nk)+basek ==1) v_out= v_out + a[4*n+3];
+           N2K(n,ni,nj,nk)+basek == get_num_procs(lattice) *lattice->param.LZ-1) v_in= v_in + a[4*n+3];
+       if(  (get_proc_id(lattice) == 0) && N2K(n,ni,nj,nk)+basek ==1) v_out= v_out + a[4*n+3];
      }
-  fprintf( infile, "%4d  %4d %4d  %7.4f  %2.9f %2.9f %2.9f %2d\n", N2X(n,ni,nj,nk),N2Y(n,ni,nj,nk), N2Z(n,ni,nj,nk)+basek,
+  fprintf( infile, "%4d  %4d %4d  %7.4f  %2.9f %2.9f %2.9f %2d\n", N2I(n,ni,nj,nk),N2J(n,ni,nj,nk), N2K(n,ni,nj,nk)+basek,
   a[/*stride*/ 4*n], a[/*stride*/ 4*n+1], a[/*stride*/ 4*n+2], a[/*stride*/ 4*n+3], lattice->solids[0][n].is_solid/255  ); //MS changed format from 8.5 to 2.9
 
 //  fprintf( infile, " %7.4f  %7.4f  %2d\n",
@@ -2963,6 +2970,94 @@ void write_u_txt( lattice_ptr lattice)
     fclose(uyout);
     fclose(uzout);
   }
+}
+
+void write_f_txt( lattice_ptr lattice)
+{
+  int i, j, k, a;
+  int ni = get_ni(lattice);
+  int nj = get_nj(lattice);
+  int nk = get_nk(lattice);
+  int n;
+  int subs;
+  char filename[1024];
+
+  for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
+  {
+    gen_filename( lattice, filename, "f", get_frame(lattice), subs, ".txt");
+
+    FILE* fout;
+    fout = fopen(filename,"w+");
+
+    n = 0;
+    for( k=0; k<nk; k++)
+    {
+      fprintf(fout,"+");
+      for( i=0; i<ni; i++)
+      {
+        fprintf(fout,"-----------");
+        fprintf(fout,"-----------");
+        fprintf(fout,"-----------");
+        fprintf(fout,"-+");
+      }
+      fprintf(fout,"\n");
+
+      //for( j=0; j<nj; j++)
+      for( j=nj-1; j>=0; j--)
+      {
+        fprintf(fout,"|");
+        for( i=0; i<ni; i++)
+        {
+          n = IJK2N(i,j,k,ni,nj);
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,NW));
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,N ));
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,NE));
+          fprintf(fout," |");
+          n++;
+        }
+        fprintf(fout,"\n");
+
+        n-=ni;
+        fprintf(fout,"|");
+        for( i=0; i<ni; i++)
+        {
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,W));
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,C));
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,E));
+          fprintf(fout," |");
+          n++;
+        }
+        fprintf(fout,"\n");
+
+        n-=ni;
+        fprintf(fout,"|");
+        for( i=0; i<ni; i++)
+        {
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,SW));
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,S ));
+          fprintf(fout," %10.8f",get_f(lattice,subs,n,SE));
+          fprintf(fout," |");
+          n++;
+        }
+        fprintf(fout,"\n");
+
+        fprintf(fout,"+");
+        for( i=0; i<ni; i++)
+        {
+          fprintf(fout,"-----------");
+          fprintf(fout,"-----------");
+          fprintf(fout,"-----------");
+          fprintf(fout,"-+");
+        }
+        fprintf(fout,"\n");
+
+      }
+      fprintf(fout,"\n");
+    }
+
+    fclose(fout);
+  }
+
 }
 
 // S P Y   B M P  {{{

@@ -76,6 +76,7 @@ void stream_collide_stream( lattice_ptr lattice)
           fptr[BN] = get_fptr(lattice,subs, i,j,k,-vx[BN],-vy[BN],-vz[BN],BN);
          }
 
+#if 1
           rho = 0.;
           ux = 0.;
           uy = 0.;
@@ -197,6 +198,34 @@ void stream_collide_stream( lattice_ptr lattice)
             *(fptr[a]) = *(fptr[a+1]);
             *(fptr[a+1]) = temp;
           }
+#else
+#if 0
+          if( i==1 && j==1)
+          {
+            *(fptr[C ]) = 0.12345678;
+            *(fptr[E ]) = 1.0;
+            *(fptr[W ]) = 2.0;
+            *(fptr[N ]) = 3.0;
+            *(fptr[S ]) = 4.0;
+            *(fptr[NE]) = 5.0;
+            *(fptr[SW]) = 6.0;
+            *(fptr[NW]) = 7.0;
+            *(fptr[SE]) = 8.0;
+          }
+          else
+          {
+            *(fptr[C ]) = 0.0;
+            *(fptr[E ]) = 0.0;
+            *(fptr[W ]) = 0.0;
+            *(fptr[N ]) = 0.0;
+            *(fptr[S ]) = 0.0;
+            *(fptr[NE]) = 0.0;
+            *(fptr[SW]) = 0.0;
+            *(fptr[NW]) = 0.0;
+            *(fptr[SE]) = 0.0;
+          }
+#endif
+#endif
 
           n++;
         }

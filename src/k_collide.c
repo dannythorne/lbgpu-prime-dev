@@ -4,7 +4,7 @@ __global__
 void k_collide(
   real* f_mem_d
 , real* mv_mem_d
-, real* solids_mem_d )
+, unsigned char* solids_mem_d )
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 

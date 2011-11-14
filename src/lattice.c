@@ -335,8 +335,13 @@ void gen_filename(
   {
     sprintf(
       filename
-    ,"%s/%s%s%s%s_proc%04d%s"
+    ,"%s/%s%s%s%s%s_proc%04d%s"
     , get_out_path( lattice)
+#ifdef __CUDACC__
+    , "cuda_"
+#else
+    , ""
+#endif
     , prefix
     , size_str
     , frame_str
@@ -349,8 +354,13 @@ void gen_filename(
   {
     sprintf(
       filename
-    ,"%s/%s%s%s%s%s"
+    ,"%s/%s%s%s%s%s%s"
     , get_out_path( lattice)
+#ifdef __CUDACC__
+    , "cuda_"
+#else
+    , ""
+#endif
     , prefix
     , size_str
     , frame_str
@@ -1866,6 +1876,15 @@ void set_f(
   lattice->vars[subs].f1d[a][n] = f;
 }
 
+real get_f(
+       lattice_ptr lattice
+     , const int subs
+     , const int n
+     , const int a )
+{
+  return lattice->vars[subs].f1d[a][n];
+}
+
 int do_diagnostic_init_of_rho( lattice_ptr lattice)
 {
   return 0; // TODO: params.in or flags.in
@@ -1874,6 +1893,11 @@ int do_diagnostic_init_of_rho( lattice_ptr lattice)
 int do_diagnostic_init_of_u( lattice_ptr lattice)
 {
   return 1; // TODO: params.in or flags.in
+}
+
+int do_diagnostic_init_of_f( lattice_ptr lattice)
+{
+  return 0; // TODO: params.in or flags.in
 }
 
 int skip_collision_step( lattice_ptr lattice)
@@ -2060,7 +2084,7 @@ real* get_fptr(
     {
       // If neighboring node is a solid, return the f at node (i0,j0,k0) that
       // would be streamed out for halfway bounceback.
-      return lattice->vars[subs].f1d[a+((!(a%2))?(-1):(1))]
+      return lattice->vars[subs].f1d[ a + ((!(a%2))?(-1):(1)) ]
            + i0 + ni*j0 + ni*nj*k0;
     }
   }
@@ -2081,6 +2105,11 @@ real* get_fptr(
 }
 #endif
 
+unsigned char* get_solids_ptr( lattice_ptr lattice, const int n)
+{
+  return lattice->solids_memblock + n;
+}
+
 #ifdef __CUDACC__
 
 __constant__ int vx_c[19];
@@ -2100,9 +2129,9 @@ __constant__ int nk_c;
 __constant__ int nixnj_c;
 __constant__ int numnodes_c;
 
-__device__ int d_is_not_solid( real* solids_mem_d, int n)
+__device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
 {
-  return !(solids_mem_d[n]);
+  return solids_mem_d[n] == 0;
 }
 
 #if 0
@@ -2125,7 +2154,7 @@ __device__ real get_f1d_d( real* f_mem_d, int subs, int i, int j, int k, int a)
 #else
 __device__ real get_f1d_d(
   real* f_mem_d
-, real* solids_mem_d
+, unsigned char* solids_mem_d
 , int subs
 , int i0
 , int j0
@@ -2261,7 +2290,7 @@ __device__ void apply_accel_mv(
 __device__
 int d_skip_collision_step()
 {
-  return 1; // TODO: params.in or flags.in
+  return 0; // TODO: params.in or flags.in
 }
 
 __device__
@@ -2334,7 +2363,17 @@ real* get_gaccel_ptr( lattice_ptr lattice, int subs)
   return lattice->param.gforce[subs];
 }
 
-int write_debug_txt_files( lattice_ptr lattice)
+int do_write_rho_txt_file( lattice_ptr lattice)
+{
+  return 1; // TODO: params.in or flags.in
+}
+
+int do_write_u_txt_file( lattice_ptr lattice)
+{
+  return 1; // TODO: params.in or flags.in
+}
+
+int do_write_f_txt_file( lattice_ptr lattice)
 {
   return 1; // TODO: params.in or flags.in
 }

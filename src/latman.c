@@ -271,7 +271,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMalloc( (void**)&mv_mem_d, mv_mem_size*sizeof(real));
 
   solids_mem_size = get_NumNodes( *lattice);
-  cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(int));
+  cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
 
 #endif
 
@@ -604,9 +604,9 @@ void init_problem( lattice_ptr lattice)
   {
     for( n=0; n<get_NumNodes(lattice); n++)
     {
-      i = N2X(n,ni,nj,nk);//n%lattice->param.LX;
-      j = N2Y(n,ni,nj,nk);//n/lattice->param.LX;
-      k = N2Z(n,ni,nj,nk);
+      i = N2I(n,ni,nj,nk);//n%lattice->param.LX;
+      j = N2J(n,ni,nj,nk);//n/lattice->param.LX;
+      k = N2K(n,ni,nj,nk);
 
       //rho = get_rho_ptr(lattice,subs,n);
       //u_x = get_ux_ptr(lattice,subs,n);
@@ -951,10 +951,10 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
       }
       if( do_diagnostic_init_of_u(lattice))
       {
-        //set_ux( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
-        set_ux( lattice, subs, n, 0.12345);
-        //set_uy( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
-        set_uy( lattice, subs, n, 0.00000);
+        set_ux( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        //set_ux( lattice, subs, n, 0.12345);
+        set_uy( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        //set_uy( lattice, subs, n, 0.00000);
         //set_uz( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
         set_uz( lattice, subs, n, 0.);
       }
@@ -1007,73 +1007,51 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
 
     fptr = (real**)malloc( sizeof(real*)*get_NumVelDirs(lattice));
 
-    n=0;
-    for( k=0; k<nk; k++)
+    if( !do_diagnostic_init_of_f( lattice))
     {
-      for( j=0; j<nj; j++)
+      n=0;
+      for( k=0; k<nk; k++)
       {
-        for( i=0; i<ni; i++)
+        for( j=0; j<nj; j++)
         {
-          fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
-          fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
-          fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
-          fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
-          fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
-          fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
-          fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
-          fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
-          fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
-         if( get_NumDims(lattice)==3)
-         {
-          fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
-          fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
-          fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
-          fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
-          fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
-          fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
-          fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
-          fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
-          fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
-          fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
-         }
+          for( i=0; i<ni; i++)
+          {
+            fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
+            fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
+            fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
+            fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
+            fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
+            fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
+            fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
+            fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
+            fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
+           if( get_NumDims(lattice)==3)
+           {
+            fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
+            fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
+            fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
+            fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
+            fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
+            fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
+            fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
+            fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
+            fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
+            fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
+           }
 
-          rho_val = get_rho(lattice,subs,n);
-          ux_val  = get_ux (lattice,subs,n);
-          uy_val  = get_uy (lattice,subs,n);
-          uz_val  = get_uz (lattice,subs,n);
+            rho_val = get_rho(lattice,subs,n);
+            ux_val  = get_ux (lattice,subs,n);
+            uy_val  = get_uy (lattice,subs,n);
+            uz_val  = get_uz (lattice,subs,n);
 
-          usq = ux_val*ux_val + uy_val*uy_val + uz_val*uz_val;
+            usq = ux_val*ux_val + uy_val*uy_val + uz_val*uz_val;
 
 #if 1
-          *(fptr[0]) = ( /*feq[a]*/
-            W0*rho_val*(1. - 1.5*usq)
-          ) / get_tau(lattice,subs);
-
-          for( a=1; a<=4; a++)
-          {
-            udotx = ((real)vx[a]*ux_val
-                    +(real)vy[a]*uy_val
-                    +(real)vz[a]*uz_val);
-
-            *(fptr[a]) = ( /*feq[a]*/
-              W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+            *(fptr[0]) = ( /*feq[a]*/
+              W0*rho_val*(1. - 1.5*usq)
             ) / get_tau(lattice,subs);
-          }
 
-          for( ; a<=8; a++)
-          {
-            udotx = ((real)vx[a]*ux_val
-                    +(real)vy[a]*uy_val
-                    +(real)vz[a]*uz_val);
-
-            *(fptr[a]) = ( /*feq[a]*/
-              W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-            ) / get_tau(lattice,subs);
-          }
-
-          if( get_NumDims(lattice)==3)
-          {
-            for( ; a<=10; a++)
+            for( a=1; a<=4; a++)
             {
               udotx = ((real)vx[a]*ux_val
                       +(real)vy[a]*uy_val
@@ -1084,7 +1062,7 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
               ) / get_tau(lattice,subs);
             }
 
-            for( ; a<get_NumVelDirs(lattice); a++)
+            for( ; a<=8; a++)
             {
               udotx = ((real)vx[a]*ux_val
                       +(real)vy[a]*uy_val
@@ -1094,32 +1072,36 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
                 W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
               ) / get_tau(lattice,subs);
             }
-          }
+
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a]*ux_val
+                        +(real)vy[a]*uy_val
+                        +(real)vz[a]*uz_val);
+
+                *(fptr[a]) = ( /*feq[a]*/
+                  W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                ) / get_tau(lattice,subs);
+              }
+
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a]*ux_val
+                        +(real)vy[a]*uy_val
+                        +(real)vz[a]*uz_val);
+
+                *(fptr[a]) = ( /*feq[a]*/
+                  W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                ) / get_tau(lattice,subs);
+              }
+            }
 #else
-          // Just assign the weighted rho_val for debugging.
-          *(fptr[0]) = W0*rho_val;
+            // Just assign the weighted rho_val for debugging.
+            *(fptr[0]) = W0*rho_val;
 
-          for( a=1; a<=4; a++)
-          {
-            udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
-                    +(real)vy[a+((a%2)?(1):(-1))]*uy_val
-                    +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
-
-            *(fptr[a]) = W1*rho_val;
-          }
-
-          for( ; a<=8; a++)
-          {
-            udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
-                    +(real)vy[a+((a%2)?(1):(-1))]*uy_val
-                    +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
-
-            *(fptr[a]) = W2*rho_val;
-          }
-
-          if( get_NumDims(lattice)==3)
-          {
-            for( ; a<=10; a++)
+            for( a=1; a<=4; a++)
             {
               udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
                       +(real)vy[a+((a%2)?(1):(-1))]*uy_val
@@ -1128,7 +1110,7 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
               *(fptr[a]) = W1*rho_val;
             }
 
-            for( ; a<get_NumVelDirs(lattice); a++)
+            for( ; a<=8; a++)
             {
               udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
                       +(real)vy[a+((a%2)?(1):(-1))]*uy_val
@@ -1136,30 +1118,142 @@ if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
 
               *(fptr[a]) = W2*rho_val;
             }
-          }
-#endif
-          rho_val = 0.;
-          ux_val = 0.;
-          uy_val = 0.;
-          uz_val = 0.;
-          for( a=0; a<get_NumVelDirs(lattice); a++)
-          {
-            rho_val+= (*(fptr[a]));
-            ux_val += (*(fptr[a]))*vx[a];
-            uy_val += (*(fptr[a]))*vy[a];
+
             if( get_NumDims(lattice)==3)
             {
-              uz_val += (*(fptr[a]))*vz[a];
-            }
-          }
-          ux_val /= rho_val;
-          uy_val /= rho_val;
-          uz_val /= rho_val;
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
+                        +(real)vy[a+((a%2)?(1):(-1))]*uy_val
+                        +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
 
-          n++;
-        } // i
-      } // j
-    } // k
+                *(fptr[a]) = W1*rho_val;
+              }
+
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
+                        +(real)vy[a+((a%2)?(1):(-1))]*uy_val
+                        +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
+
+                *(fptr[a]) = W2*rho_val;
+              }
+            }
+#endif
+            rho_val = 0.;
+            ux_val = 0.;
+            uy_val = 0.;
+            uz_val = 0.;
+            for( a=0; a<get_NumVelDirs(lattice); a++)
+            {
+              rho_val+= (*(fptr[a]));
+              ux_val += (*(fptr[a]))*vx[a];
+              uy_val += (*(fptr[a]))*vy[a];
+              if( get_NumDims(lattice)==3)
+              {
+                uz_val += (*(fptr[a]))*vz[a];
+              }
+            }
+            ux_val /= rho_val;
+            uy_val /= rho_val;
+            uz_val /= rho_val;
+
+            n++;
+          } // i
+        } // j
+      } // k
+    }
+    else
+    {
+      // Assign canned values for diagnostics purposes. This should be done
+      // only with very small domains to help with troubleshooting things like
+      // memory management, boundary conditions, ...
+      n=0;
+      for( k=0; k<nk; k++)
+      {
+        for( j=0; j<nj; j++)
+        {
+          for( i=0; i<ni; i++)
+          {
+            fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
+            fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
+            fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
+            fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
+            fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
+            fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
+            fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
+            fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
+            fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
+           if( get_NumDims(lattice)==3)
+           {
+            fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
+            fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
+            fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
+            fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
+            fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
+            fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
+            fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
+            fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
+            fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
+            fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
+           }
+
+            *(fptr[C ]) = i/100. + j/10000. + k/1000000. + 0.00000000;
+            *(fptr[E ]) = i/100. + j/10000. + k/1000000. + 0.00000001;
+            *(fptr[W ]) = i/100. + j/10000. + k/1000000. + 0.00000003;
+            *(fptr[N ]) = i/100. + j/10000. + k/1000000. + 0.00000002;
+            *(fptr[S ]) = i/100. + j/10000. + k/1000000. + 0.00000004;
+            *(fptr[NE]) = i/100. + j/10000. + k/1000000. + 0.00000005;
+            *(fptr[SW]) = i/100. + j/10000. + k/1000000. + 0.00000007;
+            *(fptr[NW]) = i/100. + j/10000. + k/1000000. + 0.00000006;
+            *(fptr[SE]) = i/100. + j/10000. + k/1000000. + 0.00000008;
+           if( get_NumDims(lattice)==3)
+           {
+            // TODO: Assign debug values to 3D directions.
+            *(fptr[T ]) = 0.00000000;
+            *(fptr[B ]) = 0.00000000;
+            *(fptr[TE]) = 0.00000000;
+            *(fptr[BW]) = 0.00000000;
+            *(fptr[TW]) = 0.00000000;
+            *(fptr[BE]) = 0.00000000;
+            *(fptr[TN]) = 0.00000000;
+            *(fptr[BS]) = 0.00000000;
+            *(fptr[TS]) = 0.00000000;
+            *(fptr[BN]) = 0.00000000;
+           }
+
+#if 0 // TEMP
+           if( i==1 && j==1)
+           {
+            *(fptr[C ]) = 0.99999999;
+            *(fptr[E ]) = 1.0;
+            *(fptr[W ]) = 2.0;
+            *(fptr[N ]) = 3.0;
+            *(fptr[S ]) = 4.0;
+            *(fptr[NE]) = 5.0;
+            *(fptr[SW]) = 6.0;
+            *(fptr[NW]) = 7.0;
+            *(fptr[SE]) = 8.0;
+           }
+           else
+           {
+            *(fptr[C ]) = 0.0;
+            *(fptr[E ]) = 0.0;
+            *(fptr[W ]) = 0.0;
+            *(fptr[N ]) = 0.0;
+            *(fptr[S ]) = 0.0;
+            *(fptr[NE]) = 0.0;
+            *(fptr[SW]) = 0.0;
+            *(fptr[NW]) = 0.0;
+            *(fptr[SE]) = 0.0;
+           }
+#endif
+
+            n++;
+          } // i
+        } // j
+      } // k
+    }
 
     free(fptr);
 

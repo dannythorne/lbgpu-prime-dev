@@ -4,7 +4,7 @@ __global__
 void k_stream_collide_stream(
   real* f_mem_d
 , real* mv_mem_d
-, real* solids_mem_d )
+, unsigned char* solids_mem_d )
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -38,6 +38,7 @@ void k_stream_collide_stream(
                    , a );
     }
 
+#if 1
     // Initialize shared memory values for calculating macro vars.
     fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;
     fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
@@ -128,6 +129,34 @@ void k_stream_collide_stream(
         calc_f_tilde_d( f_mem_d, subs, a, threadIdx.x, blockDim.x, fptr, usq);
       }
     }
+#else
+#if 0
+          if( i==1 && j==1)
+          {
+            fptr[threadIdx.x + C *blockDim.x] = 0.12345678;
+            fptr[threadIdx.x + E *blockDim.x] = 1.0;
+            fptr[threadIdx.x + W *blockDim.x] = 2.0;
+            fptr[threadIdx.x + N *blockDim.x] = 3.0;
+            fptr[threadIdx.x + S *blockDim.x] = 4.0;
+            fptr[threadIdx.x + NE*blockDim.x] = 5.0;
+            fptr[threadIdx.x + SW*blockDim.x] = 6.0;
+            fptr[threadIdx.x + NW*blockDim.x] = 7.0;
+            fptr[threadIdx.x + SE*blockDim.x] = 8.0;
+          }
+          else
+          {
+            fptr[threadIdx.x + C *blockDim.x] = 0.0;
+            fptr[threadIdx.x + E *blockDim.x] = 0.0;
+            fptr[threadIdx.x + W *blockDim.x] = 0.0;
+            fptr[threadIdx.x + N *blockDim.x] = 0.0;
+            fptr[threadIdx.x + S *blockDim.x] = 0.0;
+            fptr[threadIdx.x + NE*blockDim.x] = 0.0;
+            fptr[threadIdx.x + SW*blockDim.x] = 0.0;
+            fptr[threadIdx.x + NW*blockDim.x] = 0.0;
+            fptr[threadIdx.x + SE*blockDim.x] = 0.0;
+          }
+#endif
+#endif
 
     // Finally, save results back to global memory in adjacent nodes.  This is
     // a second streaming operation.  Note that the 'swap' that occurs in the
