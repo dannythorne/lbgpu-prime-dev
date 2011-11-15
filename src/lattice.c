@@ -2267,7 +2267,7 @@ __device__ void calc_f_tilde_d(
                                    * f_temp[ thread + numdirs_c*block_size]
                                    * ( 1. + 3.*vdotu
                                           + 4.5*vdotu*vdotu
-                                          + 1.5*usq
+                                          - 1.5*usq
                                      ) / tau_c[subs];
 }
 // Maybe later an equivalent function for the forcing term in the LBE, as per
