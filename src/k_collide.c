@@ -162,7 +162,7 @@ void k_collide(
       set_f1d_d( f_mem_d, subs, i, j, k, a, fptr[threadIdx.x + a*blockDim.x]);
     }
 
-#if 0 // TODO: Should recompute macrovars before outputting them.
+#if 1 // TODO: Should recompute macrovars before outputting them.
 
     // Initialize shared memory values for calculating macro vars.
     fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;

@@ -1907,7 +1907,7 @@ int skip_collision_step( lattice_ptr lattice)
 
 int skip_body_force_term( lattice_ptr lattice)
 {
-  return 1; // TODO: params.in or flags.in
+  return 0; // TODO: params.in or flags.in
 }
 
 real* get_max_ux_ptr( lattice_ptr lattice, const int subs)
@@ -2301,7 +2301,7 @@ int d_skip_collision_step()
 __device__
 int d_skip_body_force_term()
 {
-  return 1; // TODO: params.in or flags.in
+  return 0; // TODO: params.in or flags.in
 }
 
 __device__
