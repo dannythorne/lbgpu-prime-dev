@@ -16,6 +16,7 @@ typedef double real; // To be relocated (in flags.in?).
   int mv_mem_size;
   unsigned char* solids_mem_d;
   int solids_mem_size;
+  int* is_end_of_frame_mem_d;
 #endif
 
 #include "lbgpu_prime.h"
@@ -91,6 +92,12 @@ int main( int argc, char **argv)
                *sizeof(real)
               , cudaMemcpyHostToDevice);
   }
+
+  int temp = 0;
+  cudaMemcpy( is_end_of_frame_mem_d
+            , &temp
+            , sizeof(int)
+            , cudaMemcpyHostToDevice);
 #endif
 #endif
 
@@ -122,13 +129,29 @@ int main( int argc, char **argv)
     set_time( lattice, ++time);
 
 #ifdef __CUDACC__
+    if( is_end_of_frame(lattice,time))
+    {
+      int temp = 1;
+      cudaMemcpy( is_end_of_frame_mem_d
+                , &temp
+                , sizeof(int)
+                , cudaMemcpyHostToDevice);
+    }
     k_collide
     <<<
         gridDim
       , blockDim
       , blocksize*sizeof(real)*( get_NumVelDirs(lattice)
                                + get_NumDims(lattice)+1 )
-    >>>( f_mem_d, mv_mem_d, solids_mem_d);
+    >>>( f_mem_d, mv_mem_d, solids_mem_d, is_end_of_frame_mem_d);
+    if( is_end_of_frame(lattice,time))
+    {
+      int temp = 0;
+      cudaMemcpy( is_end_of_frame_mem_d
+                , &temp
+                , sizeof(int)
+                , cudaMemcpyHostToDevice);
+    }
 #else
     collide( lattice);
 #endif

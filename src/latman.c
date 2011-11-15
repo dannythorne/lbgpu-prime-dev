@@ -273,6 +273,8 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   solids_mem_size = get_NumNodes( *lattice);
   cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
 
+  cudaMalloc( (void**)&is_end_of_frame_mem_d, sizeof(int));
+
 #endif
 
   // Allocate pointers to the individual f arrays.
@@ -1353,6 +1355,7 @@ void destruct_lattice( lattice_ptr lattice)
   cudaFree(f_mem_d);
   cudaFree(mv_mem_d);
   cudaFree(solids_mem_d);
+  cudaFree(is_end_of_frame_mem_d);
 #endif
 
 #endif

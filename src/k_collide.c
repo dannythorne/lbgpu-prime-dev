@@ -4,7 +4,9 @@ __global__
 void k_collide(
   real* f_mem_d
 , real* mv_mem_d
-, unsigned char* solids_mem_d )
+, unsigned char* solids_mem_d
+, int* is_end_of_frame_mem_d
+)
 {
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -162,69 +164,69 @@ void k_collide(
       set_f1d_d( f_mem_d, subs, i, j, k, a, fptr[threadIdx.x + a*blockDim.x]);
     }
 
-#if 1 // TODO: Should recompute macrovars before outputting them.
-
-    // Initialize shared memory values for calculating macro vars.
-    fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;
-    fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
-    fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] = 0.;
-   if( numdims_c==3)
-   {
-    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
-   }
-
-    // Calculate macroscopic variables.
-    for( a=0; a<numdirs_c; a++)
+    if( *is_end_of_frame_mem_d)
     {
-      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x]
-        += fptr[threadIdx.x + a*blockDim.x];
-
-      if( /*debug*/0)
-      {
-        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 9.;
-      }
-
-      fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
-        += vx_c[a]*fptr[threadIdx.x + a*blockDim.x];
-
-      fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
-        += vy_c[a]*fptr[threadIdx.x + a*blockDim.x];
-
+      // Initialize shared memory values for calculating macro vars.
+      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;
+      fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
+      fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] = 0.;
      if( numdims_c==3)
      {
-      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
-        += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
+      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
      }
-    }
 
-    fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] /=
-      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
-
-    fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] /=
-      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
-
-   if( numdims_c==3)
-   {
-    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] /=
-      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
-   }
-
-    if( !d_skip_updating_macrovars())
-    {
-      // Store macroscopic variables in global memory.
-      for( a=0; a<=numdims_c; a++)
+      // Calculate macroscopic variables.
+      for( a=0; a<numdirs_c; a++)
       {
-        set_mv_d( mv_mem_d
-                , subs, i, j, k, a
-                , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
+        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x]
+          += fptr[threadIdx.x + a*blockDim.x];
 
         if( /*debug*/0)
         {
-          set_mv_d( mv_mem_d, subs, i, j, k, a, 7.);
+          fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 9.;
+        }
+
+        fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
+          += vx_c[a]*fptr[threadIdx.x + a*blockDim.x];
+
+        fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
+          += vy_c[a]*fptr[threadIdx.x + a*blockDim.x];
+
+       if( numdims_c==3)
+       {
+        fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
+          += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
+       }
+      }
+
+      fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] /=
+        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+
+      fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] /=
+        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+
+     if( numdims_c==3)
+     {
+      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] /=
+        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+     }
+
+      if( !d_skip_updating_macrovars())
+      {
+        // Store macroscopic variables in global memory.
+        for( a=0; a<=numdims_c; a++)
+        {
+          set_mv_d( mv_mem_d
+                  , subs, i, j, k, a
+                  , fptr[threadIdx.x + (numdirs_c + a)*blockDim.x]);
+
+          if( /*debug*/0)
+          {
+            set_mv_d( mv_mem_d, subs, i, j, k, a, 7.);
+          }
         }
       }
     }
-#endif
 
 //  __syncthreads();
   }
