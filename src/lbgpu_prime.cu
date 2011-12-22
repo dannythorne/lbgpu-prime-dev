@@ -64,8 +64,16 @@ int main( int argc, char **argv)
     process_exit(1);
   }
 
+#if 1
+  dim3 blockDim( get_BX( lattice), get_BY( lattice), get_BZ( lattice));
+  dim3 gridDim( get_LX( lattice) / get_BX( lattice),
+                get_LY( lattice) / get_BY( lattice),
+                get_LZ( lattice) / get_BZ( lattice) );
+#else
   dim3 blockDim( blocksize, 1, 1);
   dim3 gridDim( get_NumNodes( lattice) / blocksize, 1, 1);
+#endif
+
 #endif
 
 #ifdef __CUDACC__

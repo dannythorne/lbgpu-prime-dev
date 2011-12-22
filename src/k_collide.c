@@ -8,12 +8,23 @@ void k_collide(
 , int* is_end_of_frame_mem_d
 )
 {
+ #if 1  //quasi-3D blocks
+  #if  __CUDA_ARCH__ >= 200
+    int i = threadIdx.x + blockIdx.x*blockDim.x;
+    int j = threadIdx.y + blockIdx.y*blockDim.y;
+    int k = threadIdx.z + blockIdx.z*blockDim.z;
+  #else
+    int i = threadIdx.x + blockIdx.x*blockDim.x;
+    int j = threadIdx.y + blockIdx.y*blockDim.y;
+    int k;
+  #endif
+#else  //1D blocks
   int n = threadIdx.x + blockIdx.x*blockDim.x;
 
 #if 1
   int i = n % ni_c;
-  int j = (n % (nixnj_c)) / ni_c;
-  int k = n / (nixnj_c);
+  int j = (n % nixnj_c) / ni_c;
+  int k = n / nixnj_c;
 #else
   // If ni and nj are both powers of two, these bitwise operations will
   // evaluate more quickly than the above more general arithmetic.
@@ -22,10 +33,17 @@ void k_collide(
   int j = (n & (nixnj_c-1)) >> log2(ni_c);
   int k = n >> log2(nixnj_c);
 #endif
-
-  int a, subs;
+#endif
+  int a, subs, klc, n;  //this will break the code if not quasi-3D blocks
 
 #if 1
+
+for( klc=0; klc < kloop_c; klc++)
+{
+  k = threadIdx.z + klc*blockDim.z;
+  n = i + j * ni_c + k * nixnj_c;
+
+
   for( subs=0; subs<numsubs_c; subs++)
   {
     // Populate shared memory for a given node with global memory values from
@@ -230,6 +248,7 @@ void k_collide(
 
 //  __syncthreads();
   }
+}  /*for( klc=0; klc < kloop_c; klc++)*/
 #else
   //mv_mem_d[n] = 9.;
   //set_mv_d( mv_mem_d, 0, i, j, k, /*a*/0, 9.);

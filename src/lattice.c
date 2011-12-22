@@ -6,6 +6,9 @@
 int get_LX( lattice_ptr lattice) { return lattice->param.LX;}
 int get_LY( lattice_ptr lattice) { return lattice->param.LY;}
 int get_LZ( lattice_ptr lattice) { return lattice->param.LZ;}
+int get_BX( lattice_ptr lattice) { return lattice->param.BX;}
+int get_BY( lattice_ptr lattice) { return lattice->param.BY;}
+int get_BZ( lattice_ptr lattice) { return lattice->param.BZ;}
 int get_ni( lattice_ptr lattice) { return lattice->param.LX;}
 int get_nj( lattice_ptr lattice) { return lattice->param.LY;}
 int get_nk( lattice_ptr lattice) { return lattice->param.LZ;}
@@ -2131,6 +2134,7 @@ __constant__ int numdirs_c;
 __constant__ int ni_c;
 __constant__ int nj_c;
 __constant__ int nk_c;
+__constant__ int kloop_c;
 __constant__ int nixnj_c;
 __constant__ int numnodes_c;
 

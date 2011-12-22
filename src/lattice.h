@@ -232,6 +232,15 @@ struct param_struct
          LY,
          LZ;
 
+  // Param BX, BY, BZ for X, Y and Z block sizes
+  // These must be chosen by the user subject to a set of rules.
+  //
+  int    BX,
+         BY,
+         BZ;
+
+ // int    NGPU;
+
   // Param: length_scale
   // Type: int
   // Comments: length_scale is a characteristic length. This is used for

@@ -64,6 +64,9 @@ void read_params( lattice_ptr lattice, const char *infile)
   skip_label( in); fscanf( in, "%d", &( lattice->param.LX)             );
   skip_label( in); fscanf( in, "%d", &( lattice->param.LY)             );
   skip_label( in); fscanf( in, "%d", &( lattice->param.LZ)             );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.BX)             );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.BY)             );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.BZ)             );
   skip_label( in); fscanf( in, "%d", &( lattice->param.length_scale    ));
   skip_label( in); fscanf( in, "%d", &( lattice->param.NumFrames)      );
   skip_label( in); fscanf( in, "%d", &( lattice->param.FrameRate)      );
@@ -652,7 +655,10 @@ void dump_params( struct lattice_struct *lattice)
 
   fprintf( o, "LX                   %d\n", lattice->param.LX             );
   fprintf( o, "LY                   %d\n", lattice->param.LY             );
-  fprintf( o, "LY                   %d\n", lattice->param.LZ             );
+  fprintf( o, "LZ                   %d\n", lattice->param.LZ             );
+  fprintf( o, "BX                   %d\n", lattice->param.BX             );
+  fprintf( o, "BY                   %d\n", lattice->param.BY             );
+  fprintf( o, "BZ                   %d\n", lattice->param.BZ             );
   fprintf( o, "length_scale         %d\n", lattice->param.length_scale   );
   fprintf( o, "NumNodes             %d\n", lattice->NumNodes             );
   fprintf( o, "NumFrames            %d\n", lattice->param.NumFrames      );

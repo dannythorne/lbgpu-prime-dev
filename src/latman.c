@@ -172,6 +172,14 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( nj_c, get_nj_ptr( *lattice), sizeof(int));
   cudaMemcpyToSymbol( nk_c, get_nk_ptr( *lattice), sizeof(int));
 
+  #if __CUDACC__ >= 200
+    int temp_kloop = 1;
+    cudaMemcpyToSymbol( kloop_c, &temp_kloop, sizeof(int));
+  #else
+    int temp_kloop = get_LZ( *lattice) / get_BZ( *lattice);
+    cudaMemcpyToSymbol( kloop_c, &temp_kloop, sizeof(int));
+  #endif
+
   int temp = get_ni( *lattice) * get_nj( *lattice);
   cudaMemcpyToSymbol( nixnj_c, &temp, sizeof(int));
 
