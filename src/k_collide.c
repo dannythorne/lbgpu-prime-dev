@@ -12,11 +12,9 @@ void k_collide(
   #if  __CUDA_ARCH__ >= 200
     int i = threadIdx.x + blockIdx.x*blockDim.x;
     int j = threadIdx.y + blockIdx.y*blockDim.y;
-    int k = threadIdx.z + blockIdx.z*blockDim.z;
   #else
     int i = threadIdx.x + blockIdx.x*blockDim.x;
     int j = threadIdx.y + blockIdx.y*blockDim.y;
-    int k;
   #endif
 #else  //1D blocks
   int n = threadIdx.x + blockIdx.x*blockDim.x;
@@ -34,13 +32,13 @@ void k_collide(
   int k = n >> log2(nixnj_c);
 #endif
 #endif
-  int a, subs, klc, n;  //this will break the code if not quasi-3D blocks
+  int a, subs, k, klc, n;  //this will break the code if not quasi-3D blocks
 
 #if 1
 
 for( klc=0; klc < kloop_c; klc++)
 {
-  k = threadIdx.z + klc*blockDim.z;
+  k = threadIdx.z + klc*blockDim.z + blockIdx.z*blockDim.z;
   n = i + j * ni_c + k * nixnj_c;
 
 
