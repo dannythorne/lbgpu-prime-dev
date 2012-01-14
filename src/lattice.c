@@ -2135,7 +2135,9 @@ __constant__ int ni_c;
 __constant__ int nj_c;
 __constant__ int nk_c;
 __constant__ int kloop_c;
+__constant__ int bixbj_c;
 __constant__ int nixnj_c;
+__constant__ int blocksize;
 __constant__ int numnodes_c;
 
 __device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
@@ -2168,10 +2170,12 @@ __device__ real get_f1d_d(
 , int i0
 , int j0
 , int k0
+, int n0
 , int di
 , int dj
 , int dk
-, int a )
+, int a 
+, int pm)
 {
   if( di!=0 || dj!=0 || dk!=0)
   {
@@ -2185,9 +2189,9 @@ __device__ real get_f1d_d(
     if( j<0) { j+=nj_c;}
     if( k<0) { k+=nk_c;}
 
-    if( i>=ni_c) { i%=ni_c;}
-    if( j>=nj_c) { j%=nj_c;}
-    if( k>=nk_c) { k%=nk_c;}
+    if( i==ni_c) { i=0;}
+    if( j==nj_c) { j=0;}
+    if( k==nk_c) { k=0;}
 
     int n = i + ni_c*j + nixnj_c*k;
 
@@ -2200,8 +2204,8 @@ __device__ real get_f1d_d(
       // If neighboring node is a solid, return the f at node (i0,j0,k0) that
       // would be streamed out for halfway bounceback.
       return f_mem_d[ subs*numnodes_c*numdirs_c
-                    + (a+((!(a%2))?(-1):(1)))*numnodes_c
-                    + i0 + ni_c*j0 + nixnj_c*k0
+                    + (a+pm)*numnodes_c
+                    + n0
                     ];
     }
   }
@@ -2209,17 +2213,10 @@ __device__ real get_f1d_d(
   {
     // Getting f from node (i0,j0,k0). This is for the even collide step that
     // wraps up what the stream_collide_stream step started.
-    if( i0<0) { i0+=ni_c;}
-    if( j0<0) { j0+=nj_c;}
-    if( k0<0) { k0+=nk_c;}
-
-    if( i0>=ni_c) { i0%=ni_c;}
-    if( j0>=nj_c) { j0%=nj_c;}
-    if( k0>=nk_c) { k0%=nk_c;}
-
     return f_mem_d[ subs*numnodes_c*numdirs_c
-                  + a*numnodes_c
-                  + i0 + ni_c*j0 + nixnj_c*k0 ];
+                  + (a+pm)*numnodes_c
+                  + n0
+                  ];
   }
 }
 #endif
@@ -2240,9 +2237,9 @@ __device__ void set_f1d_d( real* f_mem_d, int subs,
   if( j<0) { j+=nj_c;}
   if( k<0) { k+=nk_c;}
 
-  if( i>=ni_c) { i%=ni_c;}
-  if( j>=nj_c) { j%=nj_c;}
-  if( k>=nk_c) { k%=nk_c;}
+  if( i==ni_c) { i=0;}
+  if( j==nj_c) { j=0;}
+  if( k==nk_c) { k=0;}
 
   f_mem_d[ subs*numnodes_c*numdirs_c
          + a*numnodes_c

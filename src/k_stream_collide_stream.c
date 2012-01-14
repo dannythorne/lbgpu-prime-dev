@@ -6,100 +6,103 @@ void k_stream_collide_stream(
 , real* mv_mem_d
 , unsigned char* solids_mem_d )
 {
-
-#if 1  //quasi-3D blocks
-  #if  __CUDA_ARCH__ >= 200
-    int i = threadIdx.x + blockIdx.x*blockDim.x;
-    int j = threadIdx.y + blockIdx.y*blockDim.y;
-  #else
-    int i = threadIdx.x + blockIdx.x*blockDim.x;
-    int j = threadIdx.y + blockIdx.y*blockDim.y;
-  #endif
-#else  //1D blocks
-  int n = threadIdx.x + blockIdx.x*blockDim.x;
-
-#if 1
-  int i = n % ni_c;
-  int j = (n % nixnj_c) / ni_c;
-  int k = n / nixnj_c;
-#else
-  // If ni and nj are both powers of two, these bitwise operations will
-  // evaluate more quickly than the above more general arithmetic.
-  // TODO: Figure out how to implement this automatically.
-  int i = n & (ni_c-1);
-  int j = (n & (nixnj_c-1)) >> log2(ni_c);
-  int k = n >> log2(nixnj_c);
-#endif
-
-#endif
-
-  int a, subs, k, klc, n;  //this will break the code if not quasi-3D blocks
-
-#if 1
-
-for( klc=0; klc < kloop_c; klc++)
-{
-  k = threadIdx.z + klc*blockDim.z + blockIdx.z*blockDim.z;
-  n = i + j * ni_c + k * nixnj_c;
+  int i = threadIdx.x + blockIdx.x*blockDim.x;
+  int j = threadIdx.y + blockIdx.y*blockDim.y;
+  
+  int a, subs, k, n, b;
 
   for( subs=0; subs<numsubs_c; subs++)
   {
-    // Populate shared memory for a given node with global memory values from
-    // surrounding nodes.  This is a streaming operation.
-    for( a=0; a<numdirs_c; a++)
+
+    #if __CUDA_ARCH__ < 200
+    int klc;
+    for( klc=0; klc < kloop_c; klc++)
     {
-      fptr[threadIdx.x + a*blockDim.x]
+    k = threadIdx.z + klc*blockDim.z;
+    #else
+    k = threadIdx.z + blockIdx.z*blockDim.z;
+    #endif
+
+    n = i + j * ni_c + k * nixnj_c;
+    b = threadIdx.x + threadIdx.y*blockDim.y
+        + threadIdx.z*bixbj_c;
+
+    // Populate shared memory for a given node with global memory values from
+    // surrounding nodes.  This is a streaming operation. Splitting to odd and
+    // even parts is necessary for the boundary condition implementation.
+
+    fptr[b]
         = get_f1d_d( f_mem_d, solids_mem_d
                    , subs
-                   , i,j,k
+                   , i,j,k,n
+                   , -vx_c[0],-vy_c[0],-vz_c[0]
+                   , 0, 0);
+
+    for( a=1; a<numdirs_c; a+=2)
+    {
+      fptr[b + a*blocksize]
+        = get_f1d_d( f_mem_d, solids_mem_d
+                   , subs
+                   , i,j,k,n
                    , -vx_c[a],-vy_c[a],-vz_c[a]
-                   , a );
+                   , a, +1);
     }
+
+    for( a=2; a<numdirs_c; a+=2)
+    {
+      fptr[b + a*blocksize]
+        = get_f1d_d( f_mem_d, solids_mem_d
+                   , subs
+                   , i,j,k,n
+                   , -vx_c[a],-vy_c[a],-vz_c[a]
+                   , a, -1);
+    }
+
 
 #if 1
     // Initialize shared memory values for calculating macro vars.
-    fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 0.;
-    fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] = 0.;
-    fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] = 0.;
+    fptr[b + (numdirs_c+0)*blocksize] = 0.;
+    fptr[b + (numdirs_c+1)*blocksize] = 0.;
+    fptr[b + (numdirs_c+2)*blocksize] = 0.;
    if( numdims_c==3)
    {
-    fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] = 0.;
+    fptr[b + (numdirs_c+3)*blocksize] = 0.;
    }
 
     // Calculate macroscopic variables.
     for( a=0; a<numdirs_c; a++)
     {
-      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x]
-        += fptr[threadIdx.x + a*blockDim.x];
+      fptr[b + (numdirs_c+0)*blocksize]
+        += fptr[b + a*blocksize];
 
       if( /*debug*/0)
       {
-        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x] = 8.;
+        fptr[b + (numdirs_c+0)*blocksize] = 8.;
       }
 
-      fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
-        += vx_c[a]*fptr[threadIdx.x + a*blockDim.x];
+      fptr[b + (numdirs_c+1)*blocksize]
+        += vx_c[a]*fptr[b + a*blocksize];
 
-      fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
-        += vy_c[a]*fptr[threadIdx.x + a*blockDim.x];
+      fptr[b + (numdirs_c+2)*blocksize]
+        += vy_c[a]*fptr[b + a*blocksize];
 
      if( numdims_c==3)
      {
-      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
-        += vz_c[a]*fptr[threadIdx.x + a*blockDim.x];
+      fptr[b + (numdirs_c+3)*blocksize]
+        += vz_c[a]*fptr[b + a*blocksize];
      }
     }
 
-    fptr[threadIdx.x + (numdirs_c+1)*blockDim.x] /=
-      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+    fptr[b + (numdirs_c+1)*blocksize] /=
+      fptr[b + (numdirs_c+0)*blocksize];
 
-    fptr[threadIdx.x + (numdirs_c+2)*blockDim.x] /=
-      fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+    fptr[b + (numdirs_c+2)*blocksize] /=
+      fptr[b + (numdirs_c+0)*blocksize];
 
     if( numdims_c==3)
     {
-      fptr[threadIdx.x + (numdirs_c+3)*blockDim.x] /=
-        fptr[threadIdx.x + (numdirs_c+0)*blockDim.x];
+      fptr[b + (numdirs_c+3)*blocksize] /=
+        fptr[b + (numdirs_c+0)*blocksize];
     }
 
     if( !d_skip_updating_macrovars())
@@ -109,7 +112,7 @@ for( klc=0; klc < kloop_c; klc++)
       {
         set_mv_d( mv_mem_d
                 , subs, i, j, k, a
-                , fptr[ threadIdx.x + (numdirs_c + a)*blockDim.x] );
+                , fptr[ b + (numdirs_c + a)*blocksize] );
         if( /*debug*/0)
         {
           set_mv_d( mv_mem_d, subs, i, j, k, a, 6.);
@@ -124,28 +127,28 @@ for( klc=0; klc < kloop_c; klc++)
         // Modify macroscopic variables with a body force
         for( a=1; a<=numdims_c; a++)
         {
-          apply_accel_mv( subs, a, threadIdx.x, blockDim.x, fptr);
+          apply_accel_mv( subs, a, b, blocksize, fptr);
         }
       }
 
       // Calculate u-squared since it is used many times
-      real usq = fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
-               * fptr[threadIdx.x + (numdirs_c+1)*blockDim.x]
+      real usq = fptr[b + (numdirs_c+1)*blocksize]
+               * fptr[b + (numdirs_c+1)*blocksize]
 
-               + fptr[threadIdx.x + (numdirs_c+2)*blockDim.x]
-               * fptr[threadIdx.x + (numdirs_c+2)*blockDim.x];
+               + fptr[b + (numdirs_c+2)*blocksize]
+               * fptr[b + (numdirs_c+2)*blocksize];
 
       if( numdims_c==3)
       {
-          usq += fptr[threadIdx.x + (numdirs_c+3)*blockDim.x]
-               * fptr[threadIdx.x + (numdirs_c+3)*blockDim.x];
+          usq += fptr[b + (numdirs_c+3)*blocksize]
+               * fptr[b + (numdirs_c+3)*blocksize];
       }
 
       // Calculate the collision operator and add to f resulting from first
-      // streaming
+      // streaming (TODO: Why do we pass f_mem_d to this function?)
       for( a=0; a<numdirs_c; a++)
       {
-        calc_f_tilde_d( f_mem_d, subs, a, threadIdx.x, blockDim.x, fptr, usq);
+        calc_f_tilde_d( f_mem_d, subs, a, b, blocksize, fptr, usq);
       }
     }
 #else
@@ -183,26 +186,24 @@ for( klc=0; klc < kloop_c; klc++)
     // the rearrangement of the v vectors into opposite pairs.
     set_f1d_d( f_mem_d
              , subs, i+vx_c[0], j+vy_c[0], k+vz_c[0], 0
-             , fptr[threadIdx.x + 0*blockDim.x]);
+             , fptr[b + 0*blocksize]);
 
     for( a=1; a<numdirs_c; a+=2)
     {
       set_f1d_d( f_mem_d
                , subs, i+vx_c[a], j+vy_c[a], k+vz_c[a], a+1
-               , fptr[threadIdx.x + a*blockDim.x]);
+               , fptr[b + a*blocksize]);
     }
 
     for( a=2; a<numdirs_c; a+=2)
     {
       set_f1d_d( f_mem_d
                , subs, i+vx_c[a], j+vy_c[a], k+vz_c[a], a-1
-               , fptr[threadIdx.x + a*blockDim.x]);
+               , fptr[b + a*blocksize]);
     }
 //  __syncthreads();
-  }
-}  /*for( klc=0; klc < kloop_c; klc++)*/
-
-#else
-    set_mv_d( mv_mem_d, 0, i, j, k, /*a*/0, 8.);
-#endif
+  #if __CUDA_ARCH__ < 200
+  }  /*for( klc=0; klc < kloop_c; klc++)*/
+  #endif
+  }  /* subs loop */
 }

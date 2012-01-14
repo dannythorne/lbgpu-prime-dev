@@ -1,6 +1,8 @@
+NAME_FLAG =-o lbgpu
+CUDA_ARCH_FLAG =-arch=sm_13
 
 GCC_FLAGS =
-GCC_FLAGS+=-o lb3d
+GCC_FLAGS+=$(NAME_FLAG)
 GCC_FLAGS+=-x c
 GCC_FLAGS+=-g
 GCC_FLAGS+=-p
@@ -9,7 +11,7 @@ all:
 	gcc $(GCC_FLAGS) -D__device__='' -D__constant__='' ./src/lbgpu_prime.cu -lm
 
 cuda:
-	nvcc -v -o lb3d ./src/lbgpu_prime.cu -lm -arch=sm_13
+	nvcc -v $(NAME_FLAG) ./src/lbgpu_prime.cu -lm $(CUDA_ARCH_FLAG)
 
 mpi:
 	mpicc -DPARALLEL=1 -o lb3d ./src/lb3d_prime.c -lm

@@ -33,6 +33,11 @@
 // important when setting LX or LY to unity for a 2D simulation
 #define INTEGER_IC_BOUND 1
 
+// ONEDGRID makes the GPU kernels use a 1D grid instead of
+// a 3D or 2D-3D (with summation) grid
+
+#define ONEDGRID 0
+
 #define NUM_DIMENSIONS 2
 
 // NUM_FLUID_COMPONENTS specifies the number of fluid components.

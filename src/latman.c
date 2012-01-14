@@ -180,9 +180,12 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     cudaMemcpyToSymbol( kloop_c, &temp_kloop, sizeof(int));
   #endif
 
-  int temp = get_ni( *lattice) * get_nj( *lattice);
+  int temp = get_BX( *lattice) * get_BY( *lattice);
+  cudaMemcpyToSymbol( bixbj_c, &temp, sizeof(int));
+  temp = get_ni( *lattice) * get_nj( *lattice);
   cudaMemcpyToSymbol( nixnj_c, &temp, sizeof(int));
-
+  temp = get_BX( *lattice)*get_BY( *lattice)*get_BZ( *lattice);
+  cudaMemcpyToSymbol( blocksize, &temp, sizeof(int));
   cudaMemcpyToSymbol( numnodes_c, get_NumNodes_ptr( *lattice), sizeof(int));
 #endif
 

@@ -50,29 +50,39 @@ int main( int argc, char **argv)
   process_tic( lattice);
 
 #ifdef __CUDACC__
-  int blocksize = 3; // TODO: What is the best value for this?
 
-  if( get_NumNodes( lattice) % blocksize)
+  if( get_LX( lattice) % get_BX(lattice) != 0)
   {
-    printf("\n%s %d ERROR: NumNodes %d must be divisible by blocksize %d. "
-           "NumNodes %% blocksize = %d. (Exiting.)\n\n"
+    printf("\n%s %d ERROR: LX = %d must be divisible by BX = %d. (Exiting.)\n\n"
           , __FILE__
           , __LINE__
-          , get_NumNodes( lattice)
-          , blocksize
-          , get_NumNodes( lattice) % blocksize);
+          , get_LX( lattice)
+          , get_BX( lattice));
+    process_exit(1);
+  }
+  if( get_LY( lattice) % get_BY(lattice) != 0)
+  {
+    printf("\n%s %d ERROR: LY = %d must be divisible by BY = %d. (Exiting.)\n\n"
+          , __FILE__
+          , __LINE__
+          , get_LY( lattice)
+          , get_BY( lattice));
+    process_exit(1);
+  }
+  if( get_LZ( lattice) % get_BZ(lattice) != 0)
+  {
+    printf("\n%s %d ERROR: LX = %d must be divisible by BX = %d. (Exiting.)\n\n"
+          , __FILE__
+          , __LINE__
+          , get_LZ( lattice)
+          , get_BZ( lattice));
     process_exit(1);
   }
 
-#if 1
   dim3 blockDim( get_BX( lattice), get_BY( lattice), get_BZ( lattice));
   dim3 gridDim( get_LX( lattice) / get_BX( lattice),
                 get_LY( lattice) / get_BY( lattice),
                 get_LZ( lattice) / get_BZ( lattice) );
-#else
-  dim3 blockDim( blocksize, 1, 1);
-  dim3 gridDim( get_NumNodes( lattice) / blocksize, 1, 1);
-#endif
 
 #endif
 
@@ -127,8 +137,11 @@ int main( int argc, char **argv)
     <<<
         gridDim
       , blockDim
-      , blocksize*sizeof(real)*( get_NumVelDirs(lattice)
-                               + get_NumDims(lattice)+1 )
+      , sizeof(real)*( get_NumVelDirs(lattice)
+                    + get_NumDims(lattice)+1 )
+                    * get_BX( lattice)
+                    * get_BY( lattice)
+                    * get_BZ( lattice)
     >>>( f_mem_d, mv_mem_d, solids_mem_d);
 #else
     stream_collide_stream(lattice);
@@ -149,8 +162,11 @@ int main( int argc, char **argv)
     <<<
         gridDim
       , blockDim
-      , blocksize*sizeof(real)*( get_NumVelDirs(lattice)
-                               + get_NumDims(lattice)+1 )
+      , sizeof(real)*( get_NumVelDirs(lattice)
+                    + get_NumDims(lattice)+1 )
+                    * get_BX( lattice)
+                    * get_BY( lattice)
+                    * get_BZ( lattice)
     >>>( f_mem_d, mv_mem_d, solids_mem_d, is_end_of_frame_mem_d);
     if( is_end_of_frame(lattice,time))
     {
