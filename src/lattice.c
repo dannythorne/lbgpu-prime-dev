@@ -1895,7 +1895,7 @@ int do_diagnostic_init_of_rho( lattice_ptr lattice)
 
 int do_diagnostic_init_of_u( lattice_ptr lattice)
 {
-  return 1; // TODO: params.in or flags.in
+  return 0; // TODO: params.in or flags.in
 }
 
 int do_diagnostic_init_of_f( lattice_ptr lattice)
@@ -2137,12 +2137,31 @@ __constant__ int nk_c;
 __constant__ int kloop_c;
 __constant__ int bixbj_c;
 __constant__ int nixnj_c;
-__constant__ int blocksize;
+__constant__ int blocksize_c;
 __constant__ int numnodes_c;
 
-__device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
+__device__ int d_is_solid( unsigned char* solids_mem_d, int n)
 {
-  return solids_mem_d[n] == 0;
+  if( solids_mem_d[n] == 1)
+  {
+    return 1.;
+  }
+  else
+  {
+    return 0.;
+  }
+}
+
+__device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
+{ 
+  if( solids_mem_d[n] == 1)
+  {
+    return 0.;
+  }
+  else
+  {
+    return 1.;
+  }
 }
 
 #if 0
@@ -2174,62 +2193,51 @@ __device__ real get_f1d_d(
 , int di
 , int dj
 , int dk
-, int a 
-, int pm)
+, int a )
 {
-  if( di!=0 || dj!=0 || dk!=0)
+  // Getting f_a from node (i+di,j+dj,k+dk).
+
+  int i = i0+di;
+  int j = j0+dj;
+  int k = k0+dk;
+
+  if( i<0) { i+=ni_c;}
+  if( j<0) { j+=nj_c;}
+  if( k<0) { k+=nk_c;}
+
+  if( i==ni_c) { i=0;}
+  if( j==nj_c) { j=0;}
+  if( k==nk_c) { k=0;}
+
+  int n = i + ni_c*j + nixnj_c*k;
+#if BOUNDARIES_ON
+  if( d_is_not_solid( solids_mem_d, n))
   {
-    // Getting f from neighboring node (i+di,j+dj,k+dk). This is for the
-    // stream_collide_stream step.
-    int i = i0+di;
-    int j = j0+dj;
-    int k = k0+dk;
-
-    if( i<0) { i+=ni_c;}
-    if( j<0) { j+=nj_c;}
-    if( k<0) { k+=nk_c;}
-
-    if( i==ni_c) { i=0;}
-    if( j==nj_c) { j=0;}
-    if( k==nk_c) { k=0;}
-
-    int n = i + ni_c*j + nixnj_c*k;
-
-    if( d_is_not_solid( solids_mem_d, n))
-    {
-      return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
-    }
-    else
-    {
-      // If neighboring node is a solid, return the f at node (i0,j0,k0) that
-      // would be streamed out for halfway bounceback.
-      return f_mem_d[ subs*numnodes_c*numdirs_c
-                    + (a+pm)*numnodes_c
-                    + n0
-                    ];
-    }
+#endif
+    return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
+#if BOUNDARIES_ON
   }
-  else
+  else// if( d_is_not_solid( solids_mem_d, n0))
   {
-    // Getting f from node (i0,j0,k0). This is for the even collide step that
-    // wraps up what the stream_collide_stream step started.
+    // If neighboring node is a solid, return the f at node (i0,j0,k0) that
+    // would be streamed out for halfway bounceback.
     return f_mem_d[ subs*numnodes_c*numdirs_c
-                  + (a+pm)*numnodes_c
+                  + (a+((a&1)?1:-1))*numnodes_c       // a%2 = a&1
                   + n0
                   ];
   }
+#endif
 }
 #endif
 
 __device__ void set_mv_d( real* mv_mem_d, int subs,
-                          int i, int j, int k, int a, real value)
+                          int n, int a, real value)
 {
   mv_mem_d[ subs*numnodes_c*(1 + numdims_c)
-          + a*numnodes_c
-          + i + ni_c*j + nixnj_c*k ] = value;
+          + a*numnodes_c + n ] = value;
 
 }
-
+#if 0
 __device__ void set_f1d_d( real* f_mem_d, int subs,
                             int i, int j, int k, int a, real value)
 {
@@ -2245,7 +2253,51 @@ __device__ void set_f1d_d( real* f_mem_d, int subs,
          + a*numnodes_c
          + i + ni_c*j + nixnj_c*k ] = value;
 }
+#endif
 
+__device__ void set_f1d_d(
+  real* f_mem_d
+, unsigned char* solids_mem_d
+, int subs
+, int i0
+, int j0
+, int k0
+, int n0
+, int di
+, int dj
+, int dk
+, int a 
+, real value)
+{
+  // Setting f to node (i+di,j+dj,k+dk). The 'd_is_not_solid' conditional
+  // statement is vital for the correct functioning of the bounceback
+  // boundary conditions.
+#if BOUNDARIES_ON
+  if( d_is_not_solid( solids_mem_d, n0))
+  {
+#endif
+    int i = i0+di;
+    int j = j0+dj;
+    int k = k0+dk;
+
+    if( i<0) { i+=ni_c;}
+    if( j<0) { j+=nj_c;}
+    if( k<0) { k+=nk_c;}
+
+    if( i==ni_c) { i=0;}
+    if( j==nj_c) { j=0;}
+    if( k==nk_c) { k=0;}
+
+    int n = i + ni_c*j + nixnj_c*k;
+
+    f_mem_d[ subs*numnodes_c*numdirs_c
+           + a*numnodes_c
+           + n
+           ] = value;
+#if BOUNDARIES_ON
+  }
+#endif
+}
 __device__ void calc_f_tilde_d(
                   real* f_mem_d
                 , int subs
@@ -2283,10 +2335,10 @@ __device__ void apply_accel_mv(
 {
 #if 1
   f_temp[thread + (numdirs_c+cmpnt)*block_size]
-    += gaccel_c[ subs*numdims_c + cmpnt-1];
+    += gaccel_c[ subs*3 + cmpnt-1];
 #else
   // DT: Testing
-  if( subs==0 && cmpnt==2)
+  if( subs==0 && cmpnt==1)
   {
     f_temp[thread + (numdirs_c+cmpnt)*block_size] += 0.00001;
   }

@@ -141,6 +141,16 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( tau_c
                     , get_tau_ptr( *lattice)
                     , get_NumSubs(*lattice)*sizeof(real) );
+  
+/*  printf(" \n\n %f %f %f %f %f %f \n\n", *((*lattice)->param.gforce[0])
+, *((*lattice)->param.gforce[0]+1)
+, *((*lattice)->param.gforce[0]+2)
+, *((*lattice)->param.gforce[0]+3)
+, *((*lattice)->param.gforce[0]+4)
+, *((*lattice)->param.gforce[0]+5));*/
+
+
+  
 
   for( subs = 0; subs < get_NumSubs(*lattice); subs++)
   {
@@ -148,7 +158,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       gaccel_c
     , get_gaccel_ptr( *lattice, subs)
     , get_NumDims(*lattice)*sizeof(real)
-    , subs*get_NumDims(*lattice)*sizeof(real) // offset from gaccel_c
+    , subs*3*sizeof(real) // offset from gaccel_c
     , cudaMemcpyHostToDevice);
   }
 
@@ -185,7 +195,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   temp = get_ni( *lattice) * get_nj( *lattice);
   cudaMemcpyToSymbol( nixnj_c, &temp, sizeof(int));
   temp = get_BX( *lattice)*get_BY( *lattice)*get_BZ( *lattice);
-  cudaMemcpyToSymbol( blocksize, &temp, sizeof(int));
+  cudaMemcpyToSymbol( blocksize_c, &temp, sizeof(int));
   cudaMemcpyToSymbol( numnodes_c, get_NumNodes_ptr( *lattice), sizeof(int));
 #endif
 

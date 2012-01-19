@@ -1,6 +1,6 @@
 //##############################################################################
 //
-// lbgpu_prime.c
+// lbgpu_prime.cu
 //
 //  - Lattice Boltzmann
 //
@@ -78,6 +78,11 @@ int main( int argc, char **argv)
           , get_BZ( lattice));
     process_exit(1);
   }
+printf("\n\n%d %d %d %d %d %d\n\n", get_LX(lattice), get_LY(lattice), 
+get_LZ(lattice), get_BX(lattice), 
+get_BY(lattice), 
+get_BZ(lattice)); 
+
 
   dim3 blockDim( get_BX( lattice), get_BY( lattice), get_BZ( lattice));
   dim3 gridDim( get_LX( lattice) / get_BX( lattice),
@@ -87,9 +92,9 @@ int main( int argc, char **argv)
 #endif
 
 #ifdef __CUDACC__
-#if 0
+#if 1
   cudaMemcpy( f_mem_d
-            , get_fptr(lattice, 0, 0, 0, 0, 0)
+            , get_fptr(lattice, 0,0,0,0, 0, 0, 0, 0)
             , get_NumVelDirs(lattice)
              *get_NumNodes(lattice)
              *get_NumSubs(lattice)
@@ -150,6 +155,7 @@ int main( int argc, char **argv)
     set_time( lattice, ++time);
 
 #ifdef __CUDACC__
+#if 0
     if( is_end_of_frame(lattice,time))
     {
       int temp = 1;
@@ -158,6 +164,7 @@ int main( int argc, char **argv)
                 , sizeof(int)
                 , cudaMemcpyHostToDevice);
     }
+#endif
     k_collide
     <<<
         gridDim
@@ -168,6 +175,7 @@ int main( int argc, char **argv)
                     * get_BY( lattice)
                     * get_BZ( lattice)
     >>>( f_mem_d, mv_mem_d, solids_mem_d, is_end_of_frame_mem_d);
+#if 0
     if( is_end_of_frame(lattice,time))
     {
       int temp = 0;
@@ -176,10 +184,10 @@ int main( int argc, char **argv)
                 , sizeof(int)
                 , cudaMemcpyHostToDevice);
     }
+#endif
 #else
     collide( lattice);
 #endif
-
     if( is_end_of_frame(lattice,time))
     {
       set_frame( lattice, ++frame);
