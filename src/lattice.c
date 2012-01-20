@@ -2140,8 +2140,24 @@ __constant__ int nixnj_c;
 __constant__ int blocksize_c;
 __constant__ int numnodes_c;
 
+
+#if TEXTURE_FETCH
+texture<unsigned char, 1, cudaReadModeElementType> tex_solid;
+#endif
+
+
 __device__ int d_is_solid( unsigned char* solids_mem_d, int n)
 {
+#if TEXTURE_FETCH
+  if( tex1Dfetch(tex_solid, n) == 1)
+  {
+    return 1.;
+  }
+  else
+  {
+    return 0.;
+  }
+#else
   if( solids_mem_d[n] == 1)
   {
     return 1.;
@@ -2150,10 +2166,21 @@ __device__ int d_is_solid( unsigned char* solids_mem_d, int n)
   {
     return 0.;
   }
+#endif
 }
 
 __device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
 { 
+#if TEXTURE_FETCH
+  if( tex1Dfetch(tex_solid, n) == 1)
+  {
+    return 0.;
+  }
+  else
+  {
+    return 1.;
+  }
+#else
   if( solids_mem_d[n] == 1)
   {
     return 0.;
@@ -2162,6 +2189,7 @@ __device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
   {
     return 1.;
   }
+#endif
 }
 
 #if 0
@@ -2289,12 +2317,16 @@ __device__ void set_f1d_d(
     if( k==nk_c) { k=0;}
 
     int n = i + ni_c*j + nixnj_c*k;
-
-    f_mem_d[ subs*numnodes_c*numdirs_c
-           + a*numnodes_c
-           + n
-           ] = value;
 #if BOUNDARIES_ON
+    if( d_is_not_solid( solids_mem_d, n))
+    {
+#endif
+      f_mem_d[ subs*numnodes_c*numdirs_c
+             + a*numnodes_c
+             + n
+             ] = value;
+#if BOUNDARIES_ON
+    }
   }
 #endif
 }
@@ -2360,7 +2392,7 @@ int d_skip_body_force_term()
 __device__
 int d_skip_updating_macrovars()
 {
-  return 0; // TODO: params.in or flags.in
+  return 1; // TODO: params.in or flags.in
 }
 
 #endif

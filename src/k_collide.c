@@ -175,7 +175,7 @@ void k_collide(
     // for the purpose of efficiency, this (and possibly between sc and s in
     // k_scs) should be the only place in the code at which macroscopic variables
     // are either stored in device global memory or transferred to the host.
-#if 0
+#if 1
 
     if( *is_end_of_frame_mem_d)
     {
@@ -224,21 +224,21 @@ void k_collide(
         fptr[b + (numdirs_c+0)*blocksize_c];
      }
 
-      if( !d_skip_updating_macrovars())
-      {
+      //if( !d_skip_updating_macrovars())
+     // {
         // Store macroscopic variables in global memory.
         for( a=0; a<=numdims_c; a++)
         {
           set_mv_d( mv_mem_d
-                  , subs, i, j, k, a
+                  , subs, n, a
                   , fptr[b + (numdirs_c + a)*blocksize_c]);
 
           if( /*debug*/0)
           {
-            set_mv_d( mv_mem_d, subs, i, j, k, a, 7.);
+            set_mv_d( mv_mem_d, subs, n, a, 7.);
           }
         }
-      }
+      //}
     }
 #endif
 #if __CUDA_ARCH__ < 200

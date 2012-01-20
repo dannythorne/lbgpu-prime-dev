@@ -78,10 +78,6 @@ int main( int argc, char **argv)
           , get_BZ( lattice));
     process_exit(1);
   }
-printf("\n\n%d %d %d %d %d %d\n\n", get_LX(lattice), get_LY(lattice), 
-get_LZ(lattice), get_BX(lattice), 
-get_BY(lattice), 
-get_BZ(lattice)); 
 
 
   dim3 blockDim( get_BX( lattice), get_BY( lattice), get_BZ( lattice));
@@ -92,36 +88,102 @@ get_BZ(lattice));
 #endif
 
 #ifdef __CUDACC__
-#if 1
-  cudaMemcpy( f_mem_d
+#if 0
+  cudaError_t err; 
+
+  err = cudaMemcpy( f_mem_d
             , get_fptr(lattice, 0,0,0,0, 0, 0, 0, 0)
             , get_NumVelDirs(lattice)
              *get_NumNodes(lattice)
              *get_NumSubs(lattice)
              *sizeof(real)
             , cudaMemcpyHostToDevice);
+
+  if(err != 0)
+  {
+    printf(
+    "%s %d %04d >> "
+    "construct_lattice() -- ERROR:  "
+    "Attempt to transfer %d real types from host to device failed.  "
+    "Exiting!\n",
+    __FILE__,__LINE__,get_proc_id(lattice),
+    get_NumVelDirs(lattice)
+             *get_NumNodes(lattice)
+             *get_NumSubs(lattice)
+    );
+    process_exit(1);
+  }
 #else
-  cudaMemcpy( solids_mem_d
+  cudaError_t err;
+
+  err = cudaMemcpy( solids_mem_d
             , get_solids_ptr(lattice, 0)
             , get_NumNodes(lattice)*sizeof(unsigned char)
             , cudaMemcpyHostToDevice);
 
+  if(err != 0)
+  {
+    printf(
+    "%s %d %04d >> "
+    "construct_lattice() -- ERROR:  "
+    "Attempt to transfer %d unsigned char types from host to device failed.  "
+    "Exiting!\n",
+    __FILE__,__LINE__,get_proc_id(lattice),
+    get_NumNodes(lattice)
+    );
+    process_exit(1);
+  }
+
   for( subs = 0; subs < get_NumSubs(lattice); subs++)
   {
-    cudaMemcpy( f_mem_d + subs*get_NumNodes(lattice)*get_NumVelDirs(lattice)
+    err = cudaMemcpy( f_mem_d + subs*get_NumNodes(lattice)*get_NumVelDirs(lattice)
               , get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
               , get_NumVelDirs(lattice)
                *get_NumNodes(lattice)
                *sizeof(real)
               , cudaMemcpyHostToDevice);
+
+    if(err != 0)
+    {
+      printf(
+      "%s %d %04d >> "
+      "construct_lattice() -- ERROR:  "
+      "Attempt to transfer %d real types from host to device failed.  "
+      "Exiting!\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      get_NumVelDirs(lattice)
+               *get_NumNodes(lattice)
+               *get_NumSubs(lattice)
+      );
+      process_exit(1);
+    }  
+
   }
 
   int temp = 0;
-  cudaMemcpy( is_end_of_frame_mem_d
+  err = cudaMemcpy( is_end_of_frame_mem_d
             , &temp
             , sizeof(int)
             , cudaMemcpyHostToDevice);
+
+  if(err != 0)
+  {
+    printf(
+    "%s %d %04d >> "
+    "construct_lattice() -- ERROR:  "
+    "Attempt to transfer an integer from host to device failed.  "
+    "Exiting!\n",
+    __FILE__,__LINE__,get_proc_id(lattice)
+    );
+    process_exit(1);
+  }
+
 #endif
+  
+#if TEXTURE_FETCH
+  cudaBindTexture(0, tex_solid, solids_mem_d);
+#endif
+
 #endif
 
   for( frame = 0, time=1; time<=get_NumTimeSteps(lattice); time++)
@@ -158,11 +220,30 @@ get_BZ(lattice));
 #if 0
     if( is_end_of_frame(lattice,time))
     {
+      printf("\n\n Amount of shared memory required is %d \n\n", sizeof(real)*( get_NumVelDirs(lattice)
+                    + get_NumDims(lattice)+1 )
+                    * get_BX( lattice)
+                    * get_BY( lattice)
+                    * get_BZ( lattice));
+
       int temp = 1;
-      cudaMemcpy( is_end_of_frame_mem_d
+      err = cudaMemcpy( is_end_of_frame_mem_d
                 , &temp
                 , sizeof(int)
                 , cudaMemcpyHostToDevice);
+
+      if(err != 0)
+      {
+        printf(
+        "%s %d %04d >> "
+        "construct_lattice() -- ERROR:  "
+        "Attempt to transfer an integer from host to device failed.  "
+        "Exiting!\n",
+        __FILE__,__LINE__,get_proc_id(lattice)
+        );
+        process_exit(1);
+      }  
+
     }
 #endif
     k_collide
@@ -175,14 +256,26 @@ get_BZ(lattice));
                     * get_BY( lattice)
                     * get_BZ( lattice)
     >>>( f_mem_d, mv_mem_d, solids_mem_d, is_end_of_frame_mem_d);
-#if 0
+#if 1
     if( is_end_of_frame(lattice,time))
     {
       int temp = 0;
-      cudaMemcpy( is_end_of_frame_mem_d
+      err = cudaMemcpy( is_end_of_frame_mem_d
                 , &temp
                 , sizeof(int)
                 , cudaMemcpyHostToDevice);
+      if(err != 0)
+      {
+        printf(
+        "%s %d %04d >> "
+        "construct_lattice() -- ERROR:  "
+        "Attempt to transfer an integer from host to device failed.  "
+        "Exiting!\n",
+        __FILE__,__LINE__,get_proc_id(lattice)
+        );
+        process_exit(1);
+      }  
+
     }
 #endif
 #else
@@ -197,41 +290,107 @@ get_BZ(lattice));
       {
         printf("Transferring subs %d "
                "macrovars from device to host for output. \n", subs);
-        cudaMemcpy( get_rho_ptr(lattice, subs, 0)
+        err = cudaMemcpy( get_rho_ptr(lattice, subs, 0)
                   , mv_mem_d
                     + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
                     + 0*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
                   , cudaMemcpyDeviceToHost);
-        cudaMemcpy( get_ux_ptr(lattice, subs, 0)
+        if(err != 0)
+        {
+          printf(
+          "%s %d %04d >> "
+          "construct_lattice() -- ERROR:  "
+          "Attempt to transfer %d real types from device to host failed.  "
+          "Exiting!\n",
+          __FILE__,__LINE__,get_proc_id(lattice),
+          get_NumNodes(lattice)
+          );
+          process_exit(1);
+        }  
+
+        err = cudaMemcpy( get_ux_ptr(lattice, subs, 0)
                   , mv_mem_d
                     + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
                     + 1*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
                   , cudaMemcpyDeviceToHost);
-        cudaMemcpy( get_uy_ptr(lattice, subs, 0)
+        if(err != 0)
+        {
+          printf(
+          "%s %d %04d >> "
+          "construct_lattice() -- ERROR:  "
+          "Attempt to transfer %d real types from device to host failed.  "
+          "Exiting!\n",
+          __FILE__,__LINE__,get_proc_id(lattice),
+          get_NumNodes(lattice)
+          );
+          process_exit(1);
+        }  
+
+        err = cudaMemcpy( get_uy_ptr(lattice, subs, 0)
                   , mv_mem_d
                     + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
                     + 2*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
                   , cudaMemcpyDeviceToHost);
+        if(err != 0)
+        {
+          printf(
+          "%s %d %04d >> "
+          "construct_lattice() -- ERROR:  "
+          "Attempt to transfer %d real types from device to host failed.  "
+          "Exiting!\n",
+          __FILE__,__LINE__,get_proc_id(lattice),
+          get_NumNodes(lattice)
+          );
+          process_exit(1);
+        }  
+
        if(get_NumDims(lattice) == 3)
        {
-        cudaMemcpy( get_uz_ptr(lattice, subs, 0)
+         err = cudaMemcpy( get_uz_ptr(lattice, subs, 0)
                   , mv_mem_d
                     + subs*get_NumNodes(lattice)*( 1 + get_NumDims(lattice))
                     + 3*get_NumNodes(lattice)
                   , get_NumNodes(lattice)*sizeof(real)
                   , cudaMemcpyDeviceToHost);
+          if(err != 0)
+          {
+            printf(
+            "%s %d %04d >> "
+            "construct_lattice() -- ERROR:  "
+            "Attempt to transfer %d real types from device to host failed.  "
+            "Exiting!\n",
+            __FILE__,__LINE__,get_proc_id(lattice),
+            get_NumNodes(lattice)
+            );
+            process_exit(1);
+          }  
+
        }
        if( do_write_f_txt_file( lattice))
        {
-        cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
+         err = cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
                   , f_mem_d + subs*get_NumNodes(lattice)*get_NumVelDirs(lattice)
                   , get_NumVelDirs(lattice)
                    *get_NumNodes(lattice)
                    *sizeof(real)
                   , cudaMemcpyDeviceToHost);
+          if(err != 0)
+          {
+            printf(
+            "%s %d %04d >> "
+            "construct_lattice() -- ERROR:  "
+            "Attempt to transfer %d real types from device to host failed.  "
+            "Exiting!\n",
+            __FILE__,__LINE__,get_proc_id(lattice),
+            get_NumVelDirs(lattice)
+            *get_NumNodes(lattice)
+            );
+            process_exit(1);
+          }  
+
        }
       }
 #endif

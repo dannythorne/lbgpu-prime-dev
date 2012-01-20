@@ -37,6 +37,13 @@
 // Debugging switch for bounceback boundary conditions in the k_ kernels.
 #define BOUNDARIES_ON 1
 
+// Use 1D texture fetching for boundaries
+
+#define TEXTURE_FETCH 0
+
+
+// Number of dimensions
+
 #define NUM_DIMENSIONS 2
 
 // NUM_FLUID_COMPONENTS specifies the number of fluid components.
