@@ -33,14 +33,13 @@
 // important when setting LX or LY to unity for a 2D simulation
 #define INTEGER_IC_BOUND 1
 
-
-// Debugging switch for bounceback boundary conditions in the k_ kernels.
-#define BOUNDARIES_ON 1
-
 // Use 1D texture fetching for boundaries
 
 #define TEXTURE_FETCH 0
 
+// Report errors with CUDA host functions
+
+#define CUDA_ERROR_REPORTING 1
 
 // Number of dimensions
 
@@ -97,7 +96,7 @@
 // If COMPUTE_ON_SOLIDS is on, macroscopic variables and feq will be computed
 // on solid nodes, even though they are not conceptually meaningful there.
 // This can be helpful for debugging purposes.
-#define COMPUTE_ON_SOLIDS 0
+#define COMPUTE_ON_SOLIDS 1
 // NON_LOCAL_FORCES toggles any mechanisms for computing and storing
 // non-local (interaction) forces.
 // Flag: NON_LOCAL_FORCES

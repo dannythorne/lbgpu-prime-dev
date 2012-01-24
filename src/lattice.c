@@ -2192,24 +2192,6 @@ __device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
 #endif
 }
 
-#if 0
-__device__ real get_f1d_d( real* f_mem_d, int subs, int i, int j, int k, int a)
-{
-  if( i<0) { i+=ni_c;}
-  if( j<0) { j+=nj_c;}
-  if( k<0) { k+=nk_c;}
-
-  if( i>=ni_c) { i%=ni_c;}
-  if( j>=nj_c) { j%=nj_c;}
-  if( k>=nk_c) { k%=nk_c;}
-
-  return f_mem_d[ subs * numnodes_c * numdirs_c
-                + a * numnodes_c
-                + i + ni_c*j + ni_c*nj_c*k];
-
-//  return lattice_d->vars[subs].f1d[a][i + ni*j + ni*nj*k];
-}
-#else
 __device__ real get_f1d_d(
   real* f_mem_d
 , unsigned char* solids_mem_d
@@ -2221,7 +2203,8 @@ __device__ real get_f1d_d(
 , int di
 , int dj
 , int dk
-, int a )
+, int a
+, int da )
 {
   // Getting f_a from node (i+di,j+dj,k+dk).
 
@@ -2238,25 +2221,26 @@ __device__ real get_f1d_d(
   if( k==nk_c) { k=0;}
 
   int n = i + ni_c*j + nixnj_c*k;
-#if BOUNDARIES_ON
-  if( d_is_not_solid( solids_mem_d, n))
-  {
-#endif
-    return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
-#if BOUNDARIES_ON
-  }
-  else// if( d_is_not_solid( solids_mem_d, n0))
-  {
-    // If neighboring node is a solid, return the f at node (i0,j0,k0) that
-    // would be streamed out for halfway bounceback.
-    return f_mem_d[ subs*numnodes_c*numdirs_c
-                  + (a+((a&1)?1:-1))*numnodes_c       // a%2 = a&1
-                  + n0
-                  ];
-  }
-#endif
+    //#if BOUNDARIES_ON
+    if( d_is_not_solid( solids_mem_d, n))
+    {
+    //#endif
+      return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
+    //#if BOUNDARIES_ON
+    }
+    else
+    { 
+      // If neighboring node is a solid, return the f at node (i0,j0,k0) that
+      // would be streamed out for halfway bounceback.
+      return f_mem_d[ subs*numnodes_c*numdirs_c
+                    + (a+da)*numnodes_c
+                    + n0
+                    ];
+    }
+    //#endif
 }
-#endif
+
+
 
 __device__ void set_mv_d( real* mv_mem_d, int subs,
                           int n, int a, real value)
@@ -2265,23 +2249,6 @@ __device__ void set_mv_d( real* mv_mem_d, int subs,
           + a*numnodes_c + n ] = value;
 
 }
-#if 0
-__device__ void set_f1d_d( real* f_mem_d, int subs,
-                            int i, int j, int k, int a, real value)
-{
-  if( i<0) { i+=ni_c;}
-  if( j<0) { j+=nj_c;}
-  if( k<0) { k+=nk_c;}
-
-  if( i==ni_c) { i=0;}
-  if( j==nj_c) { j=0;}
-  if( k==nk_c) { k=0;}
-
-  f_mem_d[ subs*numnodes_c*numdirs_c
-         + a*numnodes_c
-         + i + ni_c*j + nixnj_c*k ] = value;
-}
-#endif
 
 __device__ void set_f1d_d(
   real* f_mem_d
@@ -2300,10 +2267,14 @@ __device__ void set_f1d_d(
   // Setting f to node (i+di,j+dj,k+dk). The 'd_is_not_solid' conditional
   // statement is vital for the correct functioning of the bounceback
   // boundary conditions.
-#if BOUNDARIES_ON
+//#if BOUNDARIES_ON  
+  //COMPUTE_ON_SOLIDS
+  // This conditional statement is vital for the bounceback boundary conditions,
+  // hence we must ensure that if COMPUTE_ON_SOLIDS == 1, this condition is
+  // still satisfied.  If COMPUTE_ON_SOLIDS == 1, this is inefficient...
   if( d_is_not_solid( solids_mem_d, n0))
   {
-#endif
+//#endif
     int i = i0+di;
     int j = j0+dj;
     int k = k0+dk;
@@ -2317,18 +2288,20 @@ __device__ void set_f1d_d(
     if( k==nk_c) { k=0;}
 
     int n = i + ni_c*j + nixnj_c*k;
-#if BOUNDARIES_ON
-    if( d_is_not_solid( solids_mem_d, n))
-    {
-#endif
+//#if !(COMPUTE_ON_SOLIDS)
+//    if( d_is_not_solid( solids_mem_d, n))
+//    {
+//#endif
       f_mem_d[ subs*numnodes_c*numdirs_c
              + a*numnodes_c
              + n
              ] = value;
-#if BOUNDARIES_ON
-    }
+//#if !(COMPUTE_ON_SOLIDS)
+//    }
+//#endif
+//#if BOUNDARIES_ON
   }
-#endif
+//#endif
 }
 __device__ void calc_f_tilde_d(
                   real* f_mem_d
@@ -2482,6 +2455,30 @@ int get_time( lattice_ptr lattice)
 void set_nk( lattice_ptr lattice, int nk)
 {
   lattice->param.LZ = nk;
+}
+
+//-------------------------------------------------------------//
+// From Dr Dobbs "CUDA: Supercomputing for the masses, Part 3" //
+// http://drdobbs.com/architecture-and-design/207200659        //
+//-------------------------------------------------------------//
+void checkCUDAError(const char *file, int line, const char *msg)
+{
+#if CUDA_ERROR_REPORTING
+    // Don't forget to do cudaThreadSynchronize(); before
+    // using this function on a kernel
+
+    cudaError_t err = cudaGetLastError();
+    if( cudaSuccess != err) 
+    {
+        fprintf(stderr, " CUDA Error in file:  %s\n"
+                        " Line number:         %d\n"
+                        " Point of failure:    %s\n"
+                        " Error message:       %s\n"
+                        , file, line, msg 
+                        , cudaGetErrorString( err) );
+        exit(EXIT_FAILURE);
+    }                   
+#endif      
 }
 
 // }

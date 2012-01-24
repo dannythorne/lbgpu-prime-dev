@@ -23,23 +23,45 @@ void k_stream_collide_stream(
     #endif
 
     n = i + j * ni_c + k * nixnj_c;
+    
+//    #if !(COMPUTE_ON_SOLIDS)
+//    if( d_is_not_solid( solids_mem_d, n)
+//    {
+//    #endif
     b = threadIdx.x + threadIdx.y*blockDim.x
         + threadIdx.z*bixbj_c;
 
     // Populate shared memory for a given node with global memory values from
     // surrounding nodes.  This is a streaming operation. Splitting to odd and
     // even parts is necessary for the boundary condition implementation.
-    for( a=0; a<numdirs_c; a++)
+
+    fptr[b]
+      = get_f1d_d( f_mem_d, solids_mem_d
+                 , subs
+                 , i,j,k,n
+                 , -vx_c[0],-vy_c[0],-vz_c[0]
+                 , 0, 0);
+
+    for( a=1; a<numdirs_c; a+=2)
     { 
-      // f initialization on line 253 of latman.c
-      fptr[b + a*blocksize_c]// = (real) b;/*
+      fptr[b + a*blocksize_c]
         = get_f1d_d( f_mem_d, solids_mem_d
-                   , subs//, 0
+                   , subs
                    , i,j,k,n
                    , -vx_c[a],-vy_c[a],-vz_c[a]
-                   , a);//, +1);*/
-      //fptr[b + a*blocksize_c] += 0.000001;
+                   , a, 1);
     }
+    for( a=2; a<numdirs_c; a+=2)
+    { 
+      fptr[b + a*blocksize_c]
+        = get_f1d_d( f_mem_d, solids_mem_d
+                   , subs
+                   , i,j,k,n
+                   , -vx_c[a],-vy_c[a],-vz_c[a]
+                   , a, -1);
+    }
+
+
 
 #if 1
     // Initialize shared memory values for calculating macro vars.
@@ -169,7 +191,7 @@ void k_stream_collide_stream(
     // Populate shared memory for a given node with global memory values from
     // surrounding nodes.  This is a streaming operation. Splitting to odd and
     // even parts is necessary for the boundary condition implementation.
-
+#if 1
     set_f1d_d( f_mem_d, solids_mem_d
                    , subs
                    , i,j,k,n
@@ -193,6 +215,11 @@ void k_stream_collide_stream(
                    , vx_c[a],vy_c[a],vz_c[a]
                    , a-1, fptr[b + a*blocksize_c]);
     }
+#endif
+//    #if !(COMPUTE_ON_SOLIDS)
+//    }
+//    #endif
+
 
 //  __syncthreads();
   #if __CUDA_ARCH__ < 200

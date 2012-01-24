@@ -282,72 +282,24 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
              * get_NumNodes( *lattice)
              * get_NumVelDirs( *lattice);
 
-  cudaError_t err;
 
-  err = cudaMalloc( (void**)&f_mem_d, f_mem_size*sizeof(real));
-  if(err != 0)
-  {
-    printf(
-    "%s %d %04d >> "
-    "construct_lattice() -- ERROR:  "
-    "Attempt to allocate %d real types on the device failed.  "
-    "Exiting!\n",
-    __FILE__,__LINE__,get_proc_id(*lattice),
-    f_mem_size
-    );
-    process_exit(1);
-
-  }
+  cudaMalloc( (void**)&f_mem_d, f_mem_size*sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 
   // Allocate mem block for macro vars on the gpu device
   mv_mem_size = get_NumSubs( *lattice)
               * get_NumNodes( *lattice)
               * (1 + get_NumDims( *lattice));
 
-  err = cudaMalloc( (void**)&mv_mem_d, mv_mem_size*sizeof(real));
-  if(err != 0)
-  {
-    printf(
-    "%s %d %04d >> "
-    "construct_lattice() -- ERROR:  "
-    "Attempt to allocate %d real types on the device failed.  "
-    "Exiting!\n",
-    __FILE__,__LINE__,get_proc_id(*lattice),
-    mv_mem_size
-    );
-    process_exit(1);
-
-  }
+  cudaMalloc( (void**)&mv_mem_d, mv_mem_size*sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 
   solids_mem_size = get_NumNodes( *lattice);
-  err = cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
-  if(err != 0)
-  {
-    printf(
-    "%s %d %04d >> "
-    "construct_lattice() -- ERROR:  "
-    "Attempt to allocate %d unsigned char types on the device failed.  "
-    "Exiting!\n",
-    __FILE__,__LINE__,get_proc_id(*lattice),
-    solids_mem_size
-    );
-    process_exit(1);
+  cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 
-  }
-
-  err = cudaMalloc( (void**)&is_end_of_frame_mem_d, sizeof(int));
-  if(err != 0)
-  {
-    printf(
-    "%s %d %04d >> "
-    "construct_lattice() -- ERROR:  "
-    "Attempt to allocate an integer on the device failed.  "
-    "Exiting!\n",
-    __FILE__,__LINE__,get_proc_id(*lattice)
-    );
-    process_exit(1);
-
-  }
+  cudaMalloc( (void**)&is_end_of_frame_mem_d, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 
 #endif
 
