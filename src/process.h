@@ -48,6 +48,9 @@ void process_exit( int exit_val);
 
 int get_proc_id( lattice_ptr lattice);
 int get_num_procs( lattice_ptr lattice);
+int* get_proc_id_ptr( lattice_ptr lattice);
+int* get_num_procs_ptr( lattice_ptr lattice);
+
 int is_on_root_proc( lattice_ptr lattice);
 
 int get_g_LX( lattice_ptr lattice);

@@ -29,6 +29,15 @@ void set_LZ( lattice_ptr lattice, const int arg_LZ)
   lattice->param.LZ = arg_LZ;
 }
 
+int get_end_bound_size( lattice_ptr lattice)
+{
+#if NUM_DIMENSIONS == 2
+  return get_LX( lattice);
+#else
+  return get_LX( lattice) * get_LY( lattice);
+#endif
+}
+
 int get_FrameRate( lattice_ptr lattice)
 {
   return lattice->param.FrameRate;
@@ -2131,6 +2140,9 @@ __constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
 __constant__ int numsubs_c;
 __constant__ int numdims_c;
 __constant__ int numdirs_c;
+__constant__ int end_bound_c;
+__constant__ int proc_id_c;
+__constant__ int num_procs_c;
 __constant__ int ni_c;
 __constant__ int nj_c;
 __constant__ int nk_c;
@@ -2192,6 +2204,58 @@ __device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
 #endif
 }
 
+__host__ void pdf_boundary_swap_1( lattice_ptr lattice
+    , real* f_mem_d
+    , int subs
+    , int dir
+    , int northtop
+    )
+{
+    cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+	+ dir * get_NumNodes( lattice)
+	+ (northtop) * get_NumNodes( lattice)
+	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+	*get_NumVelDirs( lattice)
+	, f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+	+ dir * get_NumNodes( lattice)
+	+ (1-northtop) * get_NumNodes( lattice)
+	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+	*get_NumVelDirs( lattice)
+	, get_end_bound_size( lattice)
+	*sizeof(real)
+	, cudaMemcpyDeviceToDevice);
+
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+
+}
+
+__host__ void pdf_boundary_swap_2( lattice_ptr lattice
+    , real* f_mem_d
+    , int subs
+    , int dir
+    , int northtop
+    )
+{
+    cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+	+ dir * get_NumNodes( lattice)
+	+ (northtop) * get_NumNodes( lattice)
+	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+	*get_NumVelDirs( lattice)
+	+ (northtop?1:-1) * get_end_bound_size( lattice)
+	, f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+	+ dir * get_NumNodes( lattice)
+	+ (1-northtop) * get_NumNodes( lattice)
+	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+	*get_NumVelDirs( lattice)
+	+ (northtop?1:-1) * get_end_bound_size( lattice)
+	, get_end_bound_size( lattice)
+	*sizeof(real)
+	, cudaMemcpyDeviceToDevice);
+
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+
+}
+
 __device__ real get_f1d_d(
     real* f_mem_d
     , unsigned char* solids_mem_d
@@ -2213,28 +2277,33 @@ __device__ real get_f1d_d(
   int k = k0+dk;
 
   if( i<0) { i+=ni_c;}
-  if( j<0) { j+=nj_c;}
-  if( k<0) { k+=nk_c;}
-
   if( i==ni_c) { i=0;}
-  if( j==nj_c) { j=0;}
-  if( k==nk_c) { k=0;}
+
+  if( numdims_c == 3)
+  {
+    if( j<0) { j+=nj_c;}
+    if( j==nj_c) { j=0;}
+  }
+
+  //    if( k<0) { k+=nk_c;}
+  //    if( k==nk_c) { k=0;}
 
   int n = i + ni_c*j + nixnj_c*k;
 #if !(IGNORE_SOLIDS)
-  if( d_is_not_solid( solids_mem_d, n))
+  if( d_is_not_solid( solids_mem_d, n + end_bound_c))
   {
 #endif
-    return f_mem_d[ subs*numnodes_c*numdirs_c + a*numnodes_c + n];
+    return f_mem_d[ subs*(numnodes_c + 2 * end_bound_c)*numdirs_c 
+      + a*(numnodes_c + 2 * end_bound_c) + n + end_bound_c];
 #if !(IGNORE_SOLIDS)
   }
   else
   { 
     // If neighboring node is a solid, return the f at node (i0,j0,k0) that
     // would be streamed out for halfway bounceback.
-    return f_mem_d[ subs*numnodes_c*numdirs_c
-      + (a+da)*numnodes_c
-      + n0
+    return f_mem_d[ subs*(numnodes_c + 2 * end_bound_c)*numdirs_c
+      + (a+da)*((numnodes_c + 2 * end_bound_c))
+      + n0 + end_bound_c
       ];
   }
 #endif
@@ -2276,7 +2345,7 @@ __device__ void set_f1d_d(
   // if  I && !C then 0
   // if !I &&  C then 1
   // if !I && !C then 0
-  if( d_is_not_solid( solids_mem_d, n0))
+  if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
   {
 #endif
     int i = i0+di;
@@ -2284,21 +2353,25 @@ __device__ void set_f1d_d(
     int k = k0+dk;
 
     if( i<0) { i+=ni_c;}
-    if( j<0) { j+=nj_c;}
-    if( k<0) { k+=nk_c;}
-
     if( i==ni_c) { i=0;}
-    if( j==nj_c) { j=0;}
-    if( k==nk_c) { k=0;}
+
+    if( numdims_c == 3)
+    {
+      if( j<0) { j+=nj_c;}
+      if( j==nj_c) { j=0;}
+    }
+
+    //    if( k<0) { k+=nk_c;}
+    //    if( k==nk_c) { k=0;}
 
     int n = i + ni_c*j + nixnj_c*k;
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
-    if( d_is_not_solid( solids_mem_d, n))
+    if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
 #endif
-      f_mem_d[ subs*numnodes_c*numdirs_c
-	+ a*numnodes_c
-	+ n
+      f_mem_d[ subs*(numnodes_c + 2 * end_bound_c)*numdirs_c 
+	+ a*(numnodes_c + 2 * end_bound_c) 
+	+ n + end_bound_c
 	] = value;
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
     }

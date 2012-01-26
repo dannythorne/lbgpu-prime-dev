@@ -25,7 +25,7 @@ void k_stream_collide_stream(
       n = i + j * ni_c + k * nixnj_c;
 
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
-      if( d_is_not_solid( solids_mem_d, n))
+      if( d_is_not_solid( solids_mem_d, n + end_bound_c))
       {
 #endif
 	b = threadIdx.x + threadIdx.y*blockDim.x

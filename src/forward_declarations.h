@@ -141,4 +141,6 @@ int get_sizeof_lattice_structure( lattice_ptr lattice);
 int get_sizeof_lattice(           lattice_ptr lattice);
 int get_num_active_nodes(         lattice_ptr lattice);
 
+void checkCUDAError(const char *file, int line, const char *msg);
+
 #endif /* FORWARD_DECLARATIONS_H */

@@ -1,8 +1,8 @@
-LX                     1600
-LY                     640
+LX                     9
+LY                     9
 LZ                     1
-BX                     16
-BY                     4
+BX                     3
+BY                     3
 BZ                     1
 characteristic_length  40
 NumFrames              20
