@@ -17,8 +17,8 @@ void process_init( lattice_ptr lattice, int argc, char **argv)
 #if VERBOSITY_LEVEL > 0
   // Say hi.
   printf("Hello >>  ProcID = %d, NumProcs = %d.\n",
-    get_proc_id( lattice),
-    get_num_procs( lattice) );
+      get_proc_id( lattice),
+      get_num_procs( lattice) );
 #endif
 } /* void process_init( lattice_ptr lattice, int argc, char **argv) */
 
@@ -42,7 +42,58 @@ void process_compute_local_params( lattice_ptr lattice)
   set_g_NumNodes( lattice, get_NumNodes( lattice));
 
   // Adjust local z-dimension according to local subdomain.
-  // NOTE: Currently only supports partitioning in z-direction.
+  // Currently only supports partitioning in y-direction
+  // for 2D and the z-direction for 3D.  Note however that
+  // this setup may be optimal for the GPU - memory locations
+  // are adjacent for the x-direction, leading to minimal
+  // number of memcpys and in the case of calculation, memory
+  // coalescense.  The minimum number of communications is only
+  // 1/3 less than that used here, and the cost of inefficient
+  // memcpys/non-coalescence is presumably higher.
+
+#if NUM_DIMENSIONS == 2
+  NumLayersOnRoot = get_g_LY( lattice) % get_num_procs( lattice);
+  if( NumLayersOnRoot != 0)
+  {
+    NumLayersPerProc =
+      ( get_g_LY( lattice) - NumLayersOnRoot) / (get_num_procs(lattice)-1);
+  }
+  else
+  {
+    NumLayersPerProc =
+      ( get_g_LY( lattice) - NumLayersOnRoot) / (get_num_procs(lattice));
+    NumLayersOnRoot = NumLayersPerProc;
+  }
+
+  if( is_on_root_proc( lattice))
+  {
+    // Assign the left-over (modulus) layers.
+    set_LY( lattice, NumLayersOnRoot);
+    set_g_SY( lattice, 0);
+    set_g_EY( lattice, 0 + NumLayersOnRoot - 1);
+    set_g_StartNode( lattice, 0);
+  }
+  else
+  {
+    set_LY( lattice, NumLayersPerProc);
+    set_g_SY( lattice,
+	NumLayersOnRoot
+	+ NumLayersPerProc*(get_proc_id(lattice)-1) );
+    set_g_EY( lattice,
+	NumLayersOnRoot
+	+ NumLayersPerProc*(get_proc_id(lattice)-1)
+	+ NumLayersPerProc
+	- 1);
+
+    set_g_StartNode( lattice,
+	get_g_SY( lattice)*( get_LX(lattice)) );
+  }
+
+  int pdf_buffer_size = 3 * get_LX( lattice);
+  int rho_buffer_size = 2 * get_LX( lattice);
+  int sol_buffer_size = 1 * get_LX( lattice); 
+
+#else
   NumLayersOnRoot = get_g_LZ( lattice) % get_num_procs( lattice);
   if( NumLayersOnRoot != 0)
   {
@@ -68,78 +119,87 @@ void process_compute_local_params( lattice_ptr lattice)
   {
     set_LZ( lattice, NumLayersPerProc);
     set_g_SZ( lattice,
-              NumLayersOnRoot
-            + NumLayersPerProc*(get_proc_id(lattice)-1) );
+	NumLayersOnRoot
+	+ NumLayersPerProc*(get_proc_id(lattice)-1) );
     set_g_EZ( lattice,
-              NumLayersOnRoot
-            + NumLayersPerProc*(get_proc_id(lattice)-1)
-            + NumLayersPerProc
-            - 1);
+	NumLayersOnRoot
+	+ NumLayersPerProc*(get_proc_id(lattice)-1)
+	+ NumLayersPerProc
+	- 1);
 
     set_g_StartNode( lattice,
-                     get_g_SZ( lattice)*( get_LX(lattice)*get_LY(lattice)) );
+	get_g_SZ( lattice)*( get_LX(lattice)*get_LY(lattice)) );
   }
+
+  int pdf_buffer_size = 5 * get_LX( lattice) * get_LY( lattice);
+  int rho_buffer_size = 2 * get_LX( lattice) * get_LY( lattice);
+  int sol_buffer_size = 1 * get_LX( lattice) * get_LY( lattice); 
+
+#endif
+
 
   set_NumNodes( lattice);
 
-  lattice->process.z_pos_pdf_to_send =
-    (real*)malloc( 5*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
-  lattice->process.z_pos_pdf_to_recv =
-    (real*)malloc( 5*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
-  lattice->process.z_neg_pdf_to_send =
-    (real*)malloc( 5*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
-  lattice->process.z_neg_pdf_to_recv =
-    (real*)malloc( 5*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
 
-  lattice->process.z_pos_rho_to_send =
-    (real*)malloc( 2*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
-  lattice->process.z_pos_rho_to_recv =
-    (real*)malloc( 2*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
-  lattice->process.z_neg_rho_to_send =
-    (real*)malloc( 2*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
-  lattice->process.z_neg_rho_to_recv =
-    (real*)malloc( 2*(get_LX(lattice)*get_LY(lattice))*sizeof(real));
 
-  lattice->process.z_pos_solid_to_send =
-    (int*)malloc( (get_LX(lattice)*get_LY(lattice))*sizeof(int));
-  lattice->process.z_pos_solid_to_recv =
-    (int*)malloc( (get_LX(lattice)*get_LY(lattice))*sizeof(int));
-  lattice->process.z_neg_solid_to_send =
-    (int*)malloc( (get_LX(lattice)*get_LY(lattice))*sizeof(int));
-  lattice->process.z_neg_solid_to_recv =
-    (int*)malloc( (get_LX(lattice)*get_LY(lattice))*sizeof(int));
+  lattice->process.pos_dir_pdf_to_send =
+    (real*)malloc( pdf_buffer_size*sizeof(real));
+  lattice->process.pos_dir_pdf_to_recv =
+    (real*)malloc( pdf_buffer_size*sizeof(real));
+  lattice->process.neg_dir_pdf_to_send =
+    (real*)malloc( pdf_buffer_size*sizeof(real));
+  lattice->process.neg_dir_pdf_to_recv =
+    (real*)malloc( pdf_buffer_size*sizeof(real));
+
+  lattice->process.pos_dir_rho_to_send =
+    (real*)malloc( rho_buffer_size*sizeof(real));
+  lattice->process.pos_dir_rho_to_recv =
+    (real*)malloc( rho_buffer_size*sizeof(real));
+  lattice->process.neg_dir_rho_to_send =
+    (real*)malloc( rho_buffer_size*sizeof(real));
+  lattice->process.neg_dir_rho_to_recv =
+    (real*)malloc( rho_buffer_size*sizeof(real));
+
+  lattice->process.pos_dir_solid_to_send =
+    (int*)malloc( sol_buffer_size*sizeof(int));
+  lattice->process.pos_dir_solid_to_recv =
+    (int*)malloc( sol_buffer_size*sizeof(int));
+  lattice->process.neg_dir_solid_to_send =
+    (int*)malloc( sol_buffer_size*sizeof(int));
+  lattice->process.neg_dir_solid_to_recv =
+    (int*)malloc( sol_buffer_size*sizeof(int));
 
 #endif
 
 #if VERBOSITY_LEVEL > 0
 #if PARALLEL
   printf(
-    "Proc %04d"
-    ", g_SX = %d"
-    ", g_EX = %d"
-    ", g_LX = %d"
-    ", g_SY = %d"
-    ", g_EY = %d"
-    ", g_LY = %d"
-    ", g_SZ = %d"
-    ", g_EZ = %d"
-    ", g_LZ = %d"
-    ", g_StartNode = %d"
-    ", g_NumNodes = %d"
-    ".\n"
-    ,get_proc_id( lattice)
-    ,get_g_SX( lattice)
-    ,get_g_EX( lattice)
-    ,get_g_LX( lattice)
-    ,get_g_SY( lattice)
-    ,get_g_EY( lattice)
-    ,get_g_LY( lattice)
-    ,get_g_SZ( lattice)
-    ,get_g_EZ( lattice)
-    ,get_g_LZ( lattice)
-    ,get_g_StartNode( lattice)
-    ,get_g_NumNodes( lattice)
-    );
+      "Proc %04d"
+      ", g_SX = %d"
+      ", g_EX = %d"
+      ", g_LX = %d"
+      ", g_SY = %d"
+      ", g_EY = %d"
+      ", g_LY = %d"
+      ", g_SZ = %d"
+      ", g_EZ = %d"
+      ", g_LZ = %d"
+      ", g_StartNode = %d"
+      ", g_NumNodes = %d"
+      ".\n"
+      ,get_proc_id( lattice)
+      ,get_g_SX( lattice)
+      ,get_g_EX( lattice)
+      ,get_g_LX( lattice)
+      ,get_g_SY( lattice)
+      ,get_g_EY( lattice)
+      ,get_g_LY( lattice)
+      ,get_g_SZ( lattice)
+      ,get_g_EZ( lattice)
+      ,get_g_LZ( lattice)
+      ,get_g_StartNode( lattice)
+      ,get_g_NumNodes( lattice)
+      );
 #endif
 #endif
 
@@ -165,30 +225,30 @@ void process_send_recv_begin( lattice_ptr lattice, const int subs)
     {
 #if SAVE_MEMO
 #else
-      lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[ T];
-      lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[ B];
+      lattice->process.pos_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[ T];
+      lattice->process.neg_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[ B];
       n++;
-      lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TW];
-      lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BW];
+      lattice->process.pos_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TW];
+      lattice->process.neg_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BW];
       n++;
-      lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TE];
-      lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BE];
+      lattice->process.pos_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TE];
+      lattice->process.neg_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BE];
       n++;
-      lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TN];
-      lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BN];
+      lattice->process.pos_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TN];
+      lattice->process.neg_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BN];
       n++;
-      lattice->process.z_pos_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TS];
-      lattice->process.z_neg_pdf_to_send[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BS];
+      lattice->process.pos_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].f[TS];
+      lattice->process.neg_dir_pdf_to_send[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].f[BS];
       n++;
 #endif
     } /* if( i=0; i<ni; i++) */
@@ -205,37 +265,37 @@ void process_send_recv_begin( lattice_ptr lattice, const int subs)
     for( i=0; i<ni; i++)
     {
 #if 0
-      lattice->process.z_pos_pdf_to_send[n] = 1;
-      lattice->process.z_neg_pdf_to_send[n] = 1;
+      lattice->process.pos_dir_pdf_to_send[n] = 1;
+      lattice->process.neg_dir_pdf_to_send[n] = 1;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = 2;
-      lattice->process.z_neg_pdf_to_send[n] = 2;
+      lattice->process.pos_dir_pdf_to_send[n] = 2;
+      lattice->process.neg_dir_pdf_to_send[n] = 2;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = 3;
-      lattice->process.z_neg_pdf_to_send[n] = 3;
+      lattice->process.pos_dir_pdf_to_send[n] = 3;
+      lattice->process.neg_dir_pdf_to_send[n] = 3;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = 4;
-      lattice->process.z_neg_pdf_to_send[n] = 4;
+      lattice->process.pos_dir_pdf_to_send[n] = 4;
+      lattice->process.neg_dir_pdf_to_send[n] = 4;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = 5;
-      lattice->process.z_neg_pdf_to_send[n] = 5;
+      lattice->process.pos_dir_pdf_to_send[n] = 5;
+      lattice->process.neg_dir_pdf_to_send[n] = 5;
       n++;
 #endif
 #if 1
-      lattice->process.z_pos_pdf_to_send[n] = k;
-      lattice->process.z_neg_pdf_to_send[n] = k;
+      lattice->process.pos_dir_pdf_to_send[n] = k;
+      lattice->process.neg_dir_pdf_to_send[n] = k;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = k;
-      lattice->process.z_neg_pdf_to_send[n] = k;
+      lattice->process.pos_dir_pdf_to_send[n] = k;
+      lattice->process.neg_dir_pdf_to_send[n] = k;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = k;
-      lattice->process.z_neg_pdf_to_send[n] = k;
+      lattice->process.pos_dir_pdf_to_send[n] = k;
+      lattice->process.neg_dir_pdf_to_send[n] = k;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = k;
-      lattice->process.z_neg_pdf_to_send[n] = k;
+      lattice->process.pos_dir_pdf_to_send[n] = k;
+      lattice->process.neg_dir_pdf_to_send[n] = k;
       n++;
-      lattice->process.z_pos_pdf_to_send[n] = k;
-      lattice->process.z_neg_pdf_to_send[n] = k;
+      lattice->process.pos_dir_pdf_to_send[n] = k;
+      lattice->process.neg_dir_pdf_to_send[n] = k;
       n++;
 
       k++;
@@ -246,135 +306,135 @@ void process_send_recv_begin( lattice_ptr lattice, const int subs)
 
   //process_dump_pdfs_to_send( lattice, "Before Send/Recv");
 
-     // S E N D   I N   P O S I T I V E   D I R E C T I O N
-     //#########################################################################
+  // S E N D   I N   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Isend( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Isend(
-       /*void *buf*/          lattice->process.z_pos_pdf_to_send,
-       /*int count*/          5*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int dest*/         ( get_proc_id(lattice)
-                            + get_num_procs(lattice)+1)
-                            % get_num_procs(lattice),
-       /*int tag*/            0,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.send_req_0)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Isend( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
-       process_finalize();
-       exit(1);
-     }
-     // R E C V   F R O M   N E G A T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Isend(
+	/*void *buf*/          lattice->process.pos_dir_pdf_to_send,
+	/*int count*/          pdf_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int dest*/         ( get_proc_id(lattice)
+	  + get_num_procs(lattice)+1)
+	% get_num_procs(lattice),
+	/*int tag*/            0,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.send_req_0)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Isend( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    exit(1);
+  }
+  // R E C V   F R O M   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Irecv( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Irecv(
-       /*void *buf*/          lattice->process.z_pos_pdf_to_recv,
-       /*int count*/          5*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int src*/          ( get_proc_id(lattice)
-                            + get_num_procs(lattice)-1)
-                            % get_num_procs(lattice),
-       /*int tag*/            0,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.recv_req_0)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Irecv( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
-       process_finalize();
-       exit(1);
-     }
-     // S E N D   I N   N E G A T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Irecv(
+	/*void *buf*/          lattice->process.pos_dir_pdf_to_recv,
+	/*int count*/          pdf_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int src*/          ( get_proc_id(lattice)
+	  + get_num_procs(lattice)-1)
+	% get_num_procs(lattice),
+	/*int tag*/            0,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.recv_req_0)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Irecv( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    exit(1);
+  }
+  // S E N D   I N   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Isend( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Isend(
-       /*void *buf*/          lattice->process.z_neg_pdf_to_send,
-       /*int count*/          5*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int dest*/         ( get_proc_id(lattice)
-                            + get_num_procs(lattice)-1)
-                            % get_num_procs(lattice),
-       /*int tag*/            1,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.send_req_1)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Isend( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
-       process_finalize();
-       exit(1);
-     }
-     // R E C V   F R O M   P O S I T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Isend(
+	/*void *buf*/          lattice->process.neg_dir_pdf_to_send,
+	/*int count*/          pdf_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int dest*/         ( get_proc_id(lattice)
+	  + get_num_procs(lattice)-1)
+	% get_num_procs(lattice),
+	/*int tag*/            1,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.send_req_1)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Isend( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    exit(1);
+  }
+  // R E C V   F R O M   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Irecv( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Irecv(
-       /*void *buf*/          lattice->process.z_neg_pdf_to_recv,
-       /*int count*/          5*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int src*/          ( get_proc_id(lattice)
-                            + get_num_procs(lattice)+1)
-                            % get_num_procs(lattice),
-       /*int tag*/            1,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.recv_req_1)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Irecv( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
-       process_finalize();
-       exit(1);
-     }
-//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+  mpierr =
+    MPI_Irecv(
+	/*void *buf*/          lattice->process.neg_dir_pdf_to_recv,
+	/*int count*/          pdf_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int src*/          ( get_proc_id(lattice)
+	  + get_num_procs(lattice)+1)
+	% get_num_procs(lattice),
+	/*int tag*/            1,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.recv_req_1)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Irecv( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    exit(1);
+  }
+  //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 
 
@@ -394,17 +454,17 @@ void process_send_recv_end( lattice_ptr lattice, const int subs)
   int jp, jn;
   int mpierr;
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.send_req_0),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.send_req_0),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.recv_req_0),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.recv_req_0),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.send_req_1),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.send_req_1),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.recv_req_1),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.recv_req_1),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
 
   //process_dump_pdfs_to_recv( lattice, "After Send/Recv, Before Stream");
   //dump_north_pointing_pdfs( lattice, subs, -1,
@@ -427,29 +487,29 @@ void process_send_recv_end( lattice_ptr lattice, const int subs)
       in = ( i>0   )?( i-1):( ni-1);
 
       lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[ T] =
-        lattice->process.z_pos_pdf_to_recv[n];
+	lattice->process.pos_dir_pdf_to_recv[n];
       lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[ B] =
-        lattice->process.z_neg_pdf_to_recv[n];
+	lattice->process.neg_dir_pdf_to_recv[n];
       n++;
       lattice->pdf[subs][ IJK2N( in, j , 0, ni, nj)].ftemp[TW] =
-        lattice->process.z_pos_pdf_to_recv[n];
+	lattice->process.pos_dir_pdf_to_recv[n];
       lattice->pdf[subs][ IJK2N( in, j , k, ni, nj)].ftemp[BW] =
-        lattice->process.z_neg_pdf_to_recv[n];
+	lattice->process.neg_dir_pdf_to_recv[n];
       n++;
       lattice->pdf[subs][ IJK2N( ip, j , 0, ni, nj)].ftemp[TE] =
-        lattice->process.z_pos_pdf_to_recv[n];
+	lattice->process.pos_dir_pdf_to_recv[n];
       lattice->pdf[subs][ IJK2N( ip, j , k, ni, nj)].ftemp[BE] =
-        lattice->process.z_neg_pdf_to_recv[n];
+	lattice->process.neg_dir_pdf_to_recv[n];
       n++;
       lattice->pdf[subs][ IJK2N( i , jp, 0, ni, nj)].ftemp[TN] =
-        lattice->process.z_pos_pdf_to_recv[n];
+	lattice->process.pos_dir_pdf_to_recv[n];
       lattice->pdf[subs][ IJK2N( i , jp, k, ni, nj)].ftemp[BN] =
-        lattice->process.z_neg_pdf_to_recv[n];
+	lattice->process.neg_dir_pdf_to_recv[n];
       n++;
       lattice->pdf[subs][ IJK2N( i , jn, 0, ni, nj)].ftemp[TS] =
-        lattice->process.z_pos_pdf_to_recv[n];
+	lattice->process.pos_dir_pdf_to_recv[n];
       lattice->pdf[subs][ IJK2N( i , jn, k, ni, nj)].ftemp[BS] =
-        lattice->process.z_neg_pdf_to_recv[n];
+	lattice->process.neg_dir_pdf_to_recv[n];
       n++;
 
     } /* if( i=0; i<ni; i++) */
@@ -464,41 +524,41 @@ void process_send_recv_end( lattice_ptr lattice, const int subs)
   {
     for( i=0; i<ni; i++)
     {
-      lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[ T];
-      lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[ B];
+      lattice->process.pos_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[ T];
+      lattice->process.neg_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[ B];
       n++;
-      lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TW];
-      lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BW];
+      lattice->process.pos_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TW];
+      lattice->process.neg_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BW];
       n++;
-      lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TE];
-      lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BE];
+      lattice->process.pos_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TE];
+      lattice->process.neg_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BE];
       n++;
-      lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TN];
-      lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BN];
+      lattice->process.pos_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TN];
+      lattice->process.neg_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BN];
       n++;
-      lattice->process.z_pos_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TS];
-      lattice->process.z_neg_pdf_to_recv[n] =
-        lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BS];
+      lattice->process.pos_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , k, ni, nj)].ftemp[TS];
+      lattice->process.neg_dir_pdf_to_recv[n] =
+	lattice->pdf[subs][ IJK2N( i , j , 0, ni, nj)].ftemp[BS];
       n++;
 
     } /* if( i=0; i<ni; i++) */
   } /* if( j=0; j<nj; j++) */
 #else
   gather_north_pointing_pdfs( lattice,
-                              lattice->process.z_pos_pdf_to_recv,
-                              subs, get_LZ(lattice)-1, 2);
+      lattice->process.pos_dir_pdf_to_recv,
+      subs, get_LZ(lattice)-1, 2);
   gather_south_pointing_pdfs( lattice,
-                              lattice->process.z_neg_pdf_to_recv,
-                              subs, 0, 2);
+      lattice->process.neg_dir_pdf_to_recv,
+      subs, 0, 2);
 #endif
 
   //process_dump_pdfs_to_recv( lattice, "After Stream");
@@ -519,160 +579,160 @@ void rho_send_recv_begin( lattice_ptr lattice, const int subs)
       nj = get_LY( lattice);
   int mpierr;
 
-//rev Huang
-//To send "rho" and "solid" to neighbour blocks
+  //rev Huang
+  //To send "rho" and "solid" to neighbour blocks
   n =0;
   k = get_LZ(lattice)-1;
-// for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
- for( a=0; a<NUM_FLUID_COMPONENTS; a++)
-   //changed by Shadab on Danny's suggestion!!
+  // for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
+  for( a=0; a<NUM_FLUID_COMPONENTS; a++)
+    //changed by Shadab on Danny's suggestion!!
   {
-  for( j=0; j<nj; j++)
-  {
-    for( i=0; i<ni; i++)
+    for( j=0; j<nj; j++)
     {
+      for( i=0; i<ni; i++)
+      {
 #if SAVE_MEMO
 
 #else
 
-      lattice->process.z_pos_rho_to_send[n] =
-        lattice->macro_vars[a][ IJK2N( i , j , k, ni, nj)].rho;
-      lattice->process.z_neg_rho_to_send[n] =
-        lattice->macro_vars[a][ IJK2N( i , j , 0, ni, nj)].rho;
-      n++;
+	lattice->process.pos_dir_rho_to_send[n] =
+	  lattice->macro_vars[a][ IJK2N( i , j , k, ni, nj)].rho;
+	lattice->process.neg_dir_rho_to_send[n] =
+	  lattice->macro_vars[a][ IJK2N( i , j , 0, ni, nj)].rho;
+	n++;
 #endif
-    } /* if( i=0; i<ni; i++) */
-  } /* if( j=0; j<nj; j++) */
+      } /* if( i=0; i<ni; i++) */
+    } /* if( j=0; j<nj; j++) */
   } //for  subs=0; subs<NUM_FLUID_COMPONENTS; subs++
 
-     // S E N D   I N   P O S I T I V E   D I R E C T I O N
-     //#########################################################################
+  // S E N D   I N   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Isend( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Isend(
-       /*void *buf*/          lattice->process.z_pos_rho_to_send,
-       /*int count*/          2*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int dest*/         ( get_proc_id(lattice)
-                            + get_num_procs(lattice)+1)
-                            % get_num_procs(lattice),
-       /*int tag*/            2,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.send_req_2)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Isend( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
-     // R E C V   F R O M   N E G A T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Isend(
+	/*void *buf*/          lattice->process.pos_dir_rho_to_send,
+	/*int count*/          rho_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int dest*/         ( get_proc_id(lattice)
+	  + get_num_procs(lattice)+1)
+	% get_num_procs(lattice),
+	/*int tag*/            2,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.send_req_2)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Isend( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // R E C V   F R O M   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Irecv( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Irecv(
-       /*void *buf*/          lattice->process.z_pos_rho_to_recv,
-       /*int count*/          2*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int src*/          ( get_proc_id(lattice)
-                            + get_num_procs(lattice)-1)
-                            % get_num_procs(lattice),
-       /*int tag*/            2,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.recv_req_2)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Irecv( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
-     // S E N D   I N   N E G A T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Irecv(
+	/*void *buf*/          lattice->process.pos_dir_rho_to_recv,
+	/*int count*/          rho_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int src*/          ( get_proc_id(lattice)
+	  + get_num_procs(lattice)-1)
+	% get_num_procs(lattice),
+	/*int tag*/            2,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.recv_req_2)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Irecv( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // S E N D   I N   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Isend( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Isend(
-       /*void *buf*/          lattice->process.z_neg_rho_to_send,
-       /*int count*/          2*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int dest*/         ( get_proc_id(lattice)
-                            + get_num_procs(lattice)-1)
-                            % get_num_procs(lattice),
-       /*int tag*/            3,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.send_req_3)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Isend( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
-     // R E C V   F R O M   P O S I T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Isend(
+	/*void *buf*/          lattice->process.neg_dir_rho_to_send,
+	/*int count*/          rho_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int dest*/         ( get_proc_id(lattice)
+	  + get_num_procs(lattice)-1)
+	% get_num_procs(lattice),
+	/*int tag*/            3,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.send_req_3)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Isend( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // R E C V   F R O M   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Irecv( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Irecv(
-       /*void *buf*/          lattice->process.z_neg_rho_to_recv,
-       /*int count*/          2*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_DOUBLE,
-       /*int src*/          ( get_proc_id(lattice)
-                            + get_num_procs(lattice)+1)
-                            % get_num_procs(lattice),
-       /*int tag*/            3,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.recv_req_3)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Irecv( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
+  mpierr =
+    MPI_Irecv(
+	/*void *buf*/          lattice->process.neg_dir_rho_to_recv,
+	/*int count*/          rho_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*int src*/          ( get_proc_id(lattice)
+	  + get_num_procs(lattice)+1)
+	% get_num_procs(lattice),
+	/*int tag*/            3,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.recv_req_3)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Irecv( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
 
 
 
@@ -692,17 +752,17 @@ void rho_send_recv_end( lattice_ptr lattice, const int subs)
   int mpierr;
 
   mpierr = MPI_Wait(
-  /* mpi_request *req */&(lattice->process.send_req_2),
-  /* mpi_status *stat */&(lattice->process.mpi_status));
+      /* mpi_request *req */&(lattice->process.send_req_2),
+      /* mpi_status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* mpi_request *req */&(lattice->process.recv_req_2),
-  /* mpi_status *stat */&(lattice->process.mpi_status));
+      /* mpi_request *req */&(lattice->process.recv_req_2),
+      /* mpi_status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* mpi_request *req */&(lattice->process.send_req_3),
-  /* mpi_status *stat */&(lattice->process.mpi_status));
+      /* mpi_request *req */&(lattice->process.send_req_3),
+      /* mpi_status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* mpi_request *req */&(lattice->process.recv_req_3),
-  /* mpi_status *stat */&(lattice->process.mpi_status));
+      /* mpi_request *req */&(lattice->process.recv_req_3),
+      /* mpi_status *stat */&(lattice->process.mpi_status));
 
 #endif
 } /* void rho_send_recv_end( lattice_ptr lattice, const int subs) */
@@ -717,8 +777,8 @@ void solid_send_recv_begin( lattice_ptr lattice, const int subs)
       nj = get_LY( lattice);
   int mpierr;
 
-//rev Huang
-//To send "rho" and "solid" to neighbour blocks
+  //rev Huang
+  //To send "rho" and "solid" to neighbour blocks
   n =0;
   k = get_LZ(lattice)-1;
   for( j=0; j<nj; j++)
@@ -728,144 +788,144 @@ void solid_send_recv_begin( lattice_ptr lattice, const int subs)
 #if SAVE_MEMO
 
 #else
-      lattice->process.z_pos_solid_to_send[n] =
-        lattice->solids[subs][ IJK2N( i , j , k, ni, nj)].is_solid;
-      lattice->process.z_neg_solid_to_send[n] =
-        lattice->solids[subs][ IJK2N( i , j , 0, ni, nj)].is_solid;
+      lattice->process.pos_dir_solid_to_send[n] =
+	lattice->solids[subs][ IJK2N( i , j , k, ni, nj)].is_solid;
+      lattice->process.neg_dir_solid_to_send[n] =
+	lattice->solids[subs][ IJK2N( i , j , 0, ni, nj)].is_solid;
       n++;
 #endif
     } /* if( i=0; i<ni; i++) */
   } /* if( j=0; j<nj; j++) */
 
 
-     // SOLID S E N D   I N   P O S I T I V E   D I R E C T I O N
-     //#########################################################################
+  // SOLID S E N D   I N   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Isend( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Isend(
-       /*void *buf*/          lattice->process.z_pos_solid_to_send,
-       /*int count*/          1*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_INT,
-       /*int dest*/         ( get_proc_id(lattice)
-                            + get_num_procs(lattice)+1)
-                            % get_num_procs(lattice),
-       /*int tag*/            4,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.send_req_4)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Isend( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
-     // SOLID R E C V   F R O M   N E G A T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Isend(
+	/*void *buf*/          lattice->process.pos_dir_solid_to_send,
+	/*int count*/          sol_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_INT,
+	/*int dest*/         ( get_proc_id(lattice)
+	  + get_num_procs(lattice)+1)
+	% get_num_procs(lattice),
+	/*int tag*/            4,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.send_req_4)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Isend( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // SOLID R E C V   F R O M   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Irecv( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Irecv(
-       /*void *buf*/          lattice->process.z_pos_solid_to_recv,
-       /*int count*/          1*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_INT,
-       /*int src*/          ( get_proc_id(lattice)
-                            + get_num_procs(lattice)-1)
-                            % get_num_procs(lattice),
-       /*int tag*/            4,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.recv_req_4)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Irecv( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
-     // SOLID S E N D   I N   N E G A T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Irecv(
+	/*void *buf*/          lattice->process.pos_dir_solid_to_recv,
+	/*int count*/          sol_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_INT,
+	/*int src*/          ( get_proc_id(lattice)
+	  + get_num_procs(lattice)-1)
+	% get_num_procs(lattice),
+	/*int tag*/            4,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.recv_req_4)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Irecv( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // SOLID S E N D   I N   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Isend( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Isend(
-       /*void *buf*/          lattice->process.z_neg_solid_to_send,
-       /*int count*/          1*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_INT,
-       /*int dest*/         ( get_proc_id(lattice)
-                            + get_num_procs(lattice)-1)
-                            % get_num_procs(lattice),
-       /*int tag*/            5,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.send_req_5)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Isend( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
-     // SOLID R E C V   F R O M   P O S I T I V E   D I R E C T I O N
-     //#########################################################################
+  mpierr =
+    MPI_Isend(
+	/*void *buf*/          lattice->process.neg_dir_solid_to_send,
+	/*int count*/          sol_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_INT,
+	/*int dest*/         ( get_proc_id(lattice)
+	  + get_num_procs(lattice)-1)
+	% get_num_procs(lattice),
+	/*int tag*/            5,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.send_req_5)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Isend( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // SOLID R E C V   F R O M   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
 #if VERBOSITY_LEVEL > 1
-     printf( "%s %d %04d >> "
-       "MPI_Irecv( %04d)"
-       "\n",
-       __FILE__,__LINE__,get_proc_id(lattice),
-       (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
 #endif
-     mpierr =
-       MPI_Irecv(
-       /*void *buf*/          lattice->process.z_neg_solid_to_recv,
-       /*int count*/          1*(get_LX(lattice)*get_LY(lattice)),
-       /*MPI_Datatype dtype*/ MPI_INT,
-       /*int src*/          ( get_proc_id(lattice)
-                            + get_num_procs(lattice)+1)
-                            % get_num_procs(lattice),
-       /*int tag*/            5,
-       /*MPI_Comm comm*/      MPI_COMM_WORLD,
-       /*MPI_Request *req*/   &(lattice->process.recv_req_5)
-       );
-     if( mpierr != MPI_SUCCESS)
-     {
-       printf( "%s %d %04d >> "
-         "ERROR: %d <-- MPI_Irecv( %04d)"
-         "\n",
-         __FILE__,__LINE__,get_proc_id(lattice),
-         mpierr,
-         (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
-       process_finalize();
-       process_exit(1);
-     }
+  mpierr =
+    MPI_Irecv(
+	/*void *buf*/          lattice->process.neg_dir_solid_to_recv,
+	/*int count*/          sol_buffer_size,
+	/*MPI_Datatype dtype*/ MPI_INT,
+	/*int src*/          ( get_proc_id(lattice)
+	  + get_num_procs(lattice)+1)
+	% get_num_procs(lattice),
+	/*int tag*/            5,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD,
+	/*MPI_Request *req*/   &(lattice->process.recv_req_5)
+	);
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+	"ERROR: %d <-- MPI_Irecv( %04d)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice),
+	mpierr,
+	(get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
 
 
 
@@ -885,17 +945,17 @@ void solid_send_recv_end( lattice_ptr lattice, const int subs)
   int mpierr;
 
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.send_req_4),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.send_req_4),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.recv_req_4),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.recv_req_4),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.send_req_5),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.send_req_5),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
   mpierr = MPI_Wait(
-  /* MPI_Request *req */&(lattice->process.recv_req_5),
-  /* MPI_Status *stat */&(lattice->process.mpi_status));
+      /* MPI_Request *req */&(lattice->process.recv_req_5),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
 
 
 #endif
@@ -913,14 +973,14 @@ void process_dump_pdfs_to_recv( lattice_ptr lattice, char *comment_str)
   char new_comment[1024];
   sprintf( new_comment, "pos pdfs to recv, %s", comment_str);
   process_dump_pdfs(
-    lattice,
-    new_comment,
-    lattice->process.z_pos_pdf_to_recv);
+      lattice,
+      new_comment,
+      lattice->process.pos_dir_pdf_to_recv);
   sprintf( new_comment, "neg pdfs to recv, %s", comment_str);
   process_dump_pdfs(
-    lattice,
-    new_comment,
-    lattice->process.z_neg_pdf_to_recv);
+      lattice,
+      new_comment,
+      lattice->process.neg_dir_pdf_to_recv);
 #endif
 } /* void process_dump_pdfs_to_recv( lattice_ptr lattice)  */
 
@@ -931,14 +991,14 @@ void process_dump_pdfs_to_send( lattice_ptr lattice, char *comment_str)
   char new_comment[1024];
   sprintf( new_comment, "pos pdfs to send, %s", comment_str);
   process_dump_pdfs(
-    lattice,
-    new_comment,
-    lattice->process.z_pos_pdf_to_send);
+      lattice,
+      new_comment,
+      lattice->process.pos_dir_pdf_to_send);
   sprintf( new_comment, "neg pdfs to send, %s", comment_str);
   process_dump_pdfs(
-    lattice,
-    new_comment,
-    lattice->process.z_neg_pdf_to_send);
+      lattice,
+      new_comment,
+      lattice->process.neg_dir_pdf_to_send);
 #endif
 } /* void process_dump_pdfs_to_send( lattice_ptr lattice)  */
 
@@ -962,71 +1022,71 @@ void process_dump_pdfs( lattice_ptr lattice, char *comment_str, real *pdfs)
       printf("\n ");
       for( i=0; i<ni; i++)
       {
-        printf("+");
-        printf("---");
-        printf("---");
-        printf("---");
-        printf("-");
+	printf("+");
+	printf("---");
+	printf("---");
+	printf("---");
+	printf("-");
       }
       printf("+");
 
       for( j=0; j<nj; j++)
       {
-        // 0 1 2 3 4
-        // O W E N S
+	// 0 1 2 3 4
+	// O W E N S
 
-        // South
-        n = 5*j*ni + 4;
-        printf("\n ");
-        for( i=0; i<ni; i++)
-        {
-          printf("|");
-          printf("   ");
-          printf(" %2.0f", pdfs[n]);
-          printf("   ");
-          printf(" ");
-          n+=5;
-        }
-        printf("|");
+	// South
+	n = 5*j*ni + 4;
+	printf("\n ");
+	for( i=0; i<ni; i++)
+	{
+	  printf("|");
+	  printf("   ");
+	  printf(" %2.0f", pdfs[n]);
+	  printf("   ");
+	  printf(" ");
+	  n+=5;
+	}
+	printf("|");
 
-        // West/O/East
-        n = 5*j*ni + 0;
-        printf("\n ");
-        for( i=0; i<ni; i++)
-        {
-          printf("|");
-          printf(" %2.0f", pdfs[n+1]);
-          printf(" %2.0f", pdfs[n]);
-          printf(" %2.0f", pdfs[n+2]);
-          printf(" ");
-          n+=5;
-        }
-        printf("|");
+	// West/O/East
+	n = 5*j*ni + 0;
+	printf("\n ");
+	for( i=0; i<ni; i++)
+	{
+	  printf("|");
+	  printf(" %2.0f", pdfs[n+1]);
+	  printf(" %2.0f", pdfs[n]);
+	  printf(" %2.0f", pdfs[n+2]);
+	  printf(" ");
+	  n+=5;
+	}
+	printf("|");
 
-        // North
-        n = 5*j*ni + 3;
-        printf("\n ");
-        for( i=0; i<ni; i++)
-        {
-          printf("|");
-          printf("   ");
-          printf(" %2.0f", pdfs[n]);
-          printf("   ");
-          printf(" ");
-          n+=5;
-        }
-        printf("|");
+	// North
+	n = 5*j*ni + 3;
+	printf("\n ");
+	for( i=0; i<ni; i++)
+	{
+	  printf("|");
+	  printf("   ");
+	  printf(" %2.0f", pdfs[n]);
+	  printf("   ");
+	  printf(" ");
+	  n+=5;
+	}
+	printf("|");
 
-        printf("\n ");
-        for( i=0; i<ni; i++)
-        {
-          printf("+");
-          printf("---");
-          printf("---");
-          printf("---");
-          printf("-");
-        }
-        printf("+");
+	printf("\n ");
+	for( i=0; i<ni; i++)
+	{
+	  printf("+");
+	  printf("---");
+	  printf("---");
+	  printf("---");
+	  printf("-");
+	}
+	printf("+");
 
       } /* if( j=0; j<nj; j++) */
     } /* if( p == get_proc_id(lattice)) */
@@ -1039,11 +1099,11 @@ void process_dump_pdfs( lattice_ptr lattice, char *comment_str, real *pdfs)
 
 //##############################################################################
 void gather_north_pointing_pdfs(
-       lattice_ptr lattice,
-       real *north,
-       const int subs,
-       const int k,
-       const int which_pdf)
+    lattice_ptr lattice,
+    real *north,
+    const int subs,
+    const int k,
+    const int which_pdf)
 {
 #if PARALLEL
   int i, j, n;
@@ -1056,54 +1116,54 @@ void gather_north_pointing_pdfs(
       n = 0;
       for( j=0; j<nj; j++)
       {
-        for( i=0; i<ni; i++)
-        {
+	for( i=0; i<ni; i++)
+	{
 #if SAVE_MEMO
 #else
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[ T]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TW]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TE]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TN]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TS]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[ T]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TW]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TE]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TN]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[TS]; n++;
 #endif
-        } /* if( i=0; i<ni; i++) */
+	} /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
       break;
     case 1:
       n = 0;
       for( j=0; j<nj; j++)
       {
-        for( i=0; i<ni; i++)
-        {
+	for( i=0; i<ni; i++)
+	{
 #if SAVE_MEMO
 #else
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[ T]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TW]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TE]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TN]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TS]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[ T]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TW]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TE]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TN]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[TS]; n++;
 #endif
-        } /* if( i=0; i<ni; i++) */
+	} /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
       break;
     case 2:
       n = 0;
       for( j=0; j<nj; j++)
       {
-        for( i=0; i<ni; i++)
-        {
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[ T]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TW]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TE]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TN]; n++;
-          north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TS]; n++;
+	for( i=0; i<ni; i++)
+	{
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[ T]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TW]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TE]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TN]; n++;
+	  north[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[TS]; n++;
 
-        } /* if( i=0; i<ni; i++) */
+	} /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
       break;
     default:
       printf("%s %d %04d >> ERROR: Unhandled case which_pdf=%d. Exiting!",
-        __FILE__,__LINE__,get_proc_id(lattice), which_pdf);
+	  __FILE__,__LINE__,get_proc_id(lattice), which_pdf);
       exit(1);
       break;
   } /* switch(which_pdf) */
@@ -1112,11 +1172,11 @@ void gather_north_pointing_pdfs(
 
 //##############################################################################
 void gather_south_pointing_pdfs(
-       lattice_ptr lattice,
-       real *south,
-       const int subs,
-       const int k,
-       const int which_pdf)
+    lattice_ptr lattice,
+    real *south,
+    const int subs,
+    const int k,
+    const int which_pdf)
 {
 #if PARALLEL
   int i, j, n;
@@ -1128,54 +1188,54 @@ void gather_south_pointing_pdfs(
       n = 0;
       for( j=0; j<nj; j++)
       {
-        for( i=0; i<ni; i++)
-        {
+	for( i=0; i<ni; i++)
+	{
 #if SAVE_MEMO
 #else
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[ B]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BW]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BE]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BN]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BS]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[ B]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BW]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BE]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BN]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].feq[BS]; n++;
 #endif
-        } /* if( i=0; i<ni; i++) */
+	} /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
       break;
     case 1:
       n = 0;
       for( j=0; j<nj; j++)
       {
-        for( i=0; i<ni; i++)
-        {
+	for( i=0; i<ni; i++)
+	{
 #if SAVE_MEMO
 #else
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[ B]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BW]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BE]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BN]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BS]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[ B]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BW]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BE]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BN]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].f[BS]; n++;
 #endif
-        } /* if( i=0; i<ni; i++) */
+	} /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
       break;
     case 2:
       n = 0;
       for( j=0; j<nj; j++)
       {
-        for( i=0; i<ni; i++)
-        {
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[ B]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BW]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BE]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BN]; n++;
-          south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BS]; n++;
+	for( i=0; i<ni; i++)
+	{
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[ B]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BW]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BE]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BN]; n++;
+	  south[n] = lattice->pdf[subs][ IJK2N(i,j,k, ni, nj)].ftemp[BS]; n++;
 
-        } /* if( i=0; i<ni; i++) */
+	} /* if( i=0; i<ni; i++) */
       } /* if( j=0; j<nj; j++) */
       break;
     default:
       printf("%s %d %04d >> ERROR: Unhandled case which_pdf=%d. Exiting!",
-        __FILE__,__LINE__,get_proc_id(lattice), which_pdf);
+	  __FILE__,__LINE__,get_proc_id(lattice), which_pdf);
       exit(1);
       break;
   }
@@ -1202,20 +1262,20 @@ void process_reduce_real_sum( lattice_ptr lattice, real *arg_x)
   //
   mpierr =
     MPI_Reduce(
-    /*void *sbuf*/         arg_x,
-    /*void* rbuf*/        &sum_x,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_DOUBLE,
-    /*MPI_Op op*/          MPI_SUM,
-    /*int root*/           0,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_x,
+	/*void* rbuf*/        &sum_x,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*MPI_Op op*/          MPI_SUM,
+	/*int root*/           0,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }
@@ -1246,19 +1306,19 @@ void process_allreduce_real_sum( lattice_ptr lattice, real *arg_x)
   //
   mpierr =
     MPI_Allreduce(
-    /*void *sbuf*/         arg_x,
-    /*void* rbuf*/        &sum_x,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_DOUBLE,
-    /*MPI_Op op*/          MPI_SUM,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_x,
+	/*void* rbuf*/        &sum_x,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*MPI_Op op*/          MPI_SUM,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }
@@ -1288,20 +1348,20 @@ void process_reduce_int_sum( lattice_ptr lattice, int *arg_n)
   //
   mpierr =
     MPI_Reduce(
-    /*void *sbuf*/         arg_n,
-    /*void* rbuf*/        &sum_n,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_INT,
-    /*MPI_Op op*/          MPI_SUM,
-    /*int root*/           0,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_n,
+	/*void* rbuf*/        &sum_n,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_INT,
+	/*MPI_Op op*/          MPI_SUM,
+	/*int root*/           0,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }
@@ -1332,19 +1392,19 @@ void process_allreduce_int_sum( lattice_ptr lattice, int *arg_n)
   //
   mpierr =
     MPI_Allreduce(
-    /*void *sbuf*/         arg_n,
-    /*void* rbuf*/        &sum_n,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_INT,
-    /*MPI_Op op*/          MPI_SUM,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_n,
+	/*void* rbuf*/        &sum_n,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_INT,
+	/*MPI_Op op*/          MPI_SUM,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }
@@ -1374,20 +1434,20 @@ void process_reduce_real_max( lattice_ptr lattice, real *arg_x)
   //
   mpierr =
     MPI_Reduce(
-    /*void *sbuf*/         arg_x,
-    /*void* rbuf*/        &max_x,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_DOUBLE,
-    /*MPI_Op op*/          MPI_MAX,
-    /*int root*/           0,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_x,
+	/*void* rbuf*/        &max_x,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*MPI_Op op*/          MPI_MAX,
+	/*int root*/           0,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }
@@ -1417,19 +1477,19 @@ void process_allreduce_real_max( lattice_ptr lattice, real *arg_x)
   //
   mpierr =
     MPI_Allreduce(
-    /*void *sbuf*/         arg_x,
-    /*void* rbuf*/        &max_x,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_DOUBLE,
-    /*MPI_Op op*/          MPI_MAX,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_x,
+	/*void* rbuf*/        &max_x,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*MPI_Op op*/          MPI_MAX,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Allreduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Allreduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }
@@ -1459,20 +1519,20 @@ void process_reduce_real_min( lattice_ptr lattice, real *arg_x)
   //
   mpierr =
     MPI_Reduce(
-    /*void *sbuf*/         arg_x,
-    /*void* rbuf*/        &min_x,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_DOUBLE,
-    /*MPI_Op op*/          MPI_MIN,
-    /*int root*/           0,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_x,
+	/*void* rbuf*/        &min_x,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*MPI_Op op*/          MPI_MIN,
+	/*int root*/           0,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Reduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }
@@ -1502,19 +1562,19 @@ void process_allreduce_real_min( lattice_ptr lattice, real *arg_x)
   //
   mpierr =
     MPI_Allreduce(
-    /*void *sbuf*/         arg_x,
-    /*void* rbuf*/        &min_x,
-    /*int count*/          1,
-    /*MPI_Datatype dtype*/ MPI_DOUBLE,
-    /*MPI_Op op*/          MPI_MIN,
-    /*MPI_Comm comm*/      MPI_COMM_WORLD
-    );
+	/*void *sbuf*/         arg_x,
+	/*void* rbuf*/        &min_x,
+	/*int count*/          1,
+	/*MPI_Datatype dtype*/ MPI_DOUBLE,
+	/*MPI_Op op*/          MPI_MIN,
+	/*MPI_Comm comm*/      MPI_COMM_WORLD
+	);
   if( mpierr != MPI_SUCCESS)
   {
     printf( "%s %d %04d >> "
-      "ERROR: %d <-- MPI_Allreduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
-      "\n",
-      __FILE__,__LINE__,get_proc_id(lattice), mpierr);
+	"ERROR: %d <-- MPI_Allreduce( ave_rho, MPI_DOUBLE, MPI_SUM)"
+	"\n",
+	__FILE__,__LINE__,get_proc_id(lattice), mpierr);
     process_finalize();
     exit(1);
   }

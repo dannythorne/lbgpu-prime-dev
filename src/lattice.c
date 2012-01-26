@@ -2120,13 +2120,13 @@ unsigned char* get_solids_ptr( lattice_ptr lattice, const int n)
 
 #ifdef __CUDACC__
 
-__constant__ int vx_c[19];
-__constant__ int vy_c[19];
-__constant__ int vz_c[19];
-__constant__ real wt_c[19];
+__constant__ int vx_c[19];     //
+__constant__ int vy_c[19];     // Enough space for D3Q19; first 9
+__constant__ int vz_c[19];     // components constitute D2Q9 model
+__constant__ real wt_c[19];    // 
 
-__constant__ real tau_c[2];    // hardcoded for up to 2 fluid components
-__constant__ real gaccel_c[6]; // hardcoded for up to 2 3D fluid components
+__constant__ real tau_c[2];    // Hardcoded for up to 2 fluid components
+__constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
 
 __constant__ int numsubs_c;
 __constant__ int numdims_c;
@@ -2449,7 +2449,7 @@ int do_write_u_txt_file( lattice_ptr lattice)
 
 int do_write_f_txt_file( lattice_ptr lattice)
 {
-  return 1; // TODO: params.in or flags.in
+  return 0; // TODO: params.in or flags.in
 }
 
 int get_time( lattice_ptr lattice)

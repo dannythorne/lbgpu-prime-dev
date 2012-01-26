@@ -35,7 +35,7 @@
 
 // Use 1D texture fetching for boundaries
 
-#define TEXTURE_FETCH 0
+#define TEXTURE_FETCH 1
 
 // Report errors with CUDA host functions
 

@@ -641,21 +641,21 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
         }
         else if(k+vz[a]>=nk)
         {
-              if( !( lattice->process.z_neg_solid_to_recv[ja*ni+ia] ))
+              if( !( lattice->process.neg_dir_solid_to_recv[ja*ni+ia] ))
                {
-                rho = lattice->process.z_neg_rho_to_recv[subs*ni*nj +ja*ni+ia];
+                rho = lattice->process.neg_dir_rho_to_recv[subs*ni*nj +ja*ni+ia];
                 force[subs][0] += WM*vx[a]*rho;
                 force[subs][1] += WM*vy[a]*rho;
                 force[subs][2] += WM*vz[a]*rho;
-// lattice->process.z_neg_solid_to_recv[n];
+// lattice->process.neg_dir_solid_to_recv[n];
          }
 
         }
         else
         {
-              if( !( lattice->process.z_pos_solid_to_recv[ja*ni+ia] ))
+              if( !( lattice->process.pos_dir_solid_to_recv[ja*ni+ia] ))
                {
-                rho = lattice->process.z_pos_rho_to_recv[subs*ni*nj +ja*ni+ia];
+                rho = lattice->process.pos_dir_rho_to_recv[subs*ni*nj +ja*ni+ia];
                 force[subs][0] += WM*vx[a]*rho;
                 force[subs][1] += WM*vy[a]*rho;
                 force[subs][2] += WM*vz[a]*rho;
@@ -696,21 +696,21 @@ void compute_fluid_fluid_force( lattice_ptr lattice)
         }
         else if(k+vz[a]>=nk)
         {
-              if( !( lattice->process.z_neg_solid_to_recv[ja*ni+ia] ))
+              if( !( lattice->process.neg_dir_solid_to_recv[ja*ni+ia] ))
                {
-                rho = lattice->process.z_neg_rho_to_recv[subs*ni*nj +ja*ni+ia];
+                rho = lattice->process.neg_dir_rho_to_recv[subs*ni*nj +ja*ni+ia];
                 force[subs][0] += WD*vx[a]*rho;
                 force[subs][1] += WD*vy[a]*rho;
                 force[subs][2] += WD*vz[a]*rho;
-// lattice->process.z_neg_solid_to_recv[n];
+// lattice->process.neg_dir_solid_to_recv[n];
          }
 
         }
         else
         {
-              if( !( lattice->process.z_pos_solid_to_recv[ja*ni+ia] ))
+              if( !( lattice->process.pos_dir_solid_to_recv[ja*ni+ia] ))
                {
-                rho = lattice->process.z_pos_rho_to_recv[subs*ni*nj +ja*ni+ia];
+                rho = lattice->process.pos_dir_rho_to_recv[subs*ni*nj +ja*ni+ia];
                 force[subs][0] += WD*vx[a]*rho;
                 force[subs][1] += WD*vy[a]*rho;
                 force[subs][2] += WD*vz[a]*rho;
@@ -1025,7 +1025,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
         }
         else if(k+vz[a]>=nk)
         {
-              if( ( lattice->process.z_neg_solid_to_recv[ja*ni+ia] ))
+              if( ( lattice->process.neg_dir_solid_to_recv[ja*ni+ia] ))
                {
                 sum_x += WM*vx[a];
                 sum_y += WM*vy[a];
@@ -1035,7 +1035,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
         }
         else
         {
-              if( ( lattice->process.z_pos_solid_to_recv[ja*ni+ia] ))
+              if( ( lattice->process.pos_dir_solid_to_recv[ja*ni+ia] ))
                {
                 sum_x += WM*vx[a];
                 sum_y += WM*vy[a];
@@ -1075,7 +1075,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
         }
         else if(k+vz[a]>=nk)
         {
-              if( ( lattice->process.z_neg_solid_to_recv[ja*ni+ia] ))
+              if( ( lattice->process.neg_dir_solid_to_recv[ja*ni+ia] ))
                {
                 sum_x += WD*vx[a];
                 sum_y += WD*vy[a];
@@ -1085,7 +1085,7 @@ void compute_real_fluid_solid_force( lattice_ptr lattice)
         }
         else
         {
-              if( ( lattice->process.z_pos_solid_to_recv[ja*ni+ia] ))
+              if( ( lattice->process.pos_dir_solid_to_recv[ja*ni+ia] ))
                {
           sum_x += WD*vx[a];
                 sum_y += WD*vy[a];

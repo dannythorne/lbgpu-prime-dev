@@ -108,19 +108,19 @@ struct process_struct
   int g_SZ, g_EZ;
   int g_StartNode;
 
-  real *z_pos_pdf_to_send;
-  real *z_pos_pdf_to_recv;
-  real *z_neg_pdf_to_send;
-  real *z_neg_pdf_to_recv;
+  real *pos_dir_pdf_to_send;
+  real *pos_dir_pdf_to_recv;
+  real *neg_dir_pdf_to_send;
+  real *neg_dir_pdf_to_recv;
 
-  real *z_pos_rho_to_send;
-  real *z_pos_rho_to_recv;
-  real *z_neg_rho_to_send;
-  real *z_neg_rho_to_recv;
-  int *z_pos_solid_to_send;
-  int *z_pos_solid_to_recv;
-  int *z_neg_solid_to_send;
-  int *z_neg_solid_to_recv;
+  real *pos_dir_rho_to_send;
+  real *pos_dir_rho_to_recv;
+  real *neg_dir_rho_to_send;
+  real *neg_dir_rho_to_recv;
+  int *pos_dir_solid_to_send;
+  int *pos_dir_solid_to_recv;
+  int *neg_dir_solid_to_send;
+  int *neg_dir_solid_to_recv;
 
 
   MPI_Request send_req_0;

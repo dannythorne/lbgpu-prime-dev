@@ -100,8 +100,6 @@ int main( int argc, char **argv)
             , cudaMemcpyHostToDevice);
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 #else
-  cudaError_t err;
-
   cudaMemcpy( solids_mem_d
             , get_solids_ptr(lattice, 0)
             , get_NumNodes(lattice)*sizeof(unsigned char)
@@ -114,6 +112,15 @@ int main( int argc, char **argv)
     cudaMemcpy( f_mem_d + subs*get_NumNodes(lattice)*get_NumVelDirs(lattice)
               , get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
               , get_NumVelDirs(lattice)
+               *get_NumNodes(lattice)
+               *sizeof(real)
+              , cudaMemcpyHostToDevice);
+
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+    cudaMemcpy( mv_mem_d + subs*get_NumNodes(lattice)*(1 + get_NumDims(lattice))
+              , get_rho_ptr(lattice, subs, 0)
+              , (1. + get_NumDims(lattice))
                *get_NumNodes(lattice)
                *sizeof(real)
               , cudaMemcpyHostToDevice);
