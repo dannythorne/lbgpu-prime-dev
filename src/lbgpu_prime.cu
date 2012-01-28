@@ -4,7 +4,7 @@
 //
 //  - Lattice Boltzmann
 //
-//  - D3Q19
+//  - D2Q9 / D3Q19
 //
 
 typedef double real; // To be relocated (in flags.in?).
@@ -96,12 +96,12 @@ int main( int argc, char **argv)
 
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 
-  // Do boundary swap for solids
+  // Do boundary swap for solids.  This only needs to be done
+  // once, of course.
 
-#ifdef __CUDACC__
 #if PARALLEL
+  // We'll want something involving the MPI buffers here.
 #else
-#if NUM_DIMENSIONS == 2
   cudaMemcpy( solids_mem_d + get_end_bound_size( lattice)
       , solids_mem_d + get_end_bound_size( lattice) + get_NumNodes( lattice)
       , get_end_bound_size( lattice)*sizeof(unsigned char)
@@ -115,33 +115,40 @@ int main( int argc, char **argv)
       , cudaMemcpyDeviceToDevice);
 
   checkCUDAError( __FILE__, __LINE__, "solid swap");
-#else
-
-#endif
-#endif
 #endif
 
   int dir;
+  const int ubdir = get_NumVelDirs( lattice) 
+    - get_NumBoundDirs( lattice);
 
   for( subs = 0; subs < get_NumSubs( lattice); subs++)
   {
     // In the final version, the CPU arrays may well have
     // the same 'additional boundary' structure as the GPU
     // arrays, in which case a single memcpy can be performed.
-    for( dir = 0; dir < get_NumVelDirs( lattice); dir++)
+    cudaMemcpy( f_mem_d + subs * cumul_stride[get_NumVelDirs( lattice)]
+	, get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
+	, get_NumNodes( lattice)
+	*(ubdir)
+	*sizeof(real)
+	, cudaMemcpyHostToDevice);
+
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+    for( dir=ubdir; dir < get_NumVelDirs( lattice); dir+=2)
     {
-      cudaMemcpy( f_mem_d + (2*dir+1) * get_end_bound_size( lattice)
-	  + dir * get_NumNodes( lattice)
-	  + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-	  *get_NumVelDirs( lattice)
+
+      cudaMemcpy( f_mem_d + cumul_stride[dir]
+	  + subs * cumul_stride[get_NumVelDirs( lattice)]
 	  , get_fptr(lattice, subs, 0,0,0, 0,0,0, dir)
-	  , get_NumNodes( lattice)
+	  , 2*get_NumNodes( lattice)
 	  *sizeof(real)
 	  , cudaMemcpyHostToDevice);
 
       checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-
     }
+
+
 #if 0
     cudaMemcpy( f_mem_d + f_bound_size
 	+ subs*get_NumNodes( lattice)*get_NumVelDirs( lattice)
@@ -187,25 +194,10 @@ int main( int argc, char **argv)
 #ifdef __CUDACC__
 #if PARALLEL
 #else
-#if NUM_DIMENSIONS == 2
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, S, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, SE, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, SW, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, N, 1);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, NE, 1);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, NW, 1);
-#else
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, B, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, BE, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, BW, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, BN, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, BS, 0);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, T, 1);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, TE, 1);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, TW, 1);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, TN, 1);
-    pdf_boundary_swap_1( lattice, f_mem_d, subs, TS, 1);
-#endif
+    for( dir=ubdir+1; dir < get_NumVelDirs( lattice); dir+=2)
+    {
+      pdf_boundary_swap_1( lattice, f_mem_d, cumul_stride, subs, dir);
+    }
 #endif
 #endif
 
@@ -242,25 +234,10 @@ int main( int argc, char **argv)
 #ifdef __CUDACC__
 #if PARALLEL
 #else
-#if NUM_DIMENSIONS == 2
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, S, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, SE, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, SW, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, N, 0);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, NE, 0);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, NW, 0);
-#else
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, B, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, BE, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, BW, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, BN, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, BS, 1);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, T, 0);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, TE, 0);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, TW, 0);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, TN, 0);
-    pdf_boundary_swap_2( lattice, f_mem_d, subs, TS, 0);
-#endif
+    for( dir=ubdir+1; dir < get_NumVelDirs( lattice); dir+=2)
+    {
+      pdf_boundary_swap_2( lattice, f_mem_d, cumul_stride, subs, dir);
+    }
 #endif
 #endif
 
@@ -351,7 +328,33 @@ int main( int argc, char **argv)
 
 	}
 	if( do_write_f_txt_file( lattice))
-	{
+	{  
+	  // In the final version, the CPU arrays may well have
+	  // the same 'additional boundary' structure as the GPU
+	  // arrays, in which case a single memcpy can be performed.
+	  cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
+	      , f_mem_d + subs * cumul_stride[get_NumVelDirs( lattice)]
+	      , get_NumNodes( lattice)
+	      *(ubdir)
+	      *sizeof(real)
+	      , cudaMemcpyDeviceToHost);
+
+	  checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+	  for( dir=ubdir; dir < get_NumVelDirs( lattice); dir+=2)
+	  {
+
+	    cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, dir)
+		, f_mem_d + cumul_stride[dir]
+		+ subs * cumul_stride[get_NumVelDirs( lattice)]
+		, 2*get_NumNodes( lattice)
+		*sizeof(real)
+		, cudaMemcpyDeviceToHost);
+
+	    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+	  }
+
+#if 0
 	  for( dir = 0; dir < get_NumVelDirs( lattice); dir++)
 	  {
 	    cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, dir)
@@ -366,7 +369,7 @@ int main( int argc, char **argv)
 	    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 
 	  }
-#if 0
+
 	  cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
 	      , f_mem_d + f_bound_size
 	      + subs*get_NumNodes( lattice)*get_NumVelDirs( lattice)

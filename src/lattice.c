@@ -29,14 +29,6 @@ void set_LZ( lattice_ptr lattice, const int arg_LZ)
   lattice->param.LZ = arg_LZ;
 }
 
-int get_end_bound_size( lattice_ptr lattice)
-{
-#if NUM_DIMENSIONS == 2
-  return get_LX( lattice);
-#else
-  return get_LX( lattice) * get_LY( lattice);
-#endif
-}
 
 int get_FrameRate( lattice_ptr lattice)
 {
@@ -81,6 +73,23 @@ int get_NumVelDirs( lattice_ptr lattice)
 int* get_NumVelDirs_ptr( lattice_ptr lattice)
 {
   return &(lattice->NumVelDirs);
+}
+
+int get_NumBoundDirs( lattice_ptr lattice)
+{
+#if NUM_DIMENSIONS == 2
+  return 6;
+#else
+  return 10;
+#endif
+}
+int get_end_bound_size( lattice_ptr lattice)
+{
+#if NUM_DIMENSIONS == 2
+  return get_LX( lattice);
+#else
+  return get_LX( lattice) * get_LY( lattice);
+#endif
 }
 
 void set_NumSubs( lattice_ptr lattice, int value)
@@ -2133,6 +2142,7 @@ __constant__ int vx_c[19];     //
 __constant__ int vy_c[19];     // Enough space for D3Q19; first 9
 __constant__ int vz_c[19];     // components constitute D2Q9 model
 __constant__ real wt_c[19];    // 
+__constant__ int cumul_stride_c[20]; // For variable stride created by boundary regions
 
 __constant__ real tau_c[2];    // Hardcoded for up to 2 fluid components
 __constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
@@ -2206,54 +2216,96 @@ __device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
 
 __host__ void pdf_boundary_swap_1( lattice_ptr lattice
     , real* f_mem_d
+    , int* cstr
     , int subs
-    , int dir
-    , int northtop
+    , int dir 
     )
 {
-    cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-	+ dir * get_NumNodes( lattice)
-	+ (northtop) * get_NumNodes( lattice)
-	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-	*get_NumVelDirs( lattice)
-	, f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-	+ dir * get_NumNodes( lattice)
-	+ (1-northtop) * get_NumNodes( lattice)
-	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-	*get_NumVelDirs( lattice)
-	, get_end_bound_size( lattice)
-	*sizeof(real)
-	, cudaMemcpyDeviceToDevice);
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] - get_end_bound_size( lattice)
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir-1] - get_end_bound_size( lattice)
+      + get_end_bound_size( lattice)
+      , get_end_bound_size( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToDevice);
 
-    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
 
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir]
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] + get_NumNodes( lattice)
+      , get_end_bound_size( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+
+#if 0
+  cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+      + dir * get_NumNodes( lattice)
+      + (northtop) * get_NumNodes( lattice)
+      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+      *get_NumVelDirs( lattice)
+      , f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+      + dir * get_NumNodes( lattice)
+      + (1-northtop) * get_NumNodes( lattice)
+      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+      *get_NumVelDirs( lattice)
+      , get_end_bound_size( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+#endif
 }
 
 __host__ void pdf_boundary_swap_2( lattice_ptr lattice
     , real* f_mem_d
+    , int* cstr
     , int subs
-    , int dir
-    , int northtop
+    , int dir 
     )
 {
-    cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-	+ dir * get_NumNodes( lattice)
-	+ (northtop) * get_NumNodes( lattice)
-	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-	*get_NumVelDirs( lattice)
-	+ (northtop?1:-1) * get_end_bound_size( lattice)
-	, f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-	+ dir * get_NumNodes( lattice)
-	+ (1-northtop) * get_NumNodes( lattice)
-	+ subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-	*get_NumVelDirs( lattice)
-	+ (northtop?1:-1) * get_end_bound_size( lattice)
-	, get_end_bound_size( lattice)
-	*sizeof(real)
-	, cudaMemcpyDeviceToDevice);
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir-1] - get_end_bound_size( lattice)
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] - get_end_bound_size( lattice)
+      , get_end_bound_size( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToDevice);
 
-    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
 
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] + get_NumNodes( lattice)
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir+1]
+      , get_end_bound_size( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+#if 0
+  cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+      + dir * get_NumNodes( lattice)
+      + (northtop) * get_NumNodes( lattice)
+      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+      *get_NumVelDirs( lattice)
+      + (northtop?1:-1) * get_end_bound_size( lattice)
+      , f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
+      + dir * get_NumNodes( lattice)
+      + (1-northtop) * get_NumNodes( lattice)
+      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
+      *get_NumVelDirs( lattice)
+      + (northtop?1:-1) * get_end_bound_size( lattice)
+      , get_end_bound_size( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+#endif
 }
 
 __device__ real get_f1d_d(
@@ -2293,18 +2345,16 @@ __device__ real get_f1d_d(
   if( d_is_not_solid( solids_mem_d, n + end_bound_c))
   {
 #endif
-    return f_mem_d[ subs*(numnodes_c + 2 * end_bound_c)*numdirs_c 
-      + a*(numnodes_c + 2 * end_bound_c) + n + end_bound_c];
+    return f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a] + n];
 #if !(IGNORE_SOLIDS)
   }
   else
   { 
     // If neighboring node is a solid, return the f at node (i0,j0,k0) that
     // would be streamed out for halfway bounceback.
-    return f_mem_d[ subs*(numnodes_c + 2 * end_bound_c)*numdirs_c
-      + (a+da)*((numnodes_c + 2 * end_bound_c))
-      + n0 + end_bound_c
-      ];
+    return f_mem_d[ subs*cumul_stride_c[numdirs_c]
+      + cumul_stride_c[a+da] + n0];
   }
 #endif
 }
@@ -2363,16 +2413,13 @@ __device__ void set_f1d_d(
 
     //    if( k<0) { k+=nk_c;}
     //    if( k==nk_c) { k=0;}
-
     int n = i + ni_c*j + nixnj_c*k;
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
 #endif
-      f_mem_d[ subs*(numnodes_c + 2 * end_bound_c)*numdirs_c 
-	+ a*(numnodes_c + 2 * end_bound_c) 
-	+ n + end_bound_c
-	] = value;
+      f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+	+ cumul_stride_c[a] + n] = value;
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
     }
 #endif
@@ -2522,7 +2569,7 @@ int do_write_u_txt_file( lattice_ptr lattice)
 
 int do_write_f_txt_file( lattice_ptr lattice)
 {
-  return 0; // TODO: params.in or flags.in
+  return 1; // TODO: params.in or flags.in
 }
 
 int get_time( lattice_ptr lattice)

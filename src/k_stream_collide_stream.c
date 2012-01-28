@@ -34,7 +34,7 @@ void k_stream_collide_stream(
 	// Populate shared memory for a given node with global memory values from
 	// surrounding nodes.  This is a streaming operation. Splitting to odd and
 	// even parts is necessary for the boundary condition implementation.
-
+#if 1
 	fptr[b]
 	  = get_f1d_d( f_mem_d, solids_mem_d
 	      , subs
@@ -61,7 +61,7 @@ void k_stream_collide_stream(
 		, a, -1);
 	}
 
-
+#endif
 
 #if 1
 	// Initialize shared memory values for calculating macro vars.

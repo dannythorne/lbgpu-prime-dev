@@ -100,18 +100,19 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( vy_c, vy, 19*sizeof(int));
   cudaMemcpyToSymbol( vz_c, vz, 19*sizeof(int));
 
+  int a;
+
   if( get_NumDims( *lattice)==2)
   {
     real W0 = 4./9.;
     real W1 = 1./9.;
     real W2 = 1./36.;
-    int a=0;
     // wt = { W0
     //      , W1, W1, W1, W1
     //      , W2, W2, W2, W2
     //      , 0., 0.
     //      , 0., 0., 0., 0., 0., 0., 0., 0.};
-    wt[a] = W0;
+    wt[0] = W0;
     for( a=1; a<5 ; a++) { wt[a] = W1;}
     for(    ; a<9 ; a++) { wt[a] = W2;}
     for(    ; a<19; a++) { wt[a] = 0.;}
@@ -122,21 +123,50 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     real W0 = 1./3.;
     real W1 = 1./18.;
     real W2 = 1./36.;
-    int a=0;
     // wt = { W0
     //      , W1, W1, W1, W1
     //      , W2, W2, W2, W2
     //      , W1, W1
     //      , W2, W2, W2, W2, W2, W2, W2, W2};
-    wt[a] = W0;
+    wt[0] = W0;
     for( a=1; a<5 ; a++) { wt[a] = W1;}
     for(    ; a<9 ; a++) { wt[a] = W2;}
     for(    ; a<11; a++) { wt[a] = W1;}
     for(    ; a<19; a++) { wt[a] = W2;}
-
   }
 
+  // For direction a, cumul_stride[a] is the 'cumulative stride',
+  // i.e. the first non-boundary memory address in direction a is 
+  // f + cumul_stride[a].  A final (additional) entry is the size
+  // of a single substance's worth of pdfs.
+  const int ubdir = get_NumVelDirs( *lattice) 
+    - get_NumBoundDirs( *lattice);
+
+  cumul_stride[0] = 0;
+
+  for( a=1; a<ubdir; a++)
+  {
+    cumul_stride[a] = cumul_stride[a-1] + get_NumNodes( *lattice);
+  }
+
+  cumul_stride[a++] = cumul_stride[a-1] 
+    + get_NumNodes( *lattice) + get_end_bound_size( *lattice);
+  cumul_stride[a++] = cumul_stride[a-1] 
+    + get_NumNodes( *lattice);
+
+  for(    ; a<get_NumVelDirs( *lattice); a+=2) 
+  { 
+    cumul_stride[a] = cumul_stride[a-2] + 2 * get_NumNodes( *lattice) 
+      + 2 * get_end_bound_size( *lattice);
+    cumul_stride[a+1] = cumul_stride[a-1] + 2 * get_NumNodes( *lattice) 
+      + 2 * get_end_bound_size( *lattice);
+  }
+  
+  cumul_stride[a] = cumul_stride[a-1] + get_NumNodes( *lattice) 
+      + get_end_bound_size( *lattice);
+  
   cudaMemcpyToSymbol( wt_c, wt, 19*sizeof(real));
+  cudaMemcpyToSymbol( cumul_stride_c, cumul_stride, 20*sizeof(int));
 
   cudaMemcpyToSymbol( tau_c
       , get_tau_ptr( *lattice)
@@ -283,10 +313,8 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     // Allocate mem block for f on the gpu device
     //printf(" Allocating memory on the device \n");
 
-    f_mem_size = get_NumSubs( *lattice)
-      * (get_NumNodes( *lattice) + 2 * get_end_bound_size( *lattice))
-      * get_NumVelDirs( *lattice);
-
+    f_mem_size = get_NumSubs( *lattice) * cumul_stride[get_NumVelDirs( *lattice)];
+   // printf(" \n\n\n XXXXXXXXX %d \n\n\n\n\n", f_mem_size);
     cudaMalloc( (void**)&f_mem_d, f_mem_size*sizeof(real));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 

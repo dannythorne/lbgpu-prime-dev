@@ -35,7 +35,7 @@
 
 // Use 1D texture fetching for boundaries
 
-#define TEXTURE_FETCH 1
+#define TEXTURE_FETCH 0
 
 // Report errors with CUDA host functions
 
@@ -95,7 +95,7 @@
 #define DO_NOT_STORE_SOLIDS 0
 // If IGNORE_SOLIDS is on, the code ignores all solids introduced through
 // the domain bitmap files in the 'in' folder.
-#define IGNORE_SOLIDS 0
+#define IGNORE_SOLIDS 1
 // If COMPUTE_ON_SOLIDS is on, macroscopic variables and feq will be computed
 // on solid nodes, even though they are not conceptually meaningful there.
 // This can be helpful for debugging purposes.

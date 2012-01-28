@@ -6,7 +6,7 @@ BY                     3
 BZ                     1
 characteristic_length  40
 NumFrames              20
-FrameRate              50
+FrameRate              20
 tau[0]                 1.
 gforce_x[0]            0.00001
 gforce_y[0]            0.00000
