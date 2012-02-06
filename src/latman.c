@@ -164,7 +164,12 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   
   cumul_stride[a] = cumul_stride[a-1] + get_NumNodes( *lattice) 
       + get_end_bound_size( *lattice);
-  
+ 
+  //for( a=0; a<get_NumVelDirs(*lattice) + 1; a++)
+  //{
+  // printf( " %d   %d\n", a, cumul_stride[a]);
+  //}
+
   cudaMemcpyToSymbol( wt_c, wt, 19*sizeof(real));
   cudaMemcpyToSymbol( cumul_stride_c, cumul_stride, 20*sizeof(int));
 

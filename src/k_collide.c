@@ -32,220 +32,222 @@ void k_collide(
       {
 #endif
 
-	b = threadIdx.x + threadIdx.y*blockDim.x
-	  + threadIdx.z*bixbj_c;
+        b = threadIdx.x + threadIdx.y*blockDim.x
+          + threadIdx.z*bixbj_c;
 
-	// Populate shared memory for a given node with global memory values from
-	// that node.  Note that in global memory between stream_collide_stream
-	// and collide, each distribution function is swapped with its opposite
-	// partner.  The correct ordering is restored while loading into shared
-	// memory using the fact that opposite pairs are stored adjacently in v.
+        // Populate shared memory for a given node with global memory values from
+        // that node.  Note that in global memory between stream_collide_stream
+        // and collide, each distribution function is swapped with its opposite
+        // partner.  The correct ordering is restored while loading into shared
+        // memory using the fact that opposite pairs are stored adjacently in v.
 
-	// If fptr = a for all nodes, then the correct values are displayed, therefore
-	// fptr working, set_f1d_d working, problem must be with get_f1d_d;
-	fptr[b] = get_f1d_d( f_mem_d, solids_mem_d
-	    , subs
-	    , i,j,k,n
-	    , 0,0,0
-	    , 0, 0);
+        // If fptr = a for all nodes, then the correct values are displayed, therefore
+        // fptr working, set_f1d_d working, problem must be with get_f1d_d;
+#if 1
+        fptr[b] = get_f1d_d( f_mem_d, solids_mem_d
+            , subs
+            , i,j,k,n
+            , 0,0,0
+            , 0, 0);
 
-	for( a=1; a<numdirs_c; a+=2)
-	{
-	  fptr[b + a*blocksize_c]
-	    = get_f1d_d( f_mem_d, solids_mem_d
-		, subs
-		, i,j,k,n
-		, 0,0,0
-		, a+1, 0);
-	}
+        for( a=1; a<numdirs_c; a+=2)
+        {
+          fptr[b + a*blocksize_c]
+            = get_f1d_d( f_mem_d, solids_mem_d
+                , subs
+                , i,j,k,n
+                , 0,0,0
+                , a+1, 0);
+        }
 
-	for( a=2; a<numdirs_c; a+=2)
-	{
-	  fptr[b + a*blocksize_c]
-	    = get_f1d_d( f_mem_d, solids_mem_d
-		, subs
-		, i,j,k,n
-		, 0,0,0
-		, a-1, 0);
-	}
+        for( a=2; a<numdirs_c; a+=2)
+        {
+          fptr[b + a*blocksize_c]
+            = get_f1d_d( f_mem_d, solids_mem_d
+                , subs
+                , i,j,k,n
+                , 0,0,0
+                , a-1, 0);
+        }
+#endif
+        // Initialize shared memory values for calculating macro vars.
+        fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
+        fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
+        fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
+        if( numdims_c==3)
+        {
+          fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
+        }
 
-	// Initialize shared memory values for calculating macro vars.
-	fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
-	fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
-	fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
-	if( numdims_c==3)
-	{
-	  fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
-	}
+        // Calculate macroscopic variables.
+        for( a=0; a<numdirs_c; a++)
+        {
+          fptr[b + (numdirs_c+0)*blocksize_c]
+            += fptr[b + a*blocksize_c];
 
-	// Calculate macroscopic variables.
-	for( a=0; a<numdirs_c; a++)
-	{
-	  fptr[b + (numdirs_c+0)*blocksize_c]
-	    += fptr[b + a*blocksize_c];
+          if( /*debug*/0)
+          {
+            fptr[b + (numdirs_c+0)*blocksize_c] = 9.;
+          }
 
-	  if( /*debug*/0)
-	  {
-	    fptr[b + (numdirs_c+0)*blocksize_c] = 9.;
-	  }
+          fptr[b + (numdirs_c+1)*blocksize_c]
+            += vx_c[a]*fptr[b + a*blocksize_c];
 
-	  fptr[b + (numdirs_c+1)*blocksize_c]
-	    += vx_c[a]*fptr[b + a*blocksize_c];
+          fptr[b + (numdirs_c+2)*blocksize_c]
+            += vy_c[a]*fptr[b + a*blocksize_c];
 
-	  fptr[b + (numdirs_c+2)*blocksize_c]
-	    += vy_c[a]*fptr[b + a*blocksize_c];
+          if( numdims_c==3)
+          {
+            fptr[b + (numdirs_c+3)*blocksize_c]
+              += vz_c[a]*fptr[b + a*blocksize_c];
+          }
+        }
 
-	  if( numdims_c==3)
-	  {
-	    fptr[b + (numdirs_c+3)*blocksize_c]
-	      += vz_c[a]*fptr[b + a*blocksize_c];
-	  }
-	}
+        fptr[b + (numdirs_c+1)*blocksize_c] /=
+          fptr[b + (numdirs_c+0)*blocksize_c];
 
-	fptr[b + (numdirs_c+1)*blocksize_c] /=
-	  fptr[b + (numdirs_c+0)*blocksize_c];
+        fptr[b + (numdirs_c+2)*blocksize_c] /=
+          fptr[b + (numdirs_c+0)*blocksize_c];
 
-	fptr[b + (numdirs_c+2)*blocksize_c] /=
-	  fptr[b + (numdirs_c+0)*blocksize_c];
+        if( numdims_c==3)
+        {
+          fptr[b + (numdirs_c+3)*blocksize_c] /=
+            fptr[b + (numdirs_c+0)*blocksize_c];
+        }
 
-	if( numdims_c==3)
-	{
-	  fptr[b + (numdirs_c+3)*blocksize_c] /=
-	    fptr[b + (numdirs_c+0)*blocksize_c];
-	}
+        if( !d_skip_updating_macrovars())
+        {
+          // Store macroscopic variables in global memory.
+          for( a=0; a<=numdims_c; a++)
+          {
+            set_mv_d( mv_mem_d
+                , subs, n, a
+                , fptr[b + (numdirs_c + a)*blocksize_c]);
 
-	if( !d_skip_updating_macrovars())
-	{
-	  // Store macroscopic variables in global memory.
-	  for( a=0; a<=numdims_c; a++)
-	  {
-	    set_mv_d( mv_mem_d
-		, subs, n, a
-		, fptr[b + (numdirs_c + a)*blocksize_c]);
+            if( /*debug*/0)
+            {
+              set_mv_d( mv_mem_d, subs, n, a, 7.);
+            }
+          }
+        }
 
-	    if( /*debug*/0)
-	    {
-	      set_mv_d( mv_mem_d, subs, n, a, 7.);
-	    }
-	  }
-	}
+        if( !d_skip_collision_step())
+        {
+          if( !d_skip_body_force_term())
+          {
+            // Modify macroscopic variables with a body force
+            for( a=1; a<=numdims_c; a++)
+            {
+              apply_accel_mv( subs, a, b, blocksize_c, fptr);
+            }
+          }
 
-	if( !d_skip_collision_step())
-	{
-	  if( !d_skip_body_force_term())
-	  {
-	    // Modify macroscopic variables with a body force
-	    for( a=1; a<=numdims_c; a++)
-	    {
-	      apply_accel_mv( subs, a, b, blocksize_c, fptr);
-	    }
-	  }
+          // Calculate u-squared since it is used many times
+          real usq = fptr[b + (numdirs_c+1)*blocksize_c]
+            * fptr[b + (numdirs_c+1)*blocksize_c]
 
-	  // Calculate u-squared since it is used many times
-	  real usq = fptr[b + (numdirs_c+1)*blocksize_c]
-	    * fptr[b + (numdirs_c+1)*blocksize_c]
+            + fptr[b + (numdirs_c+2)*blocksize_c]
+            * fptr[b + (numdirs_c+2)*blocksize_c];
 
-	    + fptr[b + (numdirs_c+2)*blocksize_c]
-	    * fptr[b + (numdirs_c+2)*blocksize_c];
+          if( numdims_c==3)
+          {
+            usq += fptr[b + (numdirs_c+3)*blocksize_c]
+              * fptr[b + (numdirs_c+3)*blocksize_c];
+          }
 
-	  if( numdims_c==3)
-	  {
-	    usq += fptr[b + (numdirs_c+3)*blocksize_c]
-	      * fptr[b + (numdirs_c+3)*blocksize_c];
-	  }
+          // Calculate the collision operator and add to f resulting from first
+          // streaming
+          for( a=0; a<numdirs_c; a++)
+          {
+            calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
+          }
+        }
+        // Finally, save results back to global memory in the local node.  The
+        // ordering was already corrected in the first step, so nothing to worry
+        // about here.
+#if 1
+        for( a=0; a<numdirs_c; a++)
+        {
+          set_f1d_d( f_mem_d, solids_mem_d
+              , subs
+              , i,j,k,n
+              , 0, 0, 0
+              , a, fptr[b + a*blocksize_c]);
 
-	  // Calculate the collision operator and add to f resulting from first
-	  // streaming
-	  for( a=0; a<numdirs_c; a++)
-	  {
-	    calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
-	  }
-	}
-	// Finally, save results back to global memory in the local node.  The
-	// ordering was already corrected in the first step, so nothing to worry
-	// about here.
-	for( a=0; a<numdirs_c; a++)
-	{
-	  set_f1d_d( f_mem_d, solids_mem_d
-	      , subs
-	      , i,j,k,n
-	      , 0, 0, 0
-	      , a, fptr[b + a*blocksize_c]);
-
-	  //set_f1d_d( f_mem_d, subs, 0 
-	  //                     , i, j, k, a, fptr[b + a*blocksize_c]);
-	}
-
-	// Calculate macroscopic variables after the collision step, for the
-	// purpose of writing these to host arrays and output files.  Note that
-	// for the purpose of efficiency, this (and possibly between sc and s in
-	// k_scs) should be the only place in the code at which macroscopic variables
-	// are either stored in device global memory or transferred to the host.
+          //set_f1d_d( f_mem_d, subs, 0 
+          //                     , i, j, k, a, fptr[b + a*blocksize_c]);
+        }
+#endif
+        // Calculate macroscopic variables after the collision step, for the
+        // purpose of writing these to host arrays and output files.  Note that
+        // for the purpose of efficiency, this (and possibly between sc and s in
+        // k_scs) should be the only place in the code at which macroscopic variables
+        // are either stored in device global memory or transferred to the host.
 #if 1
 
-	if( *is_end_of_frame_mem_d)
-	{
-	  // Initialize shared memory values for calculating macro vars.
-	  fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
-	  fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
-	  fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
-	  if( numdims_c==3)
-	  {
-	    fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
-	  }
+        if( *is_end_of_frame_mem_d)
+        {
+          // Initialize shared memory values for calculating macro vars.
+          fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
+          fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
+          fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
+          if( numdims_c==3)
+          {
+            fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
+          }
 
-	  // Calculate macroscopic variables.
-	  for( a=0; a<numdirs_c; a++)
-	  {
-	    fptr[b + (numdirs_c+0)*blocksize_c]
-	      += fptr[b + a*blocksize_c];
+          // Calculate macroscopic variables.
+          for( a=0; a<numdirs_c; a++)
+          {
+            fptr[b + (numdirs_c+0)*blocksize_c]
+              += fptr[b + a*blocksize_c];
 
-	    if( /*debug*/0)
-	    {
-	      fptr[b + (numdirs_c+0)*blocksize_c] = 9.;
-	    }
+            if( /*debug*/0)
+            {
+              fptr[b + (numdirs_c+0)*blocksize_c] = 9.;
+            }
 
-	    fptr[b + (numdirs_c+1)*blocksize_c]
-	      += vx_c[a]*fptr[b + a*blocksize_c];
+            fptr[b + (numdirs_c+1)*blocksize_c]
+              += vx_c[a]*fptr[b + a*blocksize_c];
 
-	    fptr[b + (numdirs_c+2)*blocksize_c]
-	      += vy_c[a]*fptr[b + a*blocksize_c];
+            fptr[b + (numdirs_c+2)*blocksize_c]
+              += vy_c[a]*fptr[b + a*blocksize_c];
 
-	    if( numdims_c==3)
-	    {
-	      fptr[b + (numdirs_c+3)*blocksize_c]
-		+= vz_c[a]*fptr[b + a*blocksize_c];
-	    }
-	  }
+            if( numdims_c==3)
+            {
+              fptr[b + (numdirs_c+3)*blocksize_c]
+                += vz_c[a]*fptr[b + a*blocksize_c];
+            }
+          }
 
-	  fptr[b + (numdirs_c+1)*blocksize_c] /=
-	    fptr[b + (numdirs_c+0)*blocksize_c];
+          fptr[b + (numdirs_c+1)*blocksize_c] /=
+            fptr[b + (numdirs_c+0)*blocksize_c];
 
-	  fptr[b + (numdirs_c+2)*blocksize_c] /=
-	    fptr[b + (numdirs_c+0)*blocksize_c];
+          fptr[b + (numdirs_c+2)*blocksize_c] /=
+            fptr[b + (numdirs_c+0)*blocksize_c];
 
-	  if( numdims_c==3)
-	  {
-	    fptr[b + (numdirs_c+3)*blocksize_c] /=
-	      fptr[b + (numdirs_c+0)*blocksize_c];
-	  }
+          if( numdims_c==3)
+          {
+            fptr[b + (numdirs_c+3)*blocksize_c] /=
+              fptr[b + (numdirs_c+0)*blocksize_c];
+          }
 
-	  //if( !d_skip_updating_macrovars())
-	  // {
-	  // Store macroscopic variables in global memory.
-	  for( a=0; a<=numdims_c; a++)
-	  {
-	    set_mv_d( mv_mem_d
-		, subs, n, a
-		, fptr[b + (numdirs_c + a)*blocksize_c]);
+          //if( !d_skip_updating_macrovars())
+          // {
+          // Store macroscopic variables in global memory.
+          for( a=0; a<=numdims_c; a++)
+          {
+            set_mv_d( mv_mem_d
+                , subs, n, a
+                , fptr[b + (numdirs_c + a)*blocksize_c]);
 
-	    if( /*debug*/0)
-	    {
-	      set_mv_d( mv_mem_d, subs, n, a, 7.);
-	    }
-	  }
-	  //}
-	}
+            if( /*debug*/0)
+            {
+              set_mv_d( mv_mem_d, subs, n, a, (real) n);
+            }
+          }
+          //}
+        }
 #endif
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
       }  /*if( d_is_not_solid(solids_mem_d, n))*/
