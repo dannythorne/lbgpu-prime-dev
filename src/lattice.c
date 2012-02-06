@@ -299,12 +299,12 @@ void display_etime( lattice_ptr lattice)
   {
     real t = lattice->toc - lattice->tic;
     printf("%s %d %04d >> elapsed time = "
-	"%f seconds (%f minutes, %f hours, %f days)\n",
-	__FILE__,__LINE__,get_proc_id(lattice)
-	, t
-	, t / 60.0
-	, t / 60.0 / 60.0
-	, t / 60.0 / 60.0 / 24.0);
+        "%f seconds (%f minutes, %f hours, %f days)\n",
+        __FILE__,__LINE__,get_proc_id(lattice)
+        , t
+        , t / 60.0
+        , t / 60.0 / 60.0
+        , t / 60.0 / 60.0 / 24.0);
   }
 }
 
@@ -327,11 +327,11 @@ void gen_filename(
   else
   {
     sprintf(
-	size_str
-	, "%dx%dx%d"
-	, get_g_LX(lattice)
-	, get_g_LY(lattice)
-	, get_g_LY(lattice) );
+        size_str
+        , "%dx%dx%d"
+        , get_g_LX(lattice)
+        , get_g_LY(lattice)
+        , get_g_LY(lattice) );
   }
 
   if( frame >= 0)
@@ -355,39 +355,39 @@ void gen_filename(
   if( get_num_procs( lattice) > 1)
   {
     sprintf(
-	filename
-	,"%s/%s%s%s%s%s_proc%04d%s"
-	, get_out_path( lattice)
+        filename
+        ,"%s/%s%s%s%s%s_proc%04d%s"
+        , get_out_path( lattice)
 #ifdef __CUDACC__
-	, "cuda_"
+        , "cuda_"
 #else
-	, ""
+        , ""
 #endif
-	, prefix
-	, size_str
-	, frame_str
-	, subs_str
-	, get_proc_id( lattice)
-	, suffix
-	);
+        , prefix
+        , size_str
+        , frame_str
+        , subs_str
+        , get_proc_id( lattice)
+        , suffix
+        );
   }
   else
   {
     sprintf(
-	filename
-	,"%s/%s%s%s%s%s%s"
-	, get_out_path( lattice)
+        filename
+        ,"%s/%s%s%s%s%s%s"
+        , get_out_path( lattice)
 #ifdef __CUDACC__
-	, "cuda_"
+        , "cuda_"
 #else
-	, ""
+        , ""
 #endif
-	, prefix
-	, size_str
-	, frame_str
-	, subs_str
-	, suffix
-	);
+        , prefix
+        , size_str
+        , frame_str
+        , subs_str
+        , suffix
+        );
   }
 }
 
@@ -423,18 +423,18 @@ void rho2bmp( lattice_ptr lattice, int time)
 {
   FILE   *o;
   int    i, j,
-	 n;
+         n;
   int    pad,
-	 bytes_per_row;
+         bytes_per_row;
   struct bitmap_file_header bmfh;
   struct bitmap_info_header bmih;
   int    *width_ptr;
   short  int *bitcount_ptr;
   char   filename[1024];
   char   red_val,
-	 green_val,
-	 blue_val,
-	 val;
+         green_val,
+         blue_val,
+         val;
   real fval;
   real min_rho, max_rho;
   int    subs;
@@ -448,9 +448,9 @@ void rho2bmp( lattice_ptr lattice, int time)
     bmfh.bfType[0] = 'B';
     bmfh.bfType[1] = 'M';
     *((int*)bmfh.bfSize)= get_LY(lattice)*(
-	(int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) // bytes per row
-	+ ( 4 - (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) % 4) % 4 // pad
-	);
+        (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) // bytes per row
+        + ( 4 - (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) % 4) % 4 // pad
+        );
     *((short int*)bmfh.bfReserved1) = 0;
     *((short int*)bmfh.bfReserved2) = 0;
     *((int*)bmfh.bfOffBits) = 54; // 14 byte file header and 40 byte info header
@@ -473,7 +473,7 @@ void rho2bmp( lattice_ptr lattice, int time)
     // Bytes per row of the bitmap.
     bytes_per_row =
       ((int)ceil(( ( ((real)(ENDIAN4(*width_ptr)))
-	    * ((real)(ENDIAN2(*bitcount_ptr))) )/8.)));
+            * ((real)(ENDIAN2(*bitcount_ptr))) )/8.)));
 
     // Bitmaps pad rows to preserve 4-byte boundaries.
     // The length of a row in the file will be bytes_per_row + pad .
@@ -499,154 +499,154 @@ void rho2bmp( lattice_ptr lattice, int time)
 
       for( i=0; i<get_LX(lattice); i++, n++)
       {
-	if( is_not_solid(lattice,n))
-	{
-	  if( subs==0)
-	  {
-	    if( lattice->param.plot_scale_dynamic)
-	    {
-	      if( max_rho!=min_rho)
-	      {
-		fval = ROUND( 255.*( get_rho(lattice,subs,n)
-		      - min_rho)
-		    /( max_rho-min_rho));
-	      }
-	      else
-	      {
-		fval = 255.;
-	      }
-	    }
-	    else
-	    {
-	      fval = ROUND( 255.*(get_rho(lattice,subs,n)
-		    /( (lattice->param.rho_A[subs]>lattice->param.rho_B[subs])
-		      ?(lattice->param.rho_A[subs])
-		      :(lattice->param.rho_B[subs]) )
-		    ));
-	    }
-	    if( fval >= 0.)
-	    {
-	      if( fval <= 255.)
-	      {
-		red_val   = (char)((int)(255. - fval)%256);
-		green_val = (char)((int)(255. - fval)%256);
-		blue_val  = (char)255;
-	      }
-	      else
-	      {
-		red_val   = (char)0;
-		green_val = (char)0;
-		blue_val  = (char)255;
-	      }
-	    }
-	    else
-	    {
-	      red_val   = (char)((int)(255. + fval)%256);
-	      green_val = (char)((int)(255. + fval)%256);
-	      blue_val  = (char)((int)(255. + fval)%256);
-	      // TODO: Issue warning or something? Potential instability?
-	    }
-	  } /* if( subs==0) */
+        if( is_not_solid(lattice,n))
+        {
+          if( subs==0)
+          {
+            if( lattice->param.plot_scale_dynamic)
+            {
+              if( max_rho!=min_rho)
+              {
+                fval = ROUND( 255.*( get_rho(lattice,subs,n)
+                      - min_rho)
+                    /( max_rho-min_rho));
+              }
+              else
+              {
+                fval = 255.;
+              }
+            }
+            else
+            {
+              fval = ROUND( 255.*(get_rho(lattice,subs,n)
+                    /( (lattice->param.rho_A[subs]>lattice->param.rho_B[subs])
+                      ?(lattice->param.rho_A[subs])
+                      :(lattice->param.rho_B[subs]) )
+                    ));
+            }
+            if( fval >= 0.)
+            {
+              if( fval <= 255.)
+              {
+                red_val   = (char)((int)(255. - fval)%256);
+                green_val = (char)((int)(255. - fval)%256);
+                blue_val  = (char)255;
+              }
+              else
+              {
+                red_val   = (char)0;
+                green_val = (char)0;
+                blue_val  = (char)255;
+              }
+            }
+            else
+            {
+              red_val   = (char)((int)(255. + fval)%256);
+              green_val = (char)((int)(255. + fval)%256);
+              blue_val  = (char)((int)(255. + fval)%256);
+              // TODO: Issue warning or something? Potential instability?
+            }
+          } /* if( subs==0) */
 
-	  else // subs == 1
-	  {
-	    if( lattice->param.plot_scale_dynamic)
-	    {
-	      if( max_rho!=min_rho)
-	      {
-		fval = ROUND( 255.*( get_rho(lattice,subs,n)
-		      - min_rho)
-		    /( max_rho-min_rho));
-	      }
-	      else
-	      {
-		fval = 0.;
-	      }
-	    }
-	    else
-	    {
-	      //printf("%s (%d) >> fval = %f -> ", __FILE__, __LINE__, fval);
+          else // subs == 1
+          {
+            if( lattice->param.plot_scale_dynamic)
+            {
+              if( max_rho!=min_rho)
+              {
+                fval = ROUND( 255.*( get_rho(lattice,subs,n)
+                      - min_rho)
+                    /( max_rho-min_rho));
+              }
+              else
+              {
+                fval = 0.;
+              }
+            }
+            else
+            {
+              //printf("%s (%d) >> fval = %f -> ", __FILE__, __LINE__, fval);
 #if INAMURO_SIGMA_COMPONENT
-	      fval = ROUND( 255.*(get_rho(lattice,subs,n))
-		  /(lattice->param.rho_sigma));
+              fval = ROUND( 255.*(get_rho(lattice,subs,n))
+                  /(lattice->param.rho_sigma));
 #else /* !( INAMURO_SIGMA_COMPONENT) */
-	      fval = ROUND( 255.*(get_rho(lattice,subs,n)
-		    /( (lattice->param.rho_A[subs]>lattice->param.rho_B[subs])
-		      ?(lattice->param.rho_A[subs])
-		      :(lattice->param.rho_B[subs]) )
-		    ));
+              fval = ROUND( 255.*(get_rho(lattice,subs,n)
+                    /( (lattice->param.rho_A[subs]>lattice->param.rho_B[subs])
+                      ?(lattice->param.rho_A[subs])
+                      :(lattice->param.rho_B[subs]) )
+                    ));
 #endif /* INAMURO_SIGMA_COMPONENT */
-	      //printf("%f\n", fval);
-	    }
-	    if( fval >= 0.)
-	    {
-	      if( fval <= 255.)
-	      {
-		red_val   = (char)255;
-		green_val = (char)((int)(255. - fval)%256);
-		blue_val  = (char)((int)(255. - fval)%256);
-	      }
-	      else
-	      {
-		red_val   = (char)255;//((int)(255. - (fval - 255.))%256);
-		green_val = (char)  0;//((int)(255. - (fval - 255.))%256);
-		blue_val  = (char)  0;//((int)(255. - (fval - 255.))%256);
-	      }
-	    }
-	    else
-	    {
-	      red_val   = (char)((int)(255. + fval)%256);
-	      green_val = (char)((int)(255. + fval)%256);
-	      blue_val  = (char)((int)(255. + fval)%256);
-	      // TODO: Issue a warning or something?  Potential instability?
-	    }
+              //printf("%f\n", fval);
+            }
+            if( fval >= 0.)
+            {
+              if( fval <= 255.)
+              {
+                red_val   = (char)255;
+                green_val = (char)((int)(255. - fval)%256);
+                blue_val  = (char)((int)(255. - fval)%256);
+              }
+              else
+              {
+                red_val   = (char)255;//((int)(255. - (fval - 255.))%256);
+                green_val = (char)  0;//((int)(255. - (fval - 255.))%256);
+                blue_val  = (char)  0;//((int)(255. - (fval - 255.))%256);
+              }
+            }
+            else
+            {
+              red_val   = (char)((int)(255. + fval)%256);
+              green_val = (char)((int)(255. + fval)%256);
+              blue_val  = (char)((int)(255. + fval)%256);
+              // TODO: Issue a warning or something?  Potential instability?
+            }
 
-	  } /* if( subs==0) else */
+          } /* if( subs==0) else */
 
-	} /* if( lattice->bc[subs][ n].bc_type == 0) */
+        } /* if( lattice->bc[subs][ n].bc_type == 0) */
 
-	else // lattice->bc[subs][ n].bc_type != 0
-	{
+        else // lattice->bc[subs][ n].bc_type != 0
+        {
 #if SOLID_COLOR_IS_CHECKERBOARD
-	  // Checkerboard pattern over the solids and boundary conditions.
-	  if( (i+j)%2)
-	  {
-	    red_val   = (char)200;
-	    green_val = (char)200;
-	    blue_val  = (char)200;
-	    val       = (char)200;
-	  }
-	  else
-	  {
-	    red_val   = (char)184;
-	    green_val = (char)184;
-	    blue_val  = (char)184;
-	    val       = (char)184;
-	  }
+          // Checkerboard pattern over the solids and boundary conditions.
+          if( (i+j)%2)
+          {
+            red_val   = (char)200;
+            green_val = (char)200;
+            blue_val  = (char)200;
+            val       = (char)200;
+          }
+          else
+          {
+            red_val   = (char)184;
+            green_val = (char)184;
+            blue_val  = (char)184;
+            val       = (char)184;
+          }
 #else /* !( SOLID_COLOR_IS_CHECKERBOARD) */
 #if SOLID_COLOR_IS_BLACK
-	  red_val   = (char)0;
-	  green_val = (char)0;
-	  blue_val  = (char)0;
-	  val       = (char)0;
+          red_val   = (char)0;
+          green_val = (char)0;
+          blue_val  = (char)0;
+          val       = (char)0;
 #else /* !( SOLID_COLOR_IS_BLACK) */
-	  red_val   = (char)255;
-	  green_val = (char)255;
-	  blue_val  = (char)255;
-	  val       = (char)255;
+          red_val   = (char)255;
+          green_val = (char)255;
+          blue_val  = (char)255;
+          val       = (char)255;
 #endif /* SOLID_COLOR_IS_BLACK */
 #endif /* SOLID_COLOR_IS_CHECKERBOARD */
 
-	} /* if( lattice->bc[subs][ n].bc_type == 0) else */
+        } /* if( lattice->bc[subs][ n].bc_type == 0) else */
 
-	//printf("blue_val( %d, %d) = %d\n", i, j, (int)blue_val);
+        //printf("blue_val( %d, %d) = %d\n", i, j, (int)blue_val);
 
-	if( fwrite( &blue_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
-	//printf("BING %d %d\n", i, j);
-	if( fwrite( &green_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
-	//printf("BING %d %d\n", i, j);
-	if( fwrite( &red_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
-	//printf("BING %d %d\n", i, j);
+        if( fwrite( &blue_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+        //printf("BING %d %d\n", i, j);
+        if( fwrite( &green_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+        //printf("BING %d %d\n", i, j);
+        if( fwrite( &red_val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+        //printf("BING %d %d\n", i, j);
 
       } /* for( i=0; i<get_LX(lattice); i++) */
 
@@ -654,7 +654,7 @@ void rho2bmp( lattice_ptr lattice, int time)
       val = (char)0;
       for( i=0; i<pad; i++)
       {
-	if( fwrite( &val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &val, 1, 1, o) != 1) { printf("BOOM!\n"); process_exit(1);}
       }
 
     } /* for( j=0; j<get_LY(lattice); j++) */
@@ -680,12 +680,12 @@ void rho2bmp( lattice_ptr lattice, int time)
 void u2bmp( lattice_ptr lattice, int time)
 {
   FILE   *o_u,
-	 *o_ux,
-	 *o_uy;
+         *o_ux,
+         *o_uy;
   int    i, j,
-	 n;
+         n;
   int    pad,
-	 bytes_per_row;
+         bytes_per_row;
   int    frame;
   struct bitmap_file_header bmfh;
   struct bitmap_info_header bmih;
@@ -693,9 +693,9 @@ void u2bmp( lattice_ptr lattice, int time)
   short  int *bitcount_ptr;
   char   filename[1024];
   char   red_val,
-	 green_val,
-	 blue_val,
-	 val;
+         green_val,
+         blue_val,
+         val;
   real max_u[2]; //, maxu, u;
   real u_x, u_y;
   int    subs;
@@ -712,9 +712,9 @@ void u2bmp( lattice_ptr lattice, int time)
     bmfh.bfType[0] = 'B';
     bmfh.bfType[1] = 'M';
     *((int*)bmfh.bfSize)= get_LY(lattice)*(
-	(int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) // bytes per row
-	+ ( 4 - (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) % 4) % 4 // pad
-	);
+        (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) // bytes per row
+        + ( 4 - (int)ceil( ( ((real)get_LX(lattice))*( /*depth*/24.))/8.) % 4) % 4 // pad
+        );
     *((short int*)bmfh.bfReserved1) = 0;
     *((short int*)bmfh.bfReserved2) = 0;
     *((int*)bmfh.bfOffBits) = 54; // 14 byte file header and 40 byte info header
@@ -782,311 +782,311 @@ void u2bmp( lattice_ptr lattice, int time)
 
       for( i=0; i<get_LX(lattice); i++, n++)
       {
-	if( is_not_solid(lattice,n))
-	{
+        if( is_not_solid(lattice,n))
+        {
 #if 1
-	  blue_val  = (char)0;
-	  green_val = (char)0;
-	  red_val   = (char)0;
+          blue_val  = (char)0;
+          green_val = (char)0;
+          red_val   = (char)0;
 
-	  u_x = (get_ux(lattice,subs,n));
-	  u_y = (get_uy(lattice,subs,n));
+          u_x = (get_ux(lattice,subs,n));
+          u_y = (get_uy(lattice,subs,n));
 
-	  //u = sqrt(u_x*u_x + u_y*u_y);
-	  //maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
+          //u = sqrt(u_x*u_x + u_y*u_y);
+          //maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
 
-	  if( is_solid(lattice,n))
-	  {
-	    blue_val  = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
-	    green_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
-	  }
-	  else
-	  {
+          if( is_solid(lattice,n))
+          {
+            blue_val  = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
+            green_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
+          }
+          else
+          {
 #if 0
-	    blue_val  = (char)ROUND(  255.*fabs(u_x)/max_u[0]);
-	    green_val = (char)ROUND(  255.*fabs(u_y)/max_u[1]);
-	    red_val   = 0.;//(char)ROUND( 128.*fabs(u)/maxu);
+            blue_val  = (char)ROUND(  255.*fabs(u_x)/max_u[0]);
+            green_val = (char)ROUND(  255.*fabs(u_y)/max_u[1]);
+            red_val   = 0.;//(char)ROUND( 128.*fabs(u)/maxu);
 #else
-	    blue_val  = (char)ROUND(  255.*((fabs(u_x)!=0.)
-		  ? (fabs(u_x)/max_u[0])
-		  : (0.)));
-	    green_val = (char)ROUND(  255.*((fabs(u_y)!=0.)
-		  ? (fabs(u_y)/max_u[1])
-		  : (0.)));
-	    red_val   = 0.;
-	    //red_val   = (char)ROUND( 128.*((fabs(u  )!=0.)
-	    //          ? (fabs(u  )/maxu)
-	    //          : (0.)));
+            blue_val  = (char)ROUND(  255.*((fabs(u_x)!=0.)
+                  ? (fabs(u_x)/max_u[0])
+                  : (0.)));
+            green_val = (char)ROUND(  255.*((fabs(u_y)!=0.)
+                  ? (fabs(u_y)/max_u[1])
+                  : (0.)));
+            red_val   = 0.;
+            //red_val   = (char)ROUND( 128.*((fabs(u  )!=0.)
+            //          ? (fabs(u  )/maxu)
+            //          : (0.)));
 #endif
 
-	  }
+          }
 #else
-	  blue_val  = (char)255;
-	  green_val = (char)255;
-	  red_val   = (char)255;
+          blue_val  = (char)255;
+          green_val = (char)255;
+          red_val   = (char)255;
 
-	  u = sqrt(u_x*u_x + u_y*u_y);
-	  maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
+          u = sqrt(u_x*u_x + u_y*u_y);
+          maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
 
-	  //if( fabs(u) > .1*maxu)
-	  //{
-	  green_val  = (char)ROUND( 255.-255.*fabs(u)/maxu);
-	  red_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
-	  blue_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
-	  //}
-	  //else
-	  //{
-	  //  green_val  = (char)0;
-	  //  red_val    = (char)0;
-	  //  blue_val    = (char)0;
-	  //}
+          //if( fabs(u) > .1*maxu)
+          //{
+          green_val  = (char)ROUND( 255.-255.*fabs(u)/maxu);
+          red_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
+          blue_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
+          //}
+          //else
+          //{
+          //  green_val  = (char)0;
+          //  red_val    = (char)0;
+          //  blue_val    = (char)0;
+          //}
 #endif
 
-	  val = (char)0;
+          val = (char)0;
 
-	} /* if( is_not_solid(lattice,n)) */
+        } /* if( is_not_solid(lattice,n)) */
 
-	else // is_solid(lattice,n)
-	{
+        else // is_solid(lattice,n)
+        {
 #if SOLID_COLOR_IS_CHECKERBOARD
-	  // Checkerboard pattern over the solids and boundary conditions.
-	  if( (i+j)%2)
-	  {
-	    red_val   = (char)200;
-	    green_val = (char)200;
-	    blue_val  = (char)200;
-	    val       = (char)200;
-	  }
-	  else
-	  {
-	    red_val   = (char)184;
-	    green_val = (char)184;
-	    blue_val  = (char)184;
-	    val       = (char)184;
-	  }
+          // Checkerboard pattern over the solids and boundary conditions.
+          if( (i+j)%2)
+          {
+            red_val   = (char)200;
+            green_val = (char)200;
+            blue_val  = (char)200;
+            val       = (char)200;
+          }
+          else
+          {
+            red_val   = (char)184;
+            green_val = (char)184;
+            blue_val  = (char)184;
+            val       = (char)184;
+          }
 #else /* !( SOLID_COLOR_IS_CHECKERBOARD) */
 #if SOLID_COLOR_IS_BLACK
-	  red_val   = (char)0;
-	  green_val = (char)0;
-	  blue_val  = (char)0;
-	  val       = (char)0;
+          red_val   = (char)0;
+          green_val = (char)0;
+          blue_val  = (char)0;
+          val       = (char)0;
 #else /* !( SOLID_COLOR_IS_BLACK) */
-	  red_val   = (char)255;
-	  green_val = (char)255;
-	  blue_val  = (char)255;
-	  val       = (char)255;
+          red_val   = (char)255;
+          green_val = (char)255;
+          blue_val  = (char)255;
+          val       = (char)255;
 #endif /* SOLID_COLOR_IS_BLACK */
 #endif /* SOLID_COLOR_IS_CHECKERBOARD */
 
-	} /* if( is_not_solid(lattice,n)) else */
+        } /* if( is_not_solid(lattice,n)) else */
 
 #if MARK_ORIGIN_FOR_REFERENCE
-	// Mark the origin for reference.
-	if( ( i == 0 && j == 0))
-	{
-	  red_val   = (char)255;
-	  green_val = (char)255;
-	  blue_val  = (char)255;
-	  val       = (char)255;
-	}
+        // Mark the origin for reference.
+        if( ( i == 0 && j == 0))
+        {
+          red_val   = (char)255;
+          green_val = (char)255;
+          blue_val  = (char)255;
+          val       = (char)255;
+        }
 #endif /* MARK_ORIGIN_FOR_REFERENCE */
 
-	if( fwrite( &blue_val,  1, 1, o_u ) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &green_val, 1, 1, o_u ) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &red_val,   1, 1, o_u ) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &blue_val,  1, 1, o_u ) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &green_val, 1, 1, o_u ) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &red_val,   1, 1, o_u ) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
 
-	if( is_not_solid(lattice,n))
-	{
-	  blue_val  = (char)0;
-	  green_val = (char)0;
-	  red_val   = (char)0;
+        if( is_not_solid(lattice,n))
+        {
+          blue_val  = (char)0;
+          green_val = (char)0;
+          red_val   = (char)0;
 
-	  u_x = (get_ux(lattice,subs,n));
-	  u_y = (get_uy(lattice,subs,n));
+          u_x = (get_ux(lattice,subs,n));
+          u_y = (get_uy(lattice,subs,n));
 
-	  val = (char)0;
+          val = (char)0;
 
-	  if( !is_solid( lattice, n))
-	  {
-	    if( u_x > 0)
-	    {
-	      red_val = val;
-	      blue_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
-	    }
-	    else
-	    {
-	      red_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
-	      blue_val = val;
-	    }
+          if( !is_solid( lattice, n))
+          {
+            if( u_x > 0)
+            {
+              red_val = val;
+              blue_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
+            }
+            else
+            {
+              red_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
+              blue_val = val;
+            }
 
-	  }
+          }
 
-	  else
-	  {
-	    if( u_x > 0)
-	    {
-	      red_val = val;
-	      blue_val = (char)ROUND( 255.*((fabs(u_x)!=0.)?(fabs(u_x)/max_u[0]):(0.)));
-	    }
-	    else
-	    {
-	      red_val = (char)ROUND( 255.*((fabs(u_x)!=0.)?(fabs(u_x)/max_u[0]):(0.)));
-	      blue_val = val;
-	    }
+          else
+          {
+            if( u_x > 0)
+            {
+              red_val = val;
+              blue_val = (char)ROUND( 255.*((fabs(u_x)!=0.)?(fabs(u_x)/max_u[0]):(0.)));
+            }
+            else
+            {
+              red_val = (char)ROUND( 255.*((fabs(u_x)!=0.)?(fabs(u_x)/max_u[0]):(0.)));
+              blue_val = val;
+            }
 
-	  }
+          }
 
-	} /* if( lattice->bc[subs][ n].bc_type == 0) */
+        } /* if( lattice->bc[subs][ n].bc_type == 0) */
 
-	else // lattice->bc[subs][ n].bc_type != 0
-	{
+        else // lattice->bc[subs][ n].bc_type != 0
+        {
 #if SOLID_COLOR_IS_CHECKERBOARD
-	  // Checkerboard pattern over the solids and boundary conditions.
-	  if( (i+j)%2)
-	  {
-	    red_val   = (char)200;
-	    green_val = (char)200;
-	    blue_val  = (char)200;
-	    val       = (char)200;
-	  }
-	  else
-	  {
-	    red_val   = (char)184;
-	    green_val = (char)184;
-	    blue_val  = (char)184;
-	    val       = (char)184;
-	  }
+          // Checkerboard pattern over the solids and boundary conditions.
+          if( (i+j)%2)
+          {
+            red_val   = (char)200;
+            green_val = (char)200;
+            blue_val  = (char)200;
+            val       = (char)200;
+          }
+          else
+          {
+            red_val   = (char)184;
+            green_val = (char)184;
+            blue_val  = (char)184;
+            val       = (char)184;
+          }
 #else /* !( SOLID_COLOR_IS_CHECKERBOARD) */
 #if SOLID_COLOR_IS_BLACK
-	  red_val   = (char)0;
-	  green_val = (char)0;
-	  blue_val  = (char)0;
-	  val       = (char)0;
+          red_val   = (char)0;
+          green_val = (char)0;
+          blue_val  = (char)0;
+          val       = (char)0;
 #else /* !( SOLID_COLOR_IS_BLACK) */
-	  red_val   = (char)255;
-	  green_val = (char)255;
-	  blue_val  = (char)255;
-	  val       = (char)255;
+          red_val   = (char)255;
+          green_val = (char)255;
+          blue_val  = (char)255;
+          val       = (char)255;
 #endif /* SOLID_COLOR_IS_BLACK */
 #endif /* SOLID_COLOR_IS_CHECKERBOARD */
 
-	} /* if( lattice->bc[subs][ n].bc_type == 0) else */
+        } /* if( lattice->bc[subs][ n].bc_type == 0) else */
 
 #if MARK_ORIGIN_FOR_REFERENCE
-	// Mark the origin for reference.
-	if( ( i == 0 && j == 0))
-	{
-	  red_val   = (char)255;
-	  green_val = (char)255;
-	  blue_val  = (char)255;
-	  val       = (char)255;
-	}
+        // Mark the origin for reference.
+        if( ( i == 0 && j == 0))
+        {
+          red_val   = (char)255;
+          green_val = (char)255;
+          blue_val  = (char)255;
+          val       = (char)255;
+        }
 #endif /* MARK_ORIGIN_FOR_REFERENCE */
 
-	if( fwrite( &blue_val,  1, 1, o_ux) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &val,       1, 1, o_ux) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &red_val,   1, 1, o_ux) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &blue_val,  1, 1, o_ux) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &val,       1, 1, o_ux) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &red_val,   1, 1, o_ux) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
 
-	if( is_not_solid(lattice,n))
-	{
-	  blue_val  = (char)0;
-	  green_val = (char)0;
-	  red_val   = (char)0;
+        if( is_not_solid(lattice,n))
+        {
+          blue_val  = (char)0;
+          green_val = (char)0;
+          red_val   = (char)0;
 
-	  u_x = (get_ux(lattice,subs,n));
-	  u_y = (get_uy(lattice,subs,n));
+          u_x = (get_ux(lattice,subs,n));
+          u_y = (get_uy(lattice,subs,n));
 
-	  val = (char)0;
+          val = (char)0;
 
-	  if( !is_solid( lattice, n))
-	  {
-	    if( u_y > 0)
-	    {
-	      red_val = val;
-	      green_val = (char)ROUND( 128.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
-	    }
-	    else
-	    {
-	      red_val = (char)ROUND( 128.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
-	      green_val = val;
-	    }
+          if( !is_solid( lattice, n))
+          {
+            if( u_y > 0)
+            {
+              red_val = val;
+              green_val = (char)ROUND( 128.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
+            }
+            else
+            {
+              red_val = (char)ROUND( 128.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
+              green_val = val;
+            }
 
-	  }
+          }
 
-	  else
-	  {
-	    if( u_y > 0)
-	    {
-	      blue_val = (char)ROUND( 255.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
-	      green_val = val;
-	    }
-	    else
-	    {
-	      blue_val = val;
-	      green_val = (char)ROUND( 255.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
-	    }
+          else
+          {
+            if( u_y > 0)
+            {
+              blue_val = (char)ROUND( 255.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
+              green_val = val;
+            }
+            else
+            {
+              blue_val = val;
+              green_val = (char)ROUND( 255.*((fabs(u_y)!=0.)?(fabs(u_y)/max_u[1]):(0.)));
+            }
 
-	  }
+          }
 
-	} /* if( lattice->bc[subs][ n].bc_type == 0) */
+        } /* if( lattice->bc[subs][ n].bc_type == 0) */
 
-	else // lattice->bc[subs][ n].bc_type != 0
-	{
+        else // lattice->bc[subs][ n].bc_type != 0
+        {
 #if SOLID_COLOR_IS_CHECKERBOARD
-	  // Checkerboard pattern over the solids and boundary conditions.
-	  if( (i+j)%2)
-	  {
-	    red_val   = (char)200;
-	    green_val = (char)200;
-	    blue_val  = (char)200;
-	    val       = (char)200;
-	  }
-	  else
-	  {
-	    red_val   = (char)184;
-	    green_val = (char)184;
-	    blue_val  = (char)184;
-	    val       = (char)184;
-	  }
+          // Checkerboard pattern over the solids and boundary conditions.
+          if( (i+j)%2)
+          {
+            red_val   = (char)200;
+            green_val = (char)200;
+            blue_val  = (char)200;
+            val       = (char)200;
+          }
+          else
+          {
+            red_val   = (char)184;
+            green_val = (char)184;
+            blue_val  = (char)184;
+            val       = (char)184;
+          }
 #else /* !( SOLID_COLOR_IS_CHECKERBOARD) */
 #if SOLID_COLOR_IS_BLACK
-	  red_val   = (char)0;
-	  green_val = (char)0;
-	  blue_val  = (char)0;
-	  val       = (char)0;
+          red_val   = (char)0;
+          green_val = (char)0;
+          blue_val  = (char)0;
+          val       = (char)0;
 #else /* !( SOLID_COLOR_IS_BLACK) */
-	  red_val   = (char)255;
-	  green_val = (char)255;
-	  blue_val  = (char)255;
-	  val       = (char)255;
+          red_val   = (char)255;
+          green_val = (char)255;
+          blue_val  = (char)255;
+          val       = (char)255;
 #endif /* SOLID_COLOR_IS_BLACK */
 #endif /* SOLID_COLOR_IS_CHECKERBOARD */
 
-	} /* if( lattice->bc[subs][ n].bc_type == 0) else */
+        } /* if( lattice->bc[subs][ n].bc_type == 0) else */
 
 #if MARK_ORIGIN_FOR_REFERENCE
-	// Mark the origin for reference.
-	if( ( i == 0 && j == 0))
-	{
-	  red_val   = (char)255;
-	  green_val = (char)255;
-	  blue_val  = (char)255;
-	  val       = (char)255;
-	}
+        // Mark the origin for reference.
+        if( ( i == 0 && j == 0))
+        {
+          red_val   = (char)255;
+          green_val = (char)255;
+          blue_val  = (char)255;
+          val       = (char)255;
+        }
 #endif /* MARK_ORIGIN_FOR_REFERENCE */
 
-	if( fwrite( &blue_val,  1, 1, o_uy) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &green_val, 1, 1, o_uy) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &red_val,   1, 1, o_uy) != 1)
-	{ printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &blue_val,  1, 1, o_uy) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &green_val, 1, 1, o_uy) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &red_val,   1, 1, o_uy) != 1)
+        { printf("BOOM!\n"); process_exit(1);}
 
       } /* for( i=0; i<get_LY(lattice); i++) */
 
@@ -1094,9 +1094,9 @@ void u2bmp( lattice_ptr lattice, int time)
       val = (char)0;
       for( i=0; i<pad; i++)
       {
-	if( fwrite( &val, 1, 1, o_u ) != 1) { printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &val, 1, 1, o_ux) != 1) { printf("BOOM!\n"); process_exit(1);}
-	if( fwrite( &val, 1, 1, o_uy) != 1) { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &val, 1, 1, o_u ) != 1) { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &val, 1, 1, o_ux) != 1) { printf("BOOM!\n"); process_exit(1);}
+        if( fwrite( &val, 1, 1, o_uy) != 1) { printf("BOOM!\n"); process_exit(1);}
       }
 
     } /* for( j=0; j<get_LY(lattice); j++) */
@@ -1107,21 +1107,21 @@ void u2bmp( lattice_ptr lattice, int time)
 
 #if VERBOSITY_LEVEL > 0
     sprintf( filename, "%s/u%dx%d_frame%04d_subs%02d_proc%04d.bmp", get_out_path(lattice),
-	get_LX(lattice),
-	get_LY(lattice),
-	frame, subs, get_proc_id(lattice));
+        get_LX(lattice),
+        get_LY(lattice),
+        frame, subs, get_proc_id(lattice));
     printf("u2bmp()   -- Wrote file \"%s\".\n", filename);
 
     sprintf( filename, "%s/u_x%dx%d_frame%04d_subs%02d_proc%04d.bmp", get_out_path(lattice),
-	get_LX(lattice),
-	get_LY(lattice),
-	frame, subs, get_proc_id(lattice));
+        get_LX(lattice),
+        get_LY(lattice),
+        frame, subs, get_proc_id(lattice));
     printf("u2bmp()   -- Wrote file \"%s\".\n", filename);
 
     sprintf( filename, "%s/u_y%dx%d_frame%04d_subs%02d_proc%04d.bmp", get_out_path(lattice),
-	get_LX(lattice),
-	get_LY(lattice),
-	frame, subs, get_proc_id(lattice));
+        get_LX(lattice),
+        get_LY(lattice),
+        frame, subs, get_proc_id(lattice));
     printf("u2bmp()   -- Wrote file \"%s\".\n", filename);
 #endif /* VERBOSITY_LEVEL > 0 */
 
@@ -1142,7 +1142,7 @@ void u2bmp( lattice_ptr lattice, int time)
   if( !( in = fopen( filename, "r")))
   {
     printf("%s %d >> u2bmp() -- Error opening file \"%s\".\n",
-	__FILE__,__LINE__,filename);
+        __FILE__,__LINE__,filename);
     process_exit(1);
   }
 
@@ -1177,8 +1177,8 @@ void u2bmp( lattice_ptr lattice, int time)
       k = fread( &rgb, sizeof(struct rgb_quad), 1, in );
       if( k!=1)
       {
-	printf("Error reading palette entry %d.  Exiting!\n", i);
-	process_exit(1);
+        printf("Error reading palette entry %d.  Exiting!\n", i);
+        process_exit(1);
       }
     }
   }
@@ -1244,85 +1244,85 @@ void u2bmp( lattice_ptr lattice, int time)
       if( lattice->bc[0][ n].bc_type == /*FLUID_NODE*/0)
       {
 #if 1
-	blue_val  = (char)0;
-	green_val = (char)0;
-	red_val   = (char)0;
+        blue_val  = (char)0;
+        green_val = (char)0;
+        red_val   = (char)0;
 
-	u_x = (lattice->upr[ n].u[0]);
-	u_y = (lattice->upr[ n].u[1]);
+        u_x = (lattice->upr[ n].u[0]);
+        u_y = (lattice->upr[ n].u[1]);
 
-	u = sqrt(u_x*u_x + u_y*u_y);
-	maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
+        u = sqrt(u_x*u_x + u_y*u_y);
+        maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
 
-	if( is_solid(lattice,n))
-	{
-	  blue_val  = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
-	  green_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
+        if( is_solid(lattice,n))
+        {
+          blue_val  = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
+          green_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
 
-	}
+        }
 
-	else
-	{
-	  blue_val  = (char)ROUND(  255.*fabs(u_x)/max_u[0]);
-	  green_val = (char)ROUND(  255.*fabs(u_y)/max_u[1]);
-	  //red_val    = (char)ROUND( 128.*fabs(u)/maxu);
+        else
+        {
+          blue_val  = (char)ROUND(  255.*fabs(u_x)/max_u[0]);
+          green_val = (char)ROUND(  255.*fabs(u_y)/max_u[1]);
+          //red_val    = (char)ROUND( 128.*fabs(u)/maxu);
 
-	}
+        }
 #else
-	blue_val  = (char)255;
-	green_val = (char)255;
-	red_val   = (char)255;
+        blue_val  = (char)255;
+        green_val = (char)255;
+        red_val   = (char)255;
 
-	u = sqrt(u_x*u_x + u_y*u_y);
-	maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
+        u = sqrt(u_x*u_x + u_y*u_y);
+        maxu = sqrt( max_u[0]*max_u[0] + max_u[1]*max_u[1]);
 
-	//if( fabs(u) > .1*maxu)
-	//{
-	green_val  = (char)ROUND( 255.-255.*fabs(u)/maxu);
-	red_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
-	blue_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
-	//}
-	//else
-	//{
-	//  green_val  = (char)0;
-	//  red_val    = (char)0;
-	//  blue_val    = (char)0;
-	//}
+        //if( fabs(u) > .1*maxu)
+        //{
+        green_val  = (char)ROUND( 255.-255.*fabs(u)/maxu);
+        red_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
+        blue_val    = (char)ROUND( 255.-255.*fabs(u)/maxu);
+        //}
+        //else
+        //{
+        //  green_val  = (char)0;
+        //  red_val    = (char)0;
+        //  blue_val    = (char)0;
+        //}
 #endif
 
-	val = (char)0;
+        val = (char)0;
 
       } /* if( lattice->bc[subs][ n].bc_type == 0) */
 
       else // lattice->bc[subs][ n].bc_type != 0
       {
 #if SOLID_COLOR_IS_CHECKERBOARD
-	// Checkerboard pattern over the solids and boundary conditions.
-	if( (i+j)%2)
-	{
-	  red_val   = (char)200;
-	  green_val = (char)200;
-	  blue_val  = (char)200;
-	  val       = (char)200;
-	}
-	else
-	{
-	  red_val   = (char)184;
-	  green_val = (char)184;
-	  blue_val  = (char)184;
-	  val       = (char)184;
-	}
+        // Checkerboard pattern over the solids and boundary conditions.
+        if( (i+j)%2)
+        {
+          red_val   = (char)200;
+          green_val = (char)200;
+          blue_val  = (char)200;
+          val       = (char)200;
+        }
+        else
+        {
+          red_val   = (char)184;
+          green_val = (char)184;
+          blue_val  = (char)184;
+          val       = (char)184;
+        }
 #else /* !( SOLID_COLOR_IS_CHECKERBOARD) */
 #if SOLID_COLOR_IS_BLACK
-	red_val   = (char)0;
-	green_val = (char)0;
-	blue_val  = (char)0;
-	val       = (char)0;
+        red_val   = (char)0;
+        green_val = (char)0;
+        blue_val  = (char)0;
+        val       = (char)0;
 #else /* !( SOLID_COLOR_IS_BLACK) */
-	red_val   = (char)255;
-	green_val = (char)255;
-	blue_val  = (char)255;
-	val       = (char)255;
+        red_val   = (char)255;
+        green_val = (char)255;
+        blue_val  = (char)255;
+        val       = (char)255;
 #endif /* SOLID_COLOR_IS_BLACK */
 #endif /* SOLID_COLOR_IS_CHECKERBOARD */
 
@@ -1332,10 +1332,10 @@ void u2bmp( lattice_ptr lattice, int time)
       // Mark the origin for reference.
       if( ( i == 0 && j == 0))
       {
-	red_val   = (char)255;
-	green_val = (char)255;
-	blue_val  = (char)255;
-	val       = (char)255;
+        red_val   = (char)255;
+        green_val = (char)255;
+        blue_val  = (char)255;
+        val       = (char)255;
       }
 #endif /* MARK_ORIGIN_FOR_REFERENCE */
 
@@ -1345,76 +1345,76 @@ void u2bmp( lattice_ptr lattice, int time)
 
       if( lattice->bc[0][ n].bc_type == /*FLUID_NODE*/0)
       {
-	blue_val  = (char)0;
-	green_val = (char)0;
-	red_val   = (char)0;
+        blue_val  = (char)0;
+        green_val = (char)0;
+        red_val   = (char)0;
 
-	u_x = (lattice->upr[ n].u[0]);
-	u_y = (lattice->upr[ n].u[1]);
+        u_x = (lattice->upr[ n].u[0]);
+        u_y = (lattice->upr[ n].u[1]);
 
-	val = (char)0;
+        val = (char)0;
 
-	if( is_solid( lattice, n))
-	{
-	  if( u_x > 0)
-	  {
-	    red_val = val;
-	    blue_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
-	  }
-	  else
-	  {
-	    red_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
-	    blue_val = val;
-	  }
+        if( is_solid( lattice, n))
+        {
+          if( u_x > 0)
+          {
+            red_val = val;
+            blue_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
+          }
+          else
+          {
+            red_val = (char)ROUND( 128.*fabs(u_x)/max_u[0]);
+            blue_val = val;
+          }
 
-	}
+        }
 
-	else
-	{
-	  if( u_x > 0)
-	  {
-	    red_val = val;
-	    blue_val = (char)ROUND( 255.*fabs(u_x)/max_u[0]);
-	  }
-	  else
-	  {
-	    red_val = (char)ROUND( 255.*fabs(u_x)/max_u[0]);
-	    blue_val = val;
-	  }
+        else
+        {
+          if( u_x > 0)
+          {
+            red_val = val;
+            blue_val = (char)ROUND( 255.*fabs(u_x)/max_u[0]);
+          }
+          else
+          {
+            red_val = (char)ROUND( 255.*fabs(u_x)/max_u[0]);
+            blue_val = val;
+          }
 
-	}
+        }
 
       } /* if( lattice->bc[subs][ n].bc_type == 0) */
 
       else // lattice->bc[subs][ n].bc_type != 0
       {
 #if SOLID_COLOR_IS_CHECKERBOARD
-	// Checkerboard pattern over the solids and boundary conditions.
-	if( (i+j)%2)
-	{
-	  red_val   = (char)200;
-	  green_val = (char)200;
-	  blue_val  = (char)200;
-	  val       = (char)200;
-	}
-	else
-	{
-	  red_val   = (char)184;
-	  green_val = (char)184;
-	  blue_val  = (char)184;
-	  val       = (char)184;
-	}
+        // Checkerboard pattern over the solids and boundary conditions.
+        if( (i+j)%2)
+        {
+          red_val   = (char)200;
+          green_val = (char)200;
+          blue_val  = (char)200;
+          val       = (char)200;
+        }
+        else
+        {
+          red_val   = (char)184;
+          green_val = (char)184;
+          blue_val  = (char)184;
+          val       = (char)184;
+        }
 #else /* !( SOLID_COLOR_IS_CHECKERBOARD) */
 #if SOLID_COLOR_IS_BLACK
-	red_val   = (char)0;
-	green_val = (char)0;
-	blue_val  = (char)0;
-	val       = (char)0;
+        red_val   = (char)0;
+        green_val = (char)0;
+        blue_val  = (char)0;
+        val       = (char)0;
 #else /* !( SOLID_COLOR_IS_BLACK) */
-	red_val   = (char)255;
-	green_val = (char)255;
-	blue_val  = (char)255;
-	val       = (char)255;
+        red_val   = (char)255;
+        green_val = (char)255;
+        blue_val  = (char)255;
+        val       = (char)255;
 #endif /* SOLID_COLOR_IS_BLACK */
 #endif /* SOLID_COLOR_IS_CHECKERBOARD */
 
@@ -1424,10 +1424,10 @@ void u2bmp( lattice_ptr lattice, int time)
       // Mark the origin for reference.
       if( ( i == 0 && j == 0))
       {
-	red_val   = (char)255;
-	green_val = (char)255;
-	blue_val  = (char)255;
-	val       = (char)255;
+        red_val   = (char)255;
+        green_val = (char)255;
+        blue_val  = (char)255;
+        val       = (char)255;
       }
 #endif /* MARK_ORIGIN_FOR_REFERENCE */
 
@@ -1437,76 +1437,76 @@ void u2bmp( lattice_ptr lattice, int time)
 
       if( lattice->bc[0][ n].bc_type == /*FLUID_NODE*/0)
       {
-	blue_val  = (char)0;
-	green_val = (char)0;
-	red_val   = (char)0;
+        blue_val  = (char)0;
+        green_val = (char)0;
+        red_val   = (char)0;
 
-	u_x = (lattice->upr[ n].u[0]);
-	u_y = (lattice->upr[ n].u[1]);
+        u_x = (lattice->upr[ n].u[0]);
+        u_y = (lattice->upr[ n].u[1]);
 
-	val = (char)0;
+        val = (char)0;
 
-	if( is_solid( lattice, n))
-	{
-	  if( u_y > 0)
-	  {
-	    red_val = val;
-	    green_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
-	  }
-	  else
-	  {
-	    red_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
-	    green_val = val;
-	  }
+        if( is_solid( lattice, n))
+        {
+          if( u_y > 0)
+          {
+            red_val = val;
+            green_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
+          }
+          else
+          {
+            red_val = (char)ROUND( 128.*fabs(u_y)/max_u[1]);
+            green_val = val;
+          }
 
-	}
+        }
 
-	else
-	{
-	  if( u_y > 0)
-	  {
-	    blue_val = (char)ROUND( 255.*fabs(u_y)/max_u[1]);
-	    green_val = val;
-	  }
-	  else
-	  {
-	    blue_val = val;
-	    green_val = (char)ROUND( 255.*fabs(u_y)/max_u[1]);
-	  }
+        else
+        {
+          if( u_y > 0)
+          {
+            blue_val = (char)ROUND( 255.*fabs(u_y)/max_u[1]);
+            green_val = val;
+          }
+          else
+          {
+            blue_val = val;
+            green_val = (char)ROUND( 255.*fabs(u_y)/max_u[1]);
+          }
 
-	}
+        }
 
       } /* if( lattice->bc[subs][ n].bc_type == 0) */
 
       else // lattice->bc[subs][ n].bc_type != 0
       {
 #if SOLID_COLOR_IS_CHECKERBOARD
-	// Checkerboard pattern over the solids and boundary conditions.
-	if( (i+j)%2)
-	{
-	  red_val   = (char)200;
-	  green_val = (char)200;
-	  blue_val  = (char)200;
-	  val       = (char)200;
-	}
-	else
-	{
-	  red_val   = (char)184;
-	  green_val = (char)184;
-	  blue_val  = (char)184;
-	  val       = (char)184;
-	}
+        // Checkerboard pattern over the solids and boundary conditions.
+        if( (i+j)%2)
+        {
+          red_val   = (char)200;
+          green_val = (char)200;
+          blue_val  = (char)200;
+          val       = (char)200;
+        }
+        else
+        {
+          red_val   = (char)184;
+          green_val = (char)184;
+          blue_val  = (char)184;
+          val       = (char)184;
+        }
 #else /* !( SOLID_COLOR_IS_CHECKERBOARD) */
 #if SOLID_COLOR_IS_BLACK
-	red_val   = (char)0;
-	green_val = (char)0;
-	blue_val  = (char)0;
-	val       = (char)0;
+        red_val   = (char)0;
+        green_val = (char)0;
+        blue_val  = (char)0;
+        val       = (char)0;
 #else /* !( SOLID_COLOR_IS_BLACK) */
-	red_val   = (char)255;
-	green_val = (char)255;
-	blue_val  = (char)255;
-	val       = (char)255;
+        red_val   = (char)255;
+        green_val = (char)255;
+        blue_val  = (char)255;
+        val       = (char)255;
 #endif /* SOLID_COLOR_IS_BLACK */
 #endif /* SOLID_COLOR_IS_CHECKERBOARD */
 
@@ -1516,10 +1516,10 @@ void u2bmp( lattice_ptr lattice, int time)
       // Mark the origin for reference.
       if( ( i == 0 && j == 0))
       {
-	red_val   = (char)255;
-	green_val = (char)255;
-	blue_val  = (char)255;
-	val       = (char)255;
+        red_val   = (char)255;
+        green_val = (char)255;
+        blue_val  = (char)255;
+        val       = (char)255;
       }
 #endif /* MARK_ORIGIN_FOR_REFERENCE */
 
@@ -1575,16 +1575,16 @@ void write_empty_bmp( lattice_ptr lattice)
   FILE   *o;
   int    i, j;
   int    pad,
-	 bytes_per_row;
+         bytes_per_row;
   struct bitmap_file_header bmfh;
   struct bitmap_info_header bmih;
   int    *width_ptr;
   short  int *bitcount_ptr;
   char   filename[1024];
   char   red_val,
-	 green_val,
-	 blue_val,
-	 val;
+         green_val,
+         blue_val,
+         val;
 
 #if SAY_HI
   printf("write_empty_bmp() -- Hi!\n");
@@ -1618,7 +1618,7 @@ void write_empty_bmp( lattice_ptr lattice)
   // Bytes per row of the bitmap.
   bytes_per_row =
     ((int)ceil(( ( ((real)(ENDIAN4(*width_ptr)))
-	  * ((real)(ENDIAN2(*bitcount_ptr))) )/8.)));
+          * ((real)(ENDIAN2(*bitcount_ptr))) )/8.)));
 
   // Bitmaps pad rows to preserve 4-byte boundaries.
   // The length of a row in the file will be bytes_per_row + pad .
@@ -1688,12 +1688,12 @@ void write_rho_image( lattice_ptr lattice, int subs)
     char filename[1024];
     gen_filename( lattice, filename, "rho", get_frame(lattice), subs, ".raw");
     write_raw(
-	lattice,
-	get_rho_ptr(lattice,subs,0),
-	/*stride*/ 1,
-	/*max_u[0]*/get_max_rho(lattice,subs),
-	/*min_u[0]*/get_min_rho(lattice,subs),
-	filename);
+        lattice,
+        get_rho_ptr(lattice,subs,0),
+        /*stride*/ 1,
+        /*max_u[0]*/get_max_rho(lattice,subs),
+        /*min_u[0]*/get_min_rho(lattice,subs),
+        filename);
 #endif
   }
 }
@@ -1711,19 +1711,19 @@ void write_u_image( lattice_ptr lattice, int subs)
     char filename[1024];
     gen_filename( lattice, filename, "u", get_frame(lattice), subs, ".raw");
     write_raw_u(
-	lattice,
-	get_ux_ptr(lattice,subs,0),
-	get_uy_ptr(lattice,subs,0),
-	get_uz_ptr(lattice,subs,0),
-	/*stride*/ 1,
-	/*max_u[0]*/get_max_ux(lattice,subs),
-	/*TODO: Want to hardcode min=0 for some reason???*/
-	/*min_u[0]*/get_min_ux(lattice,subs),
-	/*max_u[1]*/get_max_uy(lattice,subs),
-	/*min_u[1]*/get_min_uy(lattice,subs),
-	/*max_u[2]*/get_max_uz(lattice,subs),
-	/*min_u[2]*/get_min_uz(lattice,subs),
-	filename);
+        lattice,
+        get_ux_ptr(lattice,subs,0),
+        get_uy_ptr(lattice,subs,0),
+        get_uz_ptr(lattice,subs,0),
+        /*stride*/ 1,
+        /*max_u[0]*/get_max_ux(lattice,subs),
+        /*TODO: Want to hardcode min=0 for some reason???*/
+        /*min_u[0]*/get_min_ux(lattice,subs),
+        /*max_u[1]*/get_max_uy(lattice,subs),
+        /*min_u[1]*/get_min_uy(lattice,subs),
+        /*max_u[2]*/get_max_uz(lattice,subs),
+        /*min_u[2]*/get_min_uz(lattice,subs),
+        filename);
 #endif
   }
 }
@@ -1736,13 +1736,13 @@ void write_ux_image( lattice_ptr lattice, int subs)
     char filename[1024];
     gen_filename( lattice, filename, "u_x", get_frame(lattice), subs, ".raw");
     write_raw(
-	lattice,
-	get_ux_ptr(lattice,subs,0),
-	/*stride*/ 1,
-	/*max_u[0]*/get_max_ux(lattice,subs),
-	/*TODO: Want to hardcode min=0 for some reason???*/
-	/*min_u[0]*/get_min_ux(lattice,subs),
-	filename);
+        lattice,
+        get_ux_ptr(lattice,subs,0),
+        /*stride*/ 1,
+        /*max_u[0]*/get_max_ux(lattice,subs),
+        /*TODO: Want to hardcode min=0 for some reason???*/
+        /*min_u[0]*/get_min_ux(lattice,subs),
+        filename);
 #endif
   }
 }
@@ -1754,13 +1754,13 @@ void write_uy_image( lattice_ptr lattice, int subs)
     char filename[1024];
     gen_filename( lattice, filename, "u_y", get_frame(lattice), subs, ".raw");
     write_raw(
-	lattice,
-	get_uy_ptr(lattice,subs,0),
-	/*stride*/ 1,
-	/*max_u[0]*/get_max_uy(lattice,subs),
-	/*TODO: Want to hardcode min=0 for some reason???*/
-	/*min_u[0]*/get_min_uy(lattice,subs),
-	filename);
+        lattice,
+        get_uy_ptr(lattice,subs,0),
+        /*stride*/ 1,
+        /*max_u[0]*/get_max_uy(lattice,subs),
+        /*TODO: Want to hardcode min=0 for some reason???*/
+        /*min_u[0]*/get_min_uy(lattice,subs),
+        filename);
 #endif
   }
 }
@@ -1772,13 +1772,13 @@ void write_uz_image( lattice_ptr lattice, int subs)
     char filename[1024];
     gen_filename( lattice, filename, "u_z", get_frame(lattice), subs, ".raw");
     write_raw(
-	lattice,
-	get_uz_ptr(lattice,subs,0),
-	/*stride*/ 1,
-	/*max_u[0]*/get_max_uz(lattice,subs),
-	/*TODO: Want to hardcode min=0 for some reason???*/
-	/*min_u[0]*/get_min_uz(lattice,subs),
-	filename);
+        lattice,
+        get_uz_ptr(lattice,subs,0),
+        /*stride*/ 1,
+        /*max_u[0]*/get_max_uz(lattice,subs),
+        /*TODO: Want to hardcode min=0 for some reason???*/
+        /*min_u[0]*/get_min_uz(lattice,subs),
+        filename);
 #endif
   }
 }
@@ -2111,7 +2111,7 @@ real* get_fptr(
       // If neighboring node is a solid, return the f at node (i0,j0,k0) that
       // would be streamed out for halfway bounceback.
       return lattice->vars[subs].f1d[ a + ((!(a%2))?(-1):(1)) ]
-	+ i0 + ni*j0 + ni*nj*k0;
+        + i0 + ni*j0 + ni*nj*k0;
     }
   }
   else
@@ -2143,6 +2143,8 @@ __constant__ int vy_c[19];     // Enough space for D3Q19; first 9
 __constant__ int vz_c[19];     // components constitute D2Q9 model
 __constant__ real wt_c[19];    // 
 __constant__ int cumul_stride_c[20]; // For variable stride created by boundary regions
+
+__constant__ int is_end_of_frame_mem_c;
 
 __constant__ real tau_c[2];    // Hardcoded for up to 2 fluid components
 __constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
@@ -2214,137 +2216,70 @@ __device__ int d_is_not_solid( unsigned char* solids_mem_d, int n)
 #endif
 }
 
-void pdf_boundary_swap_1( lattice_ptr lattice
+void pdf_boundary_swap( lattice_ptr lattice
     , real* f_mem_d
     , int* cstr
     , int subs
-    , int dir 
+    , int dir
+    , int time 
     )
 {
-  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir-1] - get_end_bound_size( lattice)
-      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] - get_end_bound_size( lattice)
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
+#if PARALLEL
+  if( time&1) //time%2
+  {
+  }
+  else
+  {
+  }
+#else
+  if( time&1) //time%2
+  {
+    cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir-1] - get_end_bound_size( lattice)
+        , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir] - get_end_bound_size( lattice)
+        , get_end_bound_size( lattice)
+        *sizeof(real)
+        , cudaMemcpyDeviceToDevice);
 
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
 
-  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] + get_NumNodes( lattice)
-      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir]
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
+    cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir] + get_NumNodes( lattice)
+        , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir]
+        , get_end_bound_size( lattice)
+        *sizeof(real)
+        , cudaMemcpyDeviceToDevice);
 
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
 
-#if 0
-  cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-      + dir * get_NumNodes( lattice)
-      + (northtop) * get_NumNodes( lattice)
-      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-      *get_NumVelDirs( lattice)
-      , f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-      + dir * get_NumNodes( lattice)
-      + (1-northtop) * get_NumNodes( lattice)
-      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-      *get_NumVelDirs( lattice)
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
+  }
+  else
+  {
+    cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir] - get_end_bound_size( lattice)
+        , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir-1] - get_end_bound_size( lattice)
+        , get_end_bound_size( lattice)
+        *sizeof(real)
+        , cudaMemcpyDeviceToDevice);
 
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+
+    cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir]
+        , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+        + cstr[dir] + get_NumNodes( lattice)
+        , get_end_bound_size( lattice)
+        *sizeof(real)
+        , cudaMemcpyDeviceToDevice);
+
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+  }
 #endif
 }
 
-void pdf_boundary_swap_2( lattice_ptr lattice
-    , real* f_mem_d
-    , int* cstr
-    , int subs
-    , int dir 
-    )
-{
-  /*real *temp;
-  temp = (real*) malloc(get_end_bound_size( lattice) * sizeof(real));
-  temp[0] = 3.141;
-  temp[1] = 3.142;
-  temp[2] = 3.143;
-  printf(" \n\n\n %d  %d  %d \n\n\n", subs * cstr[get_NumVelDirs( lattice)] ,cstr[dir-1],subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir-1] - get_end_bound_size( lattice));
-
-  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir-1] - get_end_bound_size( lattice)
-      , temp
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyHostToDevice);
-
-
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-*/
-  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] - get_end_bound_size( lattice)
-      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir-1] - get_end_bound_size( lattice)
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
-
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-
-  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir]
-      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] + get_NumNodes( lattice)
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
-
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-#if 0
-  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir-1] - get_end_bound_size( lattice)
-      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] - get_end_bound_size( lattice)
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
-
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-
-  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] + get_NumNodes( lattice)
-      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir+1]
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
-
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-#endif
-#if 0
-  cudaMemcpy( f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-      + dir * get_NumNodes( lattice)
-      + (northtop) * get_NumNodes( lattice)
-      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-      *get_NumVelDirs( lattice)
-      + (northtop?1:-1) * get_end_bound_size( lattice)
-      , f_mem_d + (2*dir+1-northtop) * get_end_bound_size( lattice)
-      + dir * get_NumNodes( lattice)
-      + (1-northtop) * get_NumNodes( lattice)
-      + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-      *get_NumVelDirs( lattice)
-      + (northtop?1:-1) * get_end_bound_size( lattice)
-      , get_end_bound_size( lattice)
-      *sizeof(real)
-      , cudaMemcpyDeviceToDevice);
-
-  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-#endif
-}
 
 __device__ real get_f1d_d(
     real* f_mem_d
@@ -2433,8 +2368,8 @@ __device__ void set_f1d_d(
   // if  I && !C then 0
   // if !I &&  C then 1
   // if !I && !C then 0
-    if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
-    {
+  if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
+  {
 #endif
     int i = i0+di;
     int j = j0+dj;
@@ -2457,7 +2392,7 @@ __device__ void set_f1d_d(
     {
 #endif
       f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-	+ cumul_stride_c[a] + n] = value;
+        + cumul_stride_c[a] + n] = value;
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
     }
 #endif
@@ -2487,8 +2422,8 @@ __device__ void calc_f_tilde_d(
   f_temp[thread + dir*block_size] += wt_c[dir]
     * f_temp[ thread + numdirs_c*block_size]
     * ( 1. + 3.*vdotu
-	+ 4.5*vdotu*vdotu
-	- 1.5*usq
+        + 4.5*vdotu*vdotu
+        - 1.5*usq
       ) / tau_c[subs];
 }
 // Maybe later an equivalent function for the forcing term in the LBE, as per
@@ -2558,7 +2493,7 @@ real* get_fptr( lattice_ptr lattice, int subs, int n, int a)
       n-=get_ni(lattice);
     }
     else if( n>=get_NumNodes(lattice)+get_ni(lattice)-1
-	&& n<=get_NumNodes(lattice)+2*(get_ni(lattice)-1))
+        && n<=get_NumNodes(lattice)+2*(get_ni(lattice)-1))
     {
       n-=get_ni(lattice)*get_nj(lattice);
     }
@@ -2570,7 +2505,7 @@ real* get_fptr( lattice_ptr lattice, int subs, int n, int a)
   if( n<0 || n>=get_NumNodes(lattice))
   {
     printf("%s %d ERROR: linear index n=%d out of bounds.\n"
-	,__FILE__,__LINE__,n);
+        ,__FILE__,__LINE__,n);
     process_exit(lattice);
   }
   return lattice->vars[subs].f1d[a] + n;
@@ -2634,11 +2569,11 @@ void checkCUDAError(const char *file, int line, const char *msg)
   if( cudaSuccess != err) 
   {
     fprintf(stderr, " CUDA Error in file:  %s\n"
-	" Line number:         %d\n"
-	" Point of failure:    %s\n"
-	" Error message:       %s\n"
-	, file, line, msg 
-	, cudaGetErrorString( err) );
+        " Line number:         %d\n"
+        " Point of failure:    %s\n"
+        " Error message:       %s\n"
+        , file, line, msg 
+        , cudaGetErrorString( err) );
     exit(EXIT_FAILURE);
   }                   
 #endif      

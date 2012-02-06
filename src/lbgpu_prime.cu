@@ -149,17 +149,6 @@ int main( int argc, char **argv)
     }
 
 
-#if 0
-    cudaMemcpy( f_mem_d + f_bound_size
-        + subs*get_NumNodes( lattice)*get_NumVelDirs( lattice)
-        , get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
-        , get_NumVelDirs( lattice)
-        *get_NumNodes( lattice)
-        *sizeof(real)
-        , cudaMemcpyHostToDevice);
-
-    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-#endif
     cudaMemcpy( mv_mem_d + subs*get_NumNodes( lattice)*(1 + get_NumDims( lattice))
         , get_rho_ptr(lattice, subs, 0)
         , (1. + get_NumDims( lattice))
@@ -172,13 +161,15 @@ int main( int argc, char **argv)
   }
 
   int temp = 0;
+  cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
+#if 0
   cudaMemcpy( is_end_of_frame_mem_d
       , &temp
       , sizeof(int)
       , cudaMemcpyHostToDevice);
 
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-
+#endif
 #if TEXTURE_FETCH
   cudaBindTexture(0, tex_solid, solids_mem_d);
 #endif
@@ -189,20 +180,17 @@ int main( int argc, char **argv)
   {
     set_time( lattice, time);
 
-    // Do boundary swaps.
-
+    // Do boundary swaps. The direction depends on
+    // whether time is even or odd. Here, time is odd.
 #ifdef __CUDACC__
-#if PARALLEL
-#else
-
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
       for( dir=ubdir+1; dir < get_NumVelDirs( lattice); dir+=2)
       {
-        pdf_boundary_swap_1( lattice, f_mem_d, cumul_stride, subs, dir);
+        pdf_boundary_swap( lattice, f_mem_d, cumul_stride
+            , subs, dir, time);
       }
     }
-#endif
 #endif
 
     // Time steps are combined in a somewhat awkward way in order to minimize
@@ -234,18 +222,17 @@ int main( int argc, char **argv)
 
     set_time( lattice, ++time);
 
-    // Do boundary swaps.
+    // Do boundary swaps. The direction depends on
+    // whether time is even or odd. Here, time is even.
 #ifdef __CUDACC__
-#if PARALLEL
-#else
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
       for( dir=ubdir+1; dir < get_NumVelDirs( lattice); dir+=2)
       {
-        pdf_boundary_swap_2( lattice, f_mem_d, cumul_stride, subs, dir);
+        pdf_boundary_swap( lattice, f_mem_d, cumul_stride
+            , subs, dir, time);
       }
     }
-#endif
 #endif
 
 #ifdef __CUDACC__
@@ -253,13 +240,15 @@ int main( int argc, char **argv)
     if( is_end_of_frame(lattice,time))
     {
       int temp = 1;
+      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
+#if 0
       cudaMemcpy( is_end_of_frame_mem_d
           , &temp
           , sizeof(int)
           , cudaMemcpyHostToDevice);
 
       checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-
+#endif
     }
 #endif
     k_collide
@@ -279,12 +268,14 @@ int main( int argc, char **argv)
     if( is_end_of_frame(lattice,time))
     {
       int temp = 0;
+      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
+#if 0
       cudaMemcpy( is_end_of_frame_mem_d
           , &temp
           , sizeof(int)
           , cudaMemcpyHostToDevice);
       checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-
+#endif
     }
 #endif
 #else
@@ -360,32 +351,6 @@ int main( int argc, char **argv)
 
             checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
           }
-
-#if 0
-          for( dir = 0; dir < get_NumVelDirs( lattice); dir++)
-          {
-            cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, dir)
-                , f_mem_d + (2*dir+1) * get_end_bound_size( lattice)
-                + dir * get_NumNodes( lattice)
-                + subs*(get_NumNodes( lattice) + 2*get_end_bound_size( lattice))
-                *get_NumVelDirs( lattice)
-                ,  get_NumNodes( lattice)
-                *sizeof(real)
-                , cudaMemcpyDeviceToHost);
-
-            checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-
-          }
-
-          cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
-              , f_mem_d + f_bound_size
-              + subs*get_NumNodes( lattice)*get_NumVelDirs( lattice)
-              , get_NumVelDirs( lattice)
-              *get_NumNodes( lattice)
-              *sizeof(real)
-              , cudaMemcpyDeviceToHost);
-          checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-#endif
         }
       }
 #endif

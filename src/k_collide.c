@@ -173,9 +173,6 @@ void k_collide(
               , i,j,k,n
               , 0, 0, 0
               , a, fptr[b + a*blocksize_c]);
-
-          //set_f1d_d( f_mem_d, subs, 0 
-          //                     , i, j, k, a, fptr[b + a*blocksize_c]);
         }
 #endif
         // Calculate macroscopic variables after the collision step, for the
@@ -185,7 +182,7 @@ void k_collide(
         // are either stored in device global memory or transferred to the host.
 #if 1
 
-        if( *is_end_of_frame_mem_d)
+        if( is_end_of_frame_mem_c)
         {
           // Initialize shared memory values for calculating macro vars.
           fptr[b + (numdirs_c+0)*blocksize_c] = 0.;

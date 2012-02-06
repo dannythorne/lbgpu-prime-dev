@@ -336,10 +336,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
     cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
-
+#if 0
     cudaMalloc( (void**)&is_end_of_frame_mem_d, sizeof(int));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
-
+#endif
 #endif
 
     // Allocate pointers to the individual f arrays.

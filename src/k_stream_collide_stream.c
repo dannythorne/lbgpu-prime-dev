@@ -213,31 +213,7 @@ void k_stream_collide_stream(
               , a-1, fptr[b + a*blocksize_c]);
         }
 #endif
-#if 0	
-        set_f1d_d( f_mem_d, solids_mem_d
-            , subs
-            , i,j,k,n
-            , 0,0,0
-            , 0, fptr[b + 0*blocksize_c]);
 
-        for( a=1; a<numdirs_c; a+=2)
-        {
-          set_f1d_d( f_mem_d, solids_mem_d
-              , subs
-              , i,j,k,n
-              , 0,0,0
-              , a, fptr[b + a*blocksize_c]);
-        }
-
-        for( a=2; a<numdirs_c; a+=2)
-        {
-          set_f1d_d( f_mem_d, solids_mem_d
-              , subs
-              , i,j,k,n
-              , 0,0,0
-              , a, fptr[b + a*blocksize_c]);
-        }
-#endif
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
       }
 #endif
