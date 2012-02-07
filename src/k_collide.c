@@ -5,7 +5,6 @@ void k_collide(
     real* f_mem_d
     , real* mv_mem_d
     , unsigned char* solids_mem_d
-    , int* is_end_of_frame_mem_d
     )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -240,7 +239,7 @@ void k_collide(
 
             if( /*debug*/0)
             {
-              set_mv_d( mv_mem_d, subs, n, a, (real) n);
+              set_mv_d( mv_mem_d, subs, n, a, 1.);
             }
           }
           //}
@@ -253,4 +252,5 @@ void k_collide(
     }  /*for( klc=0; klc < kloop_c; klc++)*/
 #endif
   }  /*for( subs=0; subs<numsubs_c; subs++)*/
+
 }

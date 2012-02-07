@@ -8,6 +8,13 @@
 
 #if PARALLEL
 #include <mpi.h>
+
+#if DP_ON
+#define MPI_DATATYPE MPI_DOUBLE
+#else
+#define MPI_DATATYPE MPI_FLOAT
+#endif
+
 #endif
 
 #include "lattice.h"

@@ -1,5 +1,9 @@
 NAME_FLAG =-o lbgpu
 CUDA_ARCH_FLAG =-arch=sm_13
+MPI_INCLUDES := /usr/include/openmpi
+MPI_LIBS := /usr/lib64/openmpi
+CUDA_INCLUDES := /usr/local/cuda/include
+CUDA_LIBS := /usr/local/cuda/lib64
 
 GCC_FLAGS =
 GCC_FLAGS+=$(NAME_FLAG)
@@ -12,6 +16,17 @@ all:
 
 cuda:
 	nvcc -v $(NAME_FLAG) ./src/lbgpu_prime.cu -lm $(CUDA_ARCH_FLAG)
+#lbgpu_prime.o: 
+#	nvcc -I$(MPI_INCLUDES) -DPARALLEL=1 -o lbgpu_prime.o -c ./src/lbgpu_prime.cu -lcudart -lm $(CUDA_ARCH_FLAG)
+#
+#multigpu: lbgpu_prime.o
+#	mpicc $(NAME_FLAG) lbgpu_prime.o -lm
+
+lbgpu_prime.o: 
+	nvcc -I$(MPI_INCLUDES) -DPARALLEL=1 -o lbgpu_prime.o -c ./src/lbgpu_prime.cu $(CUDA_ARCH_FLAG)
+
+multigpu: lbgpu_prime.o
+	mpicc $(NAME_FLAG) lbgpu_prime.o -lcudart -lm -L$(CUDA_LIBS)
 
 mpi:
 	mpicc -DPARALLEL=1 -o lb3d ./src/lb3d_prime.c -lm
@@ -47,4 +62,4 @@ sweep:
 	/bin/rm -f ./out/*.raw
 
 clean:
-	/bin/rm -f lb3d.exe lb3d a.out slice.exe a.exe* *.stackdump
+	/bin/rm -f lbgpu.exe lbgpu a.out slice.exe a.exe* *.stackdump *.o *.cubin

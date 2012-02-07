@@ -33,6 +33,7 @@
 // important when setting LX or LY to unity for a 2D simulation
 #define INTEGER_IC_BOUND 1
 
+
 // Use 1D texture fetching for boundaries
 
 #define TEXTURE_FETCH 0
@@ -126,6 +127,7 @@
 #define N2J(N,NI,NJ,NK) (int)floor((real)((N)%((NI)*(NJ)))/(real)(NI))
 #define N2K(N,NI,NJ,NK) (int)floor((real)(N)/(real)((NI)*(NJ)))
 #define IJK2N(I,J,K,NI,NJ) ( (K)*(NI)*(NJ) + (J)*(NI) + (I))
+#define IJ2N(I,J,NI) ( (J)*(NI) + (I))
 
 // Toggle manage_body_force call at beginning of time loop for
 // gradually increasing/decreasing gravity.
@@ -234,5 +236,11 @@
 
 // Flag: PERTURBATIONS
 #define PERTURBATIONS 0
+
+// New flags for pdf_boundary_parallel functions
+// Do not change these!
+
+#define DEVICE_TO_HOST 1
+#define HOST_TO_DEVICE 0
 
 #endif /* FLAGS_H */

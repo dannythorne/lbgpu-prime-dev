@@ -151,7 +151,7 @@ rel_y1                 0.4
 rel_y2                 0.6
 rel_z1                 0.4
 rel_z2                 0.6
-dump_rho               1
-dump_u                 1
+dump_rho               0
+dump_u                 0
 dump_force             0
 dump_vor               0

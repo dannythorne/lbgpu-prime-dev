@@ -57,7 +57,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 {
   // Variable declarations
   int    i,
-	 j;
+         j;
   int    subs;
   char   filename[1024];
   char   dirname[1024];
@@ -92,6 +92,8 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   set_NumSubs( *lattice, NUM_FLUID_COMPONENTS);
   set_NumDims( *lattice, NUM_DIMENSIONS);
   set_NumVelDirs( *lattice, 2*NUM_DIMENSIONS*NUM_DIMENSIONS + 1);
+
+  process_compute_local_params( *lattice);
 
 #ifdef __CUDACC__
   // Copy certain parameters to __constant__ memory on the gpu device
@@ -150,25 +152,20 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   }
 
   cumul_stride[a++] = cumul_stride[a-1] 
-    + get_NumNodes( *lattice) + get_end_bound_size( *lattice);
+    + get_NumNodes( *lattice) + get_EndBoundSize( *lattice);
   cumul_stride[a++] = cumul_stride[a-1] 
     + get_NumNodes( *lattice);
 
   for(    ; a<get_NumVelDirs( *lattice); a+=2) 
   { 
     cumul_stride[a] = cumul_stride[a-2] + 2 * get_NumNodes( *lattice) 
-      + 2 * get_end_bound_size( *lattice);
+      + 2 * get_EndBoundSize( *lattice);
     cumul_stride[a+1] = cumul_stride[a-1] + 2 * get_NumNodes( *lattice) 
-      + 2 * get_end_bound_size( *lattice);
+      + 2 * get_EndBoundSize( *lattice);
   }
-  
+
   cumul_stride[a] = cumul_stride[a-1] + get_NumNodes( *lattice) 
-      + get_end_bound_size( *lattice);
- 
-  //for( a=0; a<get_NumVelDirs(*lattice) + 1; a++)
-  //{
-  // printf( " %d   %d\n", a, cumul_stride[a]);
-  //}
+    + get_EndBoundSize( *lattice);
 
   cudaMemcpyToSymbol( wt_c, wt, 19*sizeof(real));
   cudaMemcpyToSymbol( cumul_stride_c, cumul_stride, 20*sizeof(int));
@@ -190,11 +187,11 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   for( subs = 0; subs < get_NumSubs(*lattice); subs++)
   {
     cudaMemcpyToSymbol(
-	gaccel_c
-	, get_gaccel_ptr( *lattice, subs)
-	, get_NumDims(*lattice)*sizeof(real)
-	, subs*3*sizeof(real) // offset from gaccel_c
-	, cudaMemcpyHostToDevice);
+        gaccel_c
+        , get_gaccel_ptr( *lattice, subs)
+        , get_NumDims(*lattice)*sizeof(real)
+        , subs*3*sizeof(real) // offset from gaccel_c
+        , cudaMemcpyHostToDevice);
   }
 
   // cudaMemcpyToSymbol( gaccel_c
@@ -212,7 +209,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( numsubs_c, get_NumSubs_ptr( *lattice), sizeof(int));
   cudaMemcpyToSymbol( numdims_c, get_NumDims_ptr( *lattice), sizeof(int));
   cudaMemcpyToSymbol( numdirs_c, get_NumVelDirs_ptr( *lattice), sizeof(int));
-  int temp = get_end_bound_size( *lattice);
+  int temp = get_EndBoundSize( *lattice);
   cudaMemcpyToSymbol( end_bound_c, &temp, sizeof(int));
   cudaMemcpyToSymbol( proc_id_c, get_proc_id_ptr( *lattice), sizeof(int));
   cudaMemcpyToSymbol( num_procs_c, get_num_procs_ptr( *lattice), sizeof(int));
@@ -238,7 +235,8 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( numnodes_c, get_NumNodes_ptr( *lattice), sizeof(int));
 #endif
 
-  process_compute_local_params( *lattice);
+  //The following has been moved above the cudaMemcpyToSymbol section
+  //process_compute_local_params( *lattice);
 
   // Allocate space for solids.
   (*lattice)->solids_memblock =
@@ -258,16 +256,16 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     {
       for( i=0; i<get_LX(*lattice); i++)
       {
-	matrix[j][i] = 0;
+        matrix[j][i] = 0;
       }
     }
 
     // Read solids from .bmp file.
     sprintf(filename, "./in/%dx%d.bmp",
-	get_g_LX(*lattice),
-	get_g_LY(*lattice) );
+        get_g_LX(*lattice),
+        get_g_LY(*lattice) );
     printf("%s %d >> Reading solids from file \"%s\"\n",
-	__FILE__, __LINE__, filename);
+        __FILE__, __LINE__, filename);
     spy_bmp( *lattice, filename, matrix);
     process_matrix( *lattice, matrix);
   }
@@ -275,28 +273,28 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   {
     // Read solids from .raw file.
     sprintf(filename, "./in/%dx%dx%d.raw",
-	get_g_LX(*lattice),
-	get_g_LY(*lattice),
-	get_g_LZ(*lattice) );
+        get_g_LX(*lattice),
+        get_g_LY(*lattice),
+        get_g_LZ(*lattice) );
     printf("%s %d >> Reading solids from file \"%s\"\n",
-	__FILE__, __LINE__, filename);
+        __FILE__, __LINE__, filename);
     read_solids( *lattice, filename);
   }
 
   // Allocate vars struct.
   (*lattice)->vars =
     ( struct vars_struct*)malloc(
-	get_NumSubs(*lattice)*sizeof(struct vars_struct));
+        get_NumSubs(*lattice)*sizeof(struct vars_struct));
 
   for( subs=0; subs<NUM_FLUID_COMPONENTS; subs++)
   {
     // Allocate NumNodes particle distribution functions.
     (*lattice)->vars[subs].f_memblock =
       (real*)malloc(
-	  sizeof(real)
-	  * get_NumNodes(*lattice)
-	  * get_NumVelDirs(*lattice)
-	  );
+          sizeof(real)
+          * get_NumNodes(*lattice)
+          * get_NumVelDirs(*lattice)
+          );
     for( i=0; i<get_NumNodes(*lattice)* get_NumVelDirs(*lattice); i++)
     {
       (*lattice)->vars[subs].f_memblock[i] = 0.;
@@ -304,13 +302,13 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     if( (*lattice)->vars[subs].f_memblock==NULL)
     {
       printf(
-	  "%s %d %04d >> "
-	  "construct_lattice() -- ERROR:  "
-	  "Attempt to allocate %d struct pdf_struct types failed.  "
-	  "Exiting!\n",
-	  __FILE__,__LINE__,get_proc_id(*lattice),
-	  (*lattice)->NumNodes
-	  );
+          "%s %d %04d >> "
+          "construct_lattice() -- ERROR:  "
+          "Attempt to allocate %d struct pdf_struct types failed.  "
+          "Exiting!\n",
+          __FILE__,__LINE__,get_proc_id(*lattice),
+          (*lattice)->NumNodes
+          );
       process_exit(1);
     }
 
@@ -319,7 +317,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     //printf(" Allocating memory on the device \n");
 
     f_mem_size = get_NumSubs( *lattice) * cumul_stride[get_NumVelDirs( *lattice)];
-   // printf(" \n\n\n XXXXXXXXX %d \n\n\n\n\n", f_mem_size);
+    // printf(" \n\n\n XXXXXXXXX %d \n\n\n\n\n", f_mem_size);
     cudaMalloc( (void**)&f_mem_d, f_mem_size*sizeof(real));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 
@@ -332,7 +330,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 
     solids_mem_size = get_NumNodes( *lattice)
-      + 2 * get_end_bound_size( *lattice);
+      + 2 * get_EndBoundSize( *lattice);
 
     cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
@@ -348,7 +346,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     for( i=0; i<get_NumVelDirs(*lattice); i++)
     {
       (*lattice)->vars[subs].f1d[i] =
-	(*lattice)->vars[subs].f_memblock + i*get_NumNodes(*lattice);
+        (*lattice)->vars[subs].f_memblock + i*get_NumNodes(*lattice);
     }
 
     // Allocate NumNodes macroscopic variables.
@@ -356,17 +354,17 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     printf("numNodes = %d\n",get_NumNodes(*lattice));
     (*lattice)->vars[subs].macrovars_memblock =
       (real*)malloc(
-	  sizeof(real)*get_NumNodes(*lattice)*( get_NumDims(*lattice)+1));
+          sizeof(real)*get_NumNodes(*lattice)*( get_NumDims(*lattice)+1));
     if( (*lattice)->vars[subs].macrovars_memblock==NULL)
     {
       printf(
-	  "%s %d %04d >> "
-	  "construct_lattice() -- ERROR:  "
-	  "Attempt to allocate %d real types failed.  "
-	  "Exiting!\n",
-	  __FILE__,__LINE__,get_proc_id(*lattice),
-	  (*lattice)->NumNodes
-	  );
+          "%s %d %04d >> "
+          "construct_lattice() -- ERROR:  "
+          "Attempt to allocate %d real types failed.  "
+          "Exiting!\n",
+          __FILE__,__LINE__,get_proc_id(*lattice),
+          (*lattice)->NumNodes
+          );
       process_exit(1);
     }
 
@@ -376,7 +374,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     for( i=0; i<(get_NumDims(*lattice)+1); i++)
     {
       (*lattice)->vars[subs].macrovars1d[i] =
-	(*lattice)->vars[subs].macrovars_memblock + i*get_NumNodes(*lattice);
+        (*lattice)->vars[subs].macrovars_memblock + i*get_NumNodes(*lattice);
     }
 
 #if 0 // TODO: Revise for new data structures or delete.
@@ -384,15 +382,15 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     // Allocate NumNodes elements for force.
     (*lattice)->force[subs] =
       ( struct force_struct*)malloc(
-	  (*lattice)->NumNodes*sizeof( struct force_struct));
+          (*lattice)->NumNodes*sizeof( struct force_struct));
     if( (*lattice)->force[subs]==NULL)
     {
       printf(
-	  "construct_lattice() -- ERROR:  "
-	  "Attempt to allocate %d struct force_struct types failed.  "
-	  "Exiting!\n",
-	  (*lattice)->NumNodes
-	  );
+          "construct_lattice() -- ERROR:  "
+          "Attempt to allocate %d struct force_struct types failed.  "
+          "Exiting!\n",
+          (*lattice)->NumNodes
+          );
       process_exit(1);
     }
 #endif /* NON_LOCAL_FORCES */
@@ -405,15 +403,15 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   // Allocate NumNodes elements for ueq.
   (*lattice)->ueq =
     ( struct ueq_struct*)malloc(
-	(*lattice)->NumNodes*sizeof( struct ueq_struct));
+        (*lattice)->NumNodes*sizeof( struct ueq_struct));
   if( (*lattice)->ueq==NULL)
   {
     printf(
-	"construct_lattice() -- ERROR:  "
-	"Attempt to allocate %d struct ueq_struct types failed.  "
-	"Exiting!\n",
-	(*lattice)->NumNodes
-	);
+        "construct_lattice() -- ERROR:  "
+        "Attempt to allocate %d struct ueq_struct types failed.  "
+        "Exiting!\n",
+        (*lattice)->NumNodes
+        );
     process_exit(1);
   }
 #endif /* STORE_UEQ */
@@ -423,195 +421,195 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   {
     case 0:
       {
-	if( (*lattice)->param.ns > 1. || (*lattice)->param.ns < 0.)
-	{
-	  printf(
-	      "latman.c: construct_lattice() -- "
-	      "ERROR: ns = %f. "
-	      "Should have 0 <= ns <=1. "
-	      "Exiting!\n", (*lattice)->param.ns
-	      );
-	  process_exit(1);
-	}
-	break;
+        if( (*lattice)->param.ns > 1. || (*lattice)->param.ns < 0.)
+        {
+          printf(
+              "latman.c: construct_lattice() -- "
+              "ERROR: ns = %f. "
+              "Should have 0 <= ns <=1. "
+              "Exiting!\n", (*lattice)->param.ns
+              );
+          process_exit(1);
+        }
+        break;
       }
 
     case 1:
       {
-	// Allocate space for ns values.
-	(*lattice)->ns =
-	  (struct ns_struct*)
-	  malloc((*lattice)->NumNodes*sizeof(struct ns_struct));
-	if( (*lattice)->ns==NULL)
-	{
-	  printf(
-	      "construct_lattice() -- ERROR:  "
-	      "Attempt to allocate %d struct ns_struct types failed.  "
-	      "Exiting!\n",
-	      (*lattice)->NumNodes
-	      );
-	  process_exit(1);
-	}
+        // Allocate space for ns values.
+        (*lattice)->ns =
+          (struct ns_struct*)
+          malloc((*lattice)->NumNodes*sizeof(struct ns_struct));
+        if( (*lattice)->ns==NULL)
+        {
+          printf(
+              "construct_lattice() -- ERROR:  "
+              "Attempt to allocate %d struct ns_struct types failed.  "
+              "Exiting!\n",
+              (*lattice)->NumNodes
+              );
+          process_exit(1);
+        }
 
 #if 0
-	// Try to read ns<LX>x<LY>.bmp file.
-	sprintf( filename, "./in/ns%dx%d.bmp",
-	    get_LX(*lattice),
-	    get_LY(*lattice));
-	if( in = fopen( filename, "r+"))
-	{
-	  printf("%s %d >> Reading file \"%s\".\n",__FILE__,__LINE__,filename);
-	  bmp_read_header( in, &bmih);
-	  int n;
-	  for( n=0; n<(*lattice)->NumNodes; n++)
-	  {
-	    bmp_read_entry( in, &bmih, &r, &g, &b);
+        // Try to read ns<LX>x<LY>.bmp file.
+        sprintf( filename, "./in/ns%dx%d.bmp",
+            get_LX(*lattice),
+            get_LY(*lattice));
+        if( in = fopen( filename, "r+"))
+        {
+          printf("%s %d >> Reading file \"%s\".\n",__FILE__,__LINE__,filename);
+          bmp_read_header( in, &bmih);
+          int n;
+          for( n=0; n<(*lattice)->NumNodes; n++)
+          {
+            bmp_read_entry( in, &bmih, &r, &g, &b);
 
-	    // Verify grayscale.
-	    if(    (real)r != (real)g
-		|| (real)g != (real)b
-		|| (real)r != (real)b)
-	    {
-	      printf(
-		  "%s %d >> latman.c: construct_lattice() -- "
-		  "n=%d:  [ r g b] = [ %3u %3u %3u]\n",__FILE__,__LINE__,
-		  n, (unsigned int)r%256, (unsigned int)g%256, (unsigned int)b%256);
-	      printf(
-		  "%s %d >> latman.c: construct_lattice() -- "
-		  "ERROR: File %s needs to be grayscale. "
-		  "Exiting!\n",__FILE__,__LINE__, filename);
-	      process_exit(1);
-	    }
+            // Verify grayscale.
+            if(    (real)r != (real)g
+                || (real)g != (real)b
+                || (real)r != (real)b)
+            {
+              printf(
+                  "%s %d >> latman.c: construct_lattice() -- "
+                  "n=%d:  [ r g b] = [ %3u %3u %3u]\n",__FILE__,__LINE__,
+                  n, (unsigned int)r%256, (unsigned int)g%256, (unsigned int)b%256);
+              printf(
+                  "%s %d >> latman.c: construct_lattice() -- "
+                  "ERROR: File %s needs to be grayscale. "
+                  "Exiting!\n",__FILE__,__LINE__, filename);
+              process_exit(1);
+            }
 
-	    // Assign ns value.
-	    (*lattice)->ns[n].ns = ((real)((unsigned int)r%256))/255.;
+            // Assign ns value.
+            (*lattice)->ns[n].ns = ((real)((unsigned int)r%256))/255.;
 #if 0 && VERBOSITY_LEVEL>0
-	    printf("%s %d >> n=%d, ns=%f\n",
-		__FILE__, __LINE__, n, (*lattice)->ns[n].ns);
+            printf("%s %d >> n=%d, ns=%f\n",
+                __FILE__, __LINE__, n, (*lattice)->ns[n].ns);
 #endif /* 1 && VERBOSITY_LEVEL>0 */
 
-	  } /* for( n=0; n<(*lattice)->NumNodes; n++) */
+          } /* for( n=0; n<(*lattice)->NumNodes; n++) */
 
-	  fclose( in);
+          fclose( in);
 
-	} /* if( in = fopen( filename, "r+")) */
+        } /* if( in = fopen( filename, "r+")) */
 
-	else /* !( in = fopen( filename, "r+")) */
-	{
-	  // Can't read ns.bmp file, so use default values.
-	  printf("%s %d >> WARNING: Can't read \"%s\". "
-	      "Using default ns values.\n",__FILE__,__LINE__,filename);
-	} /* if( in = fopen( filename, "r+")) else */
+        else /* !( in = fopen( filename, "r+")) */
+        {
+          // Can't read ns.bmp file, so use default values.
+          printf("%s %d >> WARNING: Can't read \"%s\". "
+              "Using default ns values.\n",__FILE__,__LINE__,filename);
+        } /* if( in = fopen( filename, "r+")) else */
 
 
 #else
-	// Read solids from .raw file.
-	sprintf(filename, "./in/ns%dx%dx%d.raw",
-	    get_g_LX(*lattice),
-	    get_g_LY(*lattice),
-	    get_g_LZ(*lattice) );
-	printf("%s %d >> Reading ns values from file \"%s\"\n",
-	    __FILE__, __LINE__, filename);
-	read_ns( *lattice, filename);
+        // Read solids from .raw file.
+        sprintf(filename, "./in/ns%dx%dx%d.raw",
+            get_g_LX(*lattice),
+            get_g_LY(*lattice),
+            get_g_LZ(*lattice) );
+        printf("%s %d >> Reading ns values from file \"%s\"\n",
+            __FILE__, __LINE__, filename);
+        read_ns( *lattice, filename);
 #endif
-	break;
+        break;
       }
 
     case 2:
       {
 #if 0
-	// Allocate space for ns values.
-	(*lattice)->ns =
-	  (struct ns_struct*)malloc( (*lattice)->NumNodes*sizeof(struct ns_struct));
-	if( (*lattice)->ns==NULL)
-	{
-	  printf(
-	      "construct_lattice() -- ERROR:  "
-	      "Attempt to allocate %d struct ns_struct types failed.  "
-	      "Exiting!\n",
-	      (*lattice)->NumNodes
-	      );
-	  process_exit(1);
-	}
+        // Allocate space for ns values.
+        (*lattice)->ns =
+          (struct ns_struct*)malloc( (*lattice)->NumNodes*sizeof(struct ns_struct));
+        if( (*lattice)->ns==NULL)
+        {
+          printf(
+              "construct_lattice() -- ERROR:  "
+              "Attempt to allocate %d struct ns_struct types failed.  "
+              "Exiting!\n",
+              (*lattice)->NumNodes
+              );
+          process_exit(1);
+        }
 
-	// Try to read ns<LX>x<LY>.bmp file.
-	sprintf( filename, "./in/ns%dx%d.bmp",
-	    get_LX(*lattice),
-	    get_LY(*lattice));
-	if( in = fopen( filename, "r+"))
-	{
-	  printf("%s %d >> Reading file \"%s\".\n",__FILE__,__LINE__,filename);
-	  bmp_read_header( in, &bmih);
-	  int n;
-	  for( n=0; n<(*lattice)->NumNodes; n++)
-	  {
-	    bmp_read_entry( in, &bmih, &r, &g, &b);
+        // Try to read ns<LX>x<LY>.bmp file.
+        sprintf( filename, "./in/ns%dx%d.bmp",
+            get_LX(*lattice),
+            get_LY(*lattice));
+        if( in = fopen( filename, "r+"))
+        {
+          printf("%s %d >> Reading file \"%s\".\n",__FILE__,__LINE__,filename);
+          bmp_read_header( in, &bmih);
+          int n;
+          for( n=0; n<(*lattice)->NumNodes; n++)
+          {
+            bmp_read_entry( in, &bmih, &r, &g, &b);
 
-	    // Verify grayscale.
-	    if(    (real)r != (real)g
-		|| (real)g != (real)b
-		|| (real)r != (real)b)
-	    {
-	      printf(
-		  "%s %d >> latman.c: construct_lattice() -- "
-		  "n=%d:  [ r g b] = [ %3u %3u %3u]\n",__FILE__,__LINE__,
-		  n, (unsigned int)r%256, (unsigned int)g%256, (unsigned int)b%256);
-	      printf(
-		  "%s %d >> latman.c: construct_lattice() -- "
-		  "ERROR: File %s needs to be grayscale. "
-		  "Exiting!\n",__FILE__,__LINE__, filename);
-	      process_exit(1);
-	    }
+            // Verify grayscale.
+            if(    (real)r != (real)g
+                || (real)g != (real)b
+                || (real)r != (real)b)
+            {
+              printf(
+                  "%s %d >> latman.c: construct_lattice() -- "
+                  "n=%d:  [ r g b] = [ %3u %3u %3u]\n",__FILE__,__LINE__,
+                  n, (unsigned int)r%256, (unsigned int)g%256, (unsigned int)b%256);
+              printf(
+                  "%s %d >> latman.c: construct_lattice() -- "
+                  "ERROR: File %s needs to be grayscale. "
+                  "Exiting!\n",__FILE__,__LINE__, filename);
+              process_exit(1);
+            }
 
-	    if( ((unsigned int)r%256) != 0 && ((unsigned int)r%256) != 255 )
-	    {
-	      printf(
-		  "%s %d >> latman.c: construct_lattice() -- "
-		  "ERROR: File %s needs to be black and white. "
-		  "Exiting!\n",__FILE__,__LINE__, filename);
-	      process_exit(1);
-	    }
+            if( ((unsigned int)r%256) != 0 && ((unsigned int)r%256) != 255 )
+            {
+              printf(
+                  "%s %d >> latman.c: construct_lattice() -- "
+                  "ERROR: File %s needs to be black and white. "
+                  "Exiting!\n",__FILE__,__LINE__, filename);
+              process_exit(1);
+            }
 
-	    // Assign ns value.
-	    if( ((unsigned int)r%256) == 0)
-	    {
-	      (*lattice)->ns[n].ns = (*lattice)->param.ns;
-	    }
-	    else
-	    {
-	      (*lattice)->ns[n].ns = 0.;
-	    }
+            // Assign ns value.
+            if( ((unsigned int)r%256) == 0)
+            {
+              (*lattice)->ns[n].ns = (*lattice)->param.ns;
+            }
+            else
+            {
+              (*lattice)->ns[n].ns = 0.;
+            }
 #if 0 && VERBOSITY_LEVEL>0
-	    printf("%s %d >> n=%d, ns=%f\n",
-		__FILE__, __LINE__, n, (*lattice)->ns[n].ns);
+            printf("%s %d >> n=%d, ns=%f\n",
+                __FILE__, __LINE__, n, (*lattice)->ns[n].ns);
 #endif /* 1 && VERBOSITY_LEVEL>0 */
 
-	  } /* for( n=0; n<(*lattice)->NumNodes; n++) */
+          } /* for( n=0; n<(*lattice)->NumNodes; n++) */
 
-	  fclose( in);
+          fclose( in);
 
-	} /* if( in = fopen( filename, "r+")) */
+        } /* if( in = fopen( filename, "r+")) */
 
-	else /* !( in = fopen( filename, "r+")) */
-	{
-	  // Can't read ns.bmp file, so use default values.
-	  printf("%s %d >> WARNING: Can't read \"%s\". "
-	      "Using default ns values.\n",__FILE__,__LINE__,filename);
-	} /* if( in = fopen( filename, "r+")) else */
-	break;
+        else /* !( in = fopen( filename, "r+")) */
+        {
+          // Can't read ns.bmp file, so use default values.
+          printf("%s %d >> WARNING: Can't read \"%s\". "
+              "Using default ns values.\n",__FILE__,__LINE__,filename);
+        } /* if( in = fopen( filename, "r+")) else */
+        break;
 #else
-	printf("%s %d >> Case ns_flag==2 pending. (Exiting)\n",__FILE__,__LINE__);
-	process_exit(1);
+        printf("%s %d >> Case ns_flag==2 pending. (Exiting)\n",__FILE__,__LINE__);
+        process_exit(1);
 #endif
       }
 
     default:
       {
-	printf("%s %d >> construct_lattice() -- Unhandled case: "
-	    "ns_flag = %d . (Exiting!)\n",
-	    __FILE__,__LINE__,(*lattice)->param.ns_flag < 0.);
-	process_exit(1);
-	break;
+        printf("%s %d >> construct_lattice() -- Unhandled case: "
+            "ns_flag = %d . (Exiting!)\n",
+            __FILE__,__LINE__,(*lattice)->param.ns_flag < 0.);
+        process_exit(1);
+        break;
       }
 
   } /* switch( (*lattice)->param.ns_flag) */
@@ -619,11 +617,11 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   if( (*lattice)->nsterm==NULL)
   {
     printf(
-	"construct_lattice() -- ERROR:  "
-	"Attempt to allocate %d real types for nsterm failed.  "
-	"Exiting!\n",
-	(*lattice)->NumNodes
-	);
+        "construct_lattice() -- ERROR:  "
+        "Attempt to allocate %d real types for nsterm failed.  "
+        "Exiting!\n",
+        (*lattice)->NumNodes
+        );
     process_exit(1);
   }
 #endif /* POROUS_MEDIA */
@@ -692,306 +690,306 @@ void init_problem( lattice_ptr lattice)
       // Set initial density.
       if( ( 1 || is_not_solid(lattice,n)) )
       {
-	switch( lattice->param.initial_condition)
-	{
-	  case 0: // Uniform
-	    {
-	      // WHY switch( NUM_FLUID_COMPONENTS)
-	      // WHY {
-	      // WHY   case 1:
-	      // WHY   {
-	      // WHY     set_rho( lattice, subs, n, get_rho_A(lattice,subs));
-	      // WHY     break;
-	      // WHY   }
-	      // WHY   case 2:
-	      // WHY   {
-	      // WHY     set_rho( lattice, subs, n, get_rho_B(lattice,subs));
-	      // WHY     break;
-	      // WHY   }
-	      // WHY }
-	      set_rho( lattice, subs, n, get_rho_A(lattice,subs));
-	      break;
-	    }
+        switch( lattice->param.initial_condition)
+        {
+          case 0: // Uniform
+            {
+              // WHY switch( NUM_FLUID_COMPONENTS)
+              // WHY {
+              // WHY   case 1:
+              // WHY   {
+              // WHY     set_rho( lattice, subs, n, get_rho_A(lattice,subs));
+              // WHY     break;
+              // WHY   }
+              // WHY   case 2:
+              // WHY   {
+              // WHY     set_rho( lattice, subs, n, get_rho_B(lattice,subs));
+              // WHY     break;
+              // WHY   }
+              // WHY }
+              set_rho( lattice, subs, n, get_rho_A(lattice,subs));
+              break;
+            }
 
 #if 0 // ============================ TODO ====================================
 
-	  case 1: // Random
-	    {
-	      switch( NUM_FLUID_COMPONENTS)
-	      {
-		case 1:
-		  {
-		    *rho =
-		      lattice->param.rho_A[0] + 10.*(real)rand()/(real)RAND_MAX;
-		    break;
-		  }
+          case 1: // Random
+            {
+              switch( NUM_FLUID_COMPONENTS)
+              {
+                case 1:
+                  {
+                    *rho =
+                      lattice->param.rho_A[0] + 10.*(real)rand()/(real)RAND_MAX;
+                    break;
+                  }
 
-		case 2:
-		  {
-		    if( (real)rand()/(real)RAND_MAX < lattice->param.cut)
-		    {
-		      *rho = lattice->param.rho_A[subs];
-		    }
-		    else
-		    {
-		      *rho = lattice->param.rho_B[subs];
-		    }
-		    break;
-		  }
+                case 2:
+                  {
+                    if( (real)rand()/(real)RAND_MAX < lattice->param.cut)
+                    {
+                      *rho = lattice->param.rho_A[subs];
+                    }
+                    else
+                    {
+                      *rho = lattice->param.rho_B[subs];
+                    }
+                    break;
+                  }
 
-		default:
-		  {
-		    printf("%s %d >> ERROR: Unhandled case %d.\n",
-			__FILE__,__LINE__,
-			NUM_FLUID_COMPONENTS);
-		    process_exit(1);
-		    break;
-		  }
-	      }
-	      break;
-	    }
+                default:
+                  {
+                    printf("%s %d >> ERROR: Unhandled case %d.\n",
+                        __FILE__,__LINE__,
+                        NUM_FLUID_COMPONENTS);
+                    process_exit(1);
+                    break;
+                  }
+              }
+              break;
+            }
 
-	  case 2: // Cube
-	    {
+          case 2: // Cube
+            {
 #if PARALLEL
 #if 0
-	      int id1 =  (int)floor(lattice->param.z1/(real)(nk);
-		  int newz1 =  (int)(lattice->param.z1) % (nk);
-		  int id2 =  (int)floor(lattice->param.z2/(real)(nk));
-		  int newz2 =  (int)(lattice->param.z2) % (nk);
-		  if(id2>get_num_procs(lattice))
-		  {
-		  id2 = get_num_procs(lattice);
-		  newz2 = nk ;
-		  }
+              int id1 =  (int)floor(lattice->param.z1/(real)(nk);
+                  int newz1 =  (int)(lattice->param.z1) % (nk);
+                  int id2 =  (int)floor(lattice->param.z2/(real)(nk));
+                  int newz2 =  (int)(lattice->param.z2) % (nk);
+                  if(id2>get_num_procs(lattice))
+                  {
+                  id2 = get_num_procs(lattice);
+                  newz2 = nk ;
+                  }
 #endif
 #endif
-		  switch( NUM_FLUID_COMPONENTS)
-		  {
-		  case 1:
-		  {
+                  switch( NUM_FLUID_COMPONENTS)
+                  {
+                  case 1:
+                  {
 #if PARALLEL
 #if 0
-		  if(get_proc_id(lattice) ==id1 ) {k1=newz1; k2 = nk;}
-		  if(get_proc_id(lattice) ==id2 ) {k1=0; k2 = newz2;}
-		  if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
+                  if(get_proc_id(lattice) ==id1 ) {k1=newz1; k2 = nk;}
+                  if(get_proc_id(lattice) ==id2 ) {k1=0; k2 = newz2;}
+                  if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
 #endif
 #endif
-		  if( i >= lattice->param.x1 && i <= lattice->param.x2
-		      && j >= lattice->param.y1 && j <= lattice->param.y2
+                  if( i >= lattice->param.x1 && i <= lattice->param.x2
+                      && j >= lattice->param.y1 && j <= lattice->param.y2
 #if PARALLEL
-		      && k+ get_proc_id(lattice)*nk >= lattice->param.z1
-		      && k+ get_proc_id(lattice)*nk <= lattice->param.z2
-		      // k >=k1 && k<=k2
+                      && k+ get_proc_id(lattice)*nk >= lattice->param.z1
+                      && k+ get_proc_id(lattice)*nk <= lattice->param.z2
+                      // k >=k1 && k<=k2
 #else
-		      && k >= lattice->param.z1 && k <= lattice->param.z2
+                      && k >= lattice->param.z1 && k <= lattice->param.z2
 #endif
-		    )
-		  {
-		    *rho = lattice->param.rho_A[0];
-		  }
-		  else
-		  {
-		    *rho = lattice->param.rho_B[0];
-		  }
-		  break;
-		  }
+                    )
+                  {
+                    *rho = lattice->param.rho_A[0];
+                  }
+                  else
+                  {
+                    *rho = lattice->param.rho_B[0];
+                  }
+                  break;
+                  }
 
-		  case 2:
-		  {
+                  case 2:
+                  {
 #if PARALLEL
 #if 0
-		    if(get_proc_id(lattice) ==id1 ) {k1=newz1; k2 = nk;}
-		    if(get_proc_id(lattice) ==id2 ) {k1=0; k2 = newz2;}
-		    if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
+                    if(get_proc_id(lattice) ==id1 ) {k1=newz1; k2 = nk;}
+                    if(get_proc_id(lattice) ==id2 ) {k1=0; k2 = newz2;}
+                    if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
 #endif
 #endif
-		    if( i >= lattice->param.x1 && i <= lattice->param.x2
-			&& j >= lattice->param.y1 && j <= lattice->param.y2
+                    if( i >= lattice->param.x1 && i <= lattice->param.x2
+                        && j >= lattice->param.y1 && j <= lattice->param.y2
 #if PARALLEL
-			&& k+ get_proc_id(lattice)*nk >= lattice->param.z1
-			&& k+ get_proc_id(lattice)*nk <= lattice->param.z2
-			// k >=k1 && k<=k2
+                        && k+ get_proc_id(lattice)*nk >= lattice->param.z1
+                        && k+ get_proc_id(lattice)*nk <= lattice->param.z2
+                        // k >=k1 && k<=k2
 #else
-			&& k >= lattice->param.z1 && k <= lattice->param.z2
+                        && k >= lattice->param.z1 && k <= lattice->param.z2
 #endif
-		      )
-		    {
-		      *rho = lattice->param.rho_A[subs];
-		    }
-		    else
-		    {
-		      *rho = lattice->param.rho_B[subs];
-		    }
-		    break;
-		  }
+                      )
+                    {
+                      *rho = lattice->param.rho_A[subs];
+                    }
+                    else
+                    {
+                      *rho = lattice->param.rho_B[subs];
+                    }
+                    break;
+                  }
 
-		  default:
-		  {
-		    printf("%s %d >> ERROR: Unhandled case %d.\n",
-			__FILE__,__LINE__,
-			NUM_FLUID_COMPONENTS);
-		    process_exit(1);
-		    break;
-		  }
-		  }
+                  default:
+                  {
+                    printf("%s %d >> ERROR: Unhandled case %d.\n",
+                        __FILE__,__LINE__,
+                        NUM_FLUID_COMPONENTS);
+                    process_exit(1);
+                    break;
+                  }
+                  }
 
-	      break;
-	    }
+              break;
+            }
 
-	  case 3: // Sphere
-	    {
-	      switch( NUM_FLUID_COMPONENTS)
-	      {
+          case 3: // Sphere
+            {
+              switch( NUM_FLUID_COMPONENTS)
+              {
 
-		//#if PARALLEL
-		//   k+ get_proc_id(lattice)*nk >= lattice->param.z1
-		//&& k+ get_proc_id(lattice)*nk <= lattice->param.z2
-		////if 0      k >=k1 && k<=k2
-		//#else
-		//k >= lattice->param.z1 && k <= lattice->param.z2
-		//#endif
+                //#if PARALLEL
+                //   k+ get_proc_id(lattice)*nk >= lattice->param.z1
+                //&& k+ get_proc_id(lattice)*nk <= lattice->param.z2
+                ////if 0      k >=k1 && k<=k2
+                //#else
+                //k >= lattice->param.z1 && k <= lattice->param.z2
+                //#endif
 
-		case 1:
-		  {
+                case 1:
+                  {
 #if PARALLEL
-		    if( (i-lattice->param.x0)*(i-lattice->param.x0)
-			+ (j-lattice->param.y0)*(j-lattice->param.y0)
-			+ (k+get_proc_id(lattice)*nk-lattice->param.z0)
-			*(k+get_proc_id(lattice)*nk-lattice->param.z0)
-			<= lattice->param.r0*lattice->param.r0 )
+                    if( (i-lattice->param.x0)*(i-lattice->param.x0)
+                        + (j-lattice->param.y0)*(j-lattice->param.y0)
+                        + (k+get_proc_id(lattice)*nk-lattice->param.z0)
+                        *(k+get_proc_id(lattice)*nk-lattice->param.z0)
+                        <= lattice->param.r0*lattice->param.r0 )
 #else
-		      if( (i-lattice->param.x0)*(i-lattice->param.x0)
-			  + (j-lattice->param.y0)*(j-lattice->param.y0)
-			  + (k-lattice->param.z0)*(k-lattice->param.z0)
-			  <= lattice->param.r0*lattice->param.r0 )
+                      if( (i-lattice->param.x0)*(i-lattice->param.x0)
+                          + (j-lattice->param.y0)*(j-lattice->param.y0)
+                          + (k-lattice->param.z0)*(k-lattice->param.z0)
+                          <= lattice->param.r0*lattice->param.r0 )
 #endif
-		      {
-			*rho = lattice->param.rho_A[0];
-		      }
-		      else
-		      {
-			*rho = lattice->param.rho_B[0];
-		      }
-		    break;
-		  }
-		case 2:
-		  {
+                      {
+                        *rho = lattice->param.rho_A[0];
+                      }
+                      else
+                      {
+                        *rho = lattice->param.rho_B[0];
+                      }
+                    break;
+                  }
+                case 2:
+                  {
 #if PARALLEL
-		    if( (i-lattice->param.x0)*(i-lattice->param.x0)
-			+ (j-lattice->param.y0)*(j-lattice->param.y0)
-			+ (k+ get_proc_id(lattice)*nk-lattice->param.z0)
-			*(k+ get_proc_id(lattice)*nk-lattice->param.z0)
-			<= lattice->param.r0*lattice->param.r0 )
+                    if( (i-lattice->param.x0)*(i-lattice->param.x0)
+                        + (j-lattice->param.y0)*(j-lattice->param.y0)
+                        + (k+ get_proc_id(lattice)*nk-lattice->param.z0)
+                        *(k+ get_proc_id(lattice)*nk-lattice->param.z0)
+                        <= lattice->param.r0*lattice->param.r0 )
 #else
-		      if( (i-lattice->param.x0)*(i-lattice->param.x0)
-			  + (j-lattice->param.y0)*(j-lattice->param.y0)
-			  + (k-lattice->param.z0)*(k-lattice->param.z0)
-			  <= lattice->param.r0*lattice->param.r0 )
+                      if( (i-lattice->param.x0)*(i-lattice->param.x0)
+                          + (j-lattice->param.y0)*(j-lattice->param.y0)
+                          + (k-lattice->param.z0)*(k-lattice->param.z0)
+                          <= lattice->param.r0*lattice->param.r0 )
 #endif
-		      {
-			*rho = lattice->param.rho_A[subs];
-		      }
-		      else
-		      {
-			*rho = lattice->param.rho_B[subs];
-		      }
-		    break;
-		  }
-		default:
-		  {
-		    printf(
-			"%s (%d) >> init_problem() -- Unhandled case  "
-			"NUM_FLUID_COMPONENTS = %d.  "
-			"Exiting!\n", __FILE__, __LINE__,
-			NUM_FLUID_COMPONENTS);
-		    process_exit(1);
-		  }
-	      }
-	      break;
-	    }
-	  case 4: // Linear Density Gradient
-	    {
-	      switch( NUM_FLUID_COMPONENTS)
-	      {
-		case 1:
-		  {
+                      {
+                        *rho = lattice->param.rho_A[subs];
+                      }
+                      else
+                      {
+                        *rho = lattice->param.rho_B[subs];
+                      }
+                    break;
+                  }
+                default:
+                  {
+                    printf(
+                        "%s (%d) >> init_problem() -- Unhandled case  "
+                        "NUM_FLUID_COMPONENTS = %d.  "
+                        "Exiting!\n", __FILE__, __LINE__,
+                        NUM_FLUID_COMPONENTS);
+                    process_exit(1);
+                  }
+              }
+              break;
+            }
+          case 4: // Linear Density Gradient
+            {
+              switch( NUM_FLUID_COMPONENTS)
+              {
+                case 1:
+                  {
 
-		    *rho = lattice->param.rho_in
-		      + k*(lattice->param.rho_out-lattice->param.rho_in)/nk;
-		    //lattice->param.rho_A[0];
-		    break;
-		  }
+                    *rho = lattice->param.rho_in
+                      + k*(lattice->param.rho_out-lattice->param.rho_in)/nk;
+                    //lattice->param.rho_A[0];
+                    break;
+                  }
 
-		case 2:
-		  {
-		    if( i > 20 && i < 32
-			&& j > 10 && j < 22
-			&& k >  8 && k < 18
-		      )
-		    {
-		      *rho = lattice->param.rho_A[subs];
-		    }
-		    else
-		    {
-		      *rho = lattice->param.rho_B[subs];
-		    }
-		    break;
-		  }
+                case 2:
+                  {
+                    if( i > 20 && i < 32
+                        && j > 10 && j < 22
+                        && k >  8 && k < 18
+                      )
+                    {
+                      *rho = lattice->param.rho_A[subs];
+                    }
+                    else
+                    {
+                      *rho = lattice->param.rho_B[subs];
+                    }
+                    break;
+                  }
 
-		default:
-		  {
-		    printf("%s %d >> ERROR: Unhandled case %d.\n",
-			__FILE__,__LINE__,
-			NUM_FLUID_COMPONENTS);
-		    process_exit(1);
-		    break;
-		  }
-	      }
+                default:
+                  {
+                    printf("%s %d >> ERROR: Unhandled case %d.\n",
+                        __FILE__,__LINE__,
+                        NUM_FLUID_COMPONENTS);
+                    process_exit(1);
+                    break;
+                  }
+              }
 
-	      break;
-	    }
+              break;
+            }
 #endif // =====================================================================
 
-	  default:
-	    {
-	      printf(
-		  "%s (%d) >> init_problem() -- Unhandled case  "
-		  "lattice->param.initial_condition = %d.  "
-		  "Exiting!\n", __FILE__, __LINE__,
-		  lattice->param.initial_condition );
-	      process_exit(1);
-	      break;
-	    }
-	} /* switch( lattice->param.initial_condition) */
+          default:
+            {
+              printf(
+                  "%s (%d) >> init_problem() -- Unhandled case  "
+                  "lattice->param.initial_condition = %d.  "
+                  "Exiting!\n", __FILE__, __LINE__,
+                  lattice->param.initial_condition );
+              process_exit(1);
+              break;
+            }
+        } /* switch( lattice->param.initial_condition) */
       } /* if( ( 1 || is_not_solid(lattice,n)) ) */
       else
       {
-	//if( is_solid(lattice,n))
-	//{
-	//  *macro_var_ptr++ = lattice->param.rho_A[subs];
-	//  *macro_var_ptr++ = lattice->param.rho_in;
-	//}
-	//else
-	//{
-	set_rho(lattice,subs,n,0.);
-	//}
+        //if( is_solid(lattice,n))
+        //{
+        //  *macro_var_ptr++ = lattice->param.rho_A[subs];
+        //  *macro_var_ptr++ = lattice->param.rho_in;
+        //}
+        //else
+        //{
+        set_rho(lattice,subs,n,0.);
+        //}
       } /* if( ( 1 || is_not_solid(lattice,n)) ) else */
 
 #if 0 // ============================ TODO ====================================
 
 #if SPONGE
       if(// i >= lattice->param.x1 && i <= lattice->param.x2 &&
-	  // j >= lattice->param.y1 && j <= lattice->param.y2 &&
+          // j >= lattice->param.y1 && j <= lattice->param.y2 &&
 #if PARALLEL
-	  k+ get_proc_id(lattice)*nk < lattice->param.z1 || k+ get_proc_id(lattice)*nk > lattice->param.z2)
-	//      k >=k1 && k<=k2 )
+          k+ get_proc_id(lattice)*nk < lattice->param.z1 || k+ get_proc_id(lattice)*nk > lattice->param.z2)
+        //      k >=k1 && k<=k2 )
 #else
-	k < lattice->param.z1 || k > lattice->param.z2  )
+        k < lattice->param.z1 || k > lattice->param.z2  )
 #endif
-	{
-	  *rho = lattice->param.rho_A[subs];
-	}
+        {
+          *rho = lattice->param.rho_A[subs];
+        }
 #endif
 #endif// ======================================================================
 
@@ -1014,19 +1012,19 @@ void init_problem( lattice_ptr lattice)
 
       if( do_diagnostic_init_of_rho(lattice))
       {
-	set_rho( lattice, subs, n, get_rho_A(lattice,subs)*(n+1)/10);
+        set_rho( lattice, subs, n, get_rho_A(lattice,subs)*(n+1)/10);
       }
       if( do_diagnostic_init_of_u(lattice))
       {
-	//set_ux( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
-	//set_ux( lattice, subs, n, 0.12345);
-	set_ux( lattice, subs, n, 0.);
+        //set_ux( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        //set_ux( lattice, subs, n, 0.12345);
+        set_ux( lattice, subs, n, 0.);
 
-	//set_uy( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
-	set_uy( lattice, subs, n, 0.00000);
+        //set_uy( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        set_uy( lattice, subs, n, 0.00000);
 
-	//set_uz( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
-	set_uz( lattice, subs, n, 0.);
+        //set_uz( lattice, subs, n, (real)(n+1)/get_NumNodes(lattice)/100);
+        set_uz( lattice, subs, n, 0.);
       }
 
 #if 0 // ============================ TODO ====================================
@@ -1082,155 +1080,155 @@ void init_problem( lattice_ptr lattice)
       n=0;
       for( k=0; k<nk; k++)
       {
-	for( j=0; j<nj; j++)
-	{
-	  for( i=0; i<ni; i++)
-	  {
-	    fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
-	    fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
-	    fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
-	    fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
-	    fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
-	    fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
-	    fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
-	    fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
-	    fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
-	    if( get_NumDims(lattice)==3)
-	    {
-	      fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
-	      fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
-	      fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
-	      fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
-	      fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
-	      fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
-	      fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
-	      fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
-	      fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
-	      fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
-	    }
+        for( j=0; j<nj; j++)
+        {
+          for( i=0; i<ni; i++)
+          {
+            fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
+            fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
+            fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
+            fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
+            fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
+            fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
+            fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
+            fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
+            fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
+            if( get_NumDims(lattice)==3)
+            {
+              fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
+              fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
+              fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
+              fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
+              fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
+              fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
+              fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
+              fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
+              fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
+              fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
+            }
 
-	    rho_val = get_rho(lattice,subs,n);
-	    ux_val  = get_ux (lattice,subs,n);
-	    uy_val  = get_uy (lattice,subs,n);
-	    uz_val  = get_uz (lattice,subs,n);
+            rho_val = get_rho(lattice,subs,n);
+            ux_val  = get_ux (lattice,subs,n);
+            uy_val  = get_uy (lattice,subs,n);
+            uz_val  = get_uz (lattice,subs,n);
 
-	    usq = ux_val*ux_val + uy_val*uy_val + uz_val*uz_val;
+            usq = ux_val*ux_val + uy_val*uy_val + uz_val*uz_val;
 
 #if 1
-	    *(fptr[0]) = ( /*feq[a]*/
-		W0*rho_val*(1. - 1.5*usq)
-		) / get_tau(lattice,subs);
+            *(fptr[0]) = ( /*feq[a]*/
+                W0*rho_val*(1. - 1.5*usq)
+                ) / get_tau(lattice,subs);
 
-	    for( a=1; a<=4; a++)
-	    {
-	      udotx = ((real)vx[a]*ux_val
-		  +(real)vy[a]*uy_val
-		  +(real)vz[a]*uz_val);
+            for( a=1; a<=4; a++)
+            {
+              udotx = ((real)vx[a]*ux_val
+                  +(real)vy[a]*uy_val
+                  +(real)vz[a]*uz_val);
 
-	      *(fptr[a]) = ( /*feq[a]*/
-		  W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-		  ) / get_tau(lattice,subs);
-	    }
+              *(fptr[a]) = ( /*feq[a]*/
+                  W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                  ) / get_tau(lattice,subs);
+            }
 
-	    for( ; a<=8; a++)
-	    {
-	      udotx = ((real)vx[a]*ux_val
-		  +(real)vy[a]*uy_val
-		  +(real)vz[a]*uz_val);
+            for( ; a<=8; a++)
+            {
+              udotx = ((real)vx[a]*ux_val
+                  +(real)vy[a]*uy_val
+                  +(real)vz[a]*uz_val);
 
-	      *(fptr[a]) = ( /*feq[a]*/
-		  W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-		  ) / get_tau(lattice,subs);
-	    }
+              *(fptr[a]) = ( /*feq[a]*/
+                  W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                  ) / get_tau(lattice,subs);
+            }
 
-	    if( get_NumDims(lattice)==3)
-	    {
-	      for( ; a<=10; a++)
-	      {
-		udotx = ((real)vx[a]*ux_val
-		    +(real)vy[a]*uy_val
-		    +(real)vz[a]*uz_val);
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a]*ux_val
+                    +(real)vy[a]*uy_val
+                    +(real)vz[a]*uz_val);
 
-		*(fptr[a]) = ( /*feq[a]*/
-		    W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-		    ) / get_tau(lattice,subs);
-	      }
+                *(fptr[a]) = ( /*feq[a]*/
+                    W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                    ) / get_tau(lattice,subs);
+              }
 
-	      for( ; a<get_NumVelDirs(lattice); a++)
-	      {
-		udotx = ((real)vx[a]*ux_val
-		    +(real)vy[a]*uy_val
-		    +(real)vz[a]*uz_val);
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a]*ux_val
+                    +(real)vy[a]*uy_val
+                    +(real)vz[a]*uz_val);
 
-		*(fptr[a]) = ( /*feq[a]*/
-		    W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-		    ) / get_tau(lattice,subs);
-	      }
-	    }
+                *(fptr[a]) = ( /*feq[a]*/
+                    W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                    ) / get_tau(lattice,subs);
+              }
+            }
 #else
-	    // Just assign the weighted rho_val for debugging.
-	    *(fptr[0]) = W0*rho_val;
+            // Just assign the weighted rho_val for debugging.
+            *(fptr[0]) = W0*rho_val;
 
-	    for( a=1; a<=4; a++)
-	    {
-	      udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
-		  +(real)vy[a+((a%2)?(1):(-1))]*uy_val
-		  +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
+            for( a=1; a<=4; a++)
+            {
+              udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
+                  +(real)vy[a+((a%2)?(1):(-1))]*uy_val
+                  +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
 
-	      *(fptr[a]) = W1*rho_val;
-	    }
+              *(fptr[a]) = W1*rho_val;
+            }
 
-	    for( ; a<=8; a++)
-	    {
-	      udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
-		  +(real)vy[a+((a%2)?(1):(-1))]*uy_val
-		  +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
+            for( ; a<=8; a++)
+            {
+              udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
+                  +(real)vy[a+((a%2)?(1):(-1))]*uy_val
+                  +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
 
-	      *(fptr[a]) = W2*rho_val;
-	    }
+              *(fptr[a]) = W2*rho_val;
+            }
 
-	    if( get_NumDims(lattice)==3)
-	    {
-	      for( ; a<=10; a++)
-	      {
-		udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
-		    +(real)vy[a+((a%2)?(1):(-1))]*uy_val
-		    +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
+                    +(real)vy[a+((a%2)?(1):(-1))]*uy_val
+                    +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
 
-		*(fptr[a]) = W1*rho_val;
-	      }
+                *(fptr[a]) = W1*rho_val;
+              }
 
-	      for( ; a<get_NumVelDirs(lattice); a++)
-	      {
-		udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
-		    +(real)vy[a+((a%2)?(1):(-1))]*uy_val
-		    +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a+((a%2)?(1):(-1))]*ux_val
+                    +(real)vy[a+((a%2)?(1):(-1))]*uy_val
+                    +(real)vz[a+((a%2)?(1):(-1))]*uz_val);
 
-		*(fptr[a]) = W2*rho_val;
-	      }
-	    }
+                *(fptr[a]) = W2*rho_val;
+              }
+            }
 #endif
-	    rho_val = 0.;
-	    ux_val = 0.;
-	    uy_val = 0.;
-	    uz_val = 0.;
-	    for( a=0; a<get_NumVelDirs(lattice); a++)
-	    {
-	      rho_val+= (*(fptr[a]));
-	      ux_val += (*(fptr[a]))*vx[a];
-	      uy_val += (*(fptr[a]))*vy[a];
-	      if( get_NumDims(lattice)==3)
-	      {
-		uz_val += (*(fptr[a]))*vz[a];
-	      }
-	    }
-	    ux_val /= rho_val;
-	    uy_val /= rho_val;
-	    uz_val /= rho_val;
+            rho_val = 0.;
+            ux_val = 0.;
+            uy_val = 0.;
+            uz_val = 0.;
+            for( a=0; a<get_NumVelDirs(lattice); a++)
+            {
+              rho_val+= (*(fptr[a]));
+              ux_val += (*(fptr[a]))*vx[a];
+              uy_val += (*(fptr[a]))*vy[a];
+              if( get_NumDims(lattice)==3)
+              {
+                uz_val += (*(fptr[a]))*vz[a];
+              }
+            }
+            ux_val /= rho_val;
+            uy_val /= rho_val;
+            uz_val /= rho_val;
 
-	    n++;
-	  } // i
-	} // j
+            n++;
+          } // i
+        } // j
       } // k
     }
     else
@@ -1241,87 +1239,87 @@ void init_problem( lattice_ptr lattice)
       n=0;
       for( k=0; k<nk; k++)
       {
-	for( j=0; j<nj; j++)
-	{
-	  for( i=0; i<ni; i++)
-	  {
-	    fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
-	    fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
-	    fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
-	    fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
-	    fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
-	    fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
-	    fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
-	    fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
-	    fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
-	    if( get_NumDims(lattice)==3)
-	    {
-	      fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
-	      fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
-	      fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
-	      fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
-	      fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
-	      fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
-	      fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
-	      fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
-	      fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
-	      fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
-	    }
+        for( j=0; j<nj; j++)
+        {
+          for( i=0; i<ni; i++)
+          {
+            fptr[C ] = get_fptr(lattice,subs, i,j,k, 0,0,0, C );
+            fptr[E ] = get_fptr(lattice,subs, i,j,k, 0,0,0, E );
+            fptr[W ] = get_fptr(lattice,subs, i,j,k, 0,0,0, W );
+            fptr[N ] = get_fptr(lattice,subs, i,j,k, 0,0,0, N );
+            fptr[S ] = get_fptr(lattice,subs, i,j,k, 0,0,0, S );
+            fptr[NE] = get_fptr(lattice,subs, i,j,k, 0,0,0, NE);
+            fptr[SW] = get_fptr(lattice,subs, i,j,k, 0,0,0, SW);
+            fptr[NW] = get_fptr(lattice,subs, i,j,k, 0,0,0, NW);
+            fptr[SE] = get_fptr(lattice,subs, i,j,k, 0,0,0, SE);
+            if( get_NumDims(lattice)==3)
+            {
+              fptr[T ] = get_fptr(lattice,subs, i,j,k, 0,0,0, T );
+              fptr[B ] = get_fptr(lattice,subs, i,j,k, 0,0,0, B );
+              fptr[TE] = get_fptr(lattice,subs, i,j,k, 0,0,0, TE);
+              fptr[BW] = get_fptr(lattice,subs, i,j,k, 0,0,0, BW);
+              fptr[TW] = get_fptr(lattice,subs, i,j,k, 0,0,0, TW);
+              fptr[BE] = get_fptr(lattice,subs, i,j,k, 0,0,0, BE);
+              fptr[TN] = get_fptr(lattice,subs, i,j,k, 0,0,0, TN);
+              fptr[BS] = get_fptr(lattice,subs, i,j,k, 0,0,0, BS);
+              fptr[TS] = get_fptr(lattice,subs, i,j,k, 0,0,0, TS);
+              fptr[BN] = get_fptr(lattice,subs, i,j,k, 0,0,0, BN);
+            }
 
-	    *(fptr[C ]) = i/100. + j/10000. + k/1000000. + 0.00000000;
-	    *(fptr[E ]) = i/100. + j/10000. + k/1000000. + 0.00000001;
-	    *(fptr[W ]) = i/100. + j/10000. + k/1000000. + 0.00000003;
-	    *(fptr[N ]) = i/100. + j/10000. + k/1000000. + 0.00000002;
-	    *(fptr[S ]) = i/100. + j/10000. + k/1000000. + 0.00000004;
-	    *(fptr[NE]) = i/100. + j/10000. + k/1000000. + 0.00000005;
-	    *(fptr[SW]) = i/100. + j/10000. + k/1000000. + 0.00000007;
-	    *(fptr[NW]) = i/100. + j/10000. + k/1000000. + 0.00000006;
-	    *(fptr[SE]) = i/100. + j/10000. + k/1000000. + 0.00000008;
-	    if( get_NumDims(lattice)==3)
-	    {
-	      // TODO: Assign debug values to 3D directions.
-	      *(fptr[T ]) = 0.00000000;
-	      *(fptr[B ]) = 0.00000000;
-	      *(fptr[TE]) = 0.00000000;
-	      *(fptr[BW]) = 0.00000000;
-	      *(fptr[TW]) = 0.00000000;
-	      *(fptr[BE]) = 0.00000000;
-	      *(fptr[TN]) = 0.00000000;
-	      *(fptr[BS]) = 0.00000000;
-	      *(fptr[TS]) = 0.00000000;
-	      *(fptr[BN]) = 0.00000000;
-	    }
+            *(fptr[C ]) = i/100. + j/10000. + k/1000000. + 0.00000000;
+            *(fptr[E ]) = i/100. + j/10000. + k/1000000. + 0.00000001;
+            *(fptr[W ]) = i/100. + j/10000. + k/1000000. + 0.00000003;
+            *(fptr[N ]) = i/100. + j/10000. + k/1000000. + 0.00000002;
+            *(fptr[S ]) = i/100. + j/10000. + k/1000000. + 0.00000004;
+            *(fptr[NE]) = i/100. + j/10000. + k/1000000. + 0.00000005;
+            *(fptr[SW]) = i/100. + j/10000. + k/1000000. + 0.00000007;
+            *(fptr[NW]) = i/100. + j/10000. + k/1000000. + 0.00000006;
+            *(fptr[SE]) = i/100. + j/10000. + k/1000000. + 0.00000008;
+            if( get_NumDims(lattice)==3)
+            {
+              // TODO: Assign debug values to 3D directions.
+              *(fptr[T ]) = 0.00000000;
+              *(fptr[B ]) = 0.00000000;
+              *(fptr[TE]) = 0.00000000;
+              *(fptr[BW]) = 0.00000000;
+              *(fptr[TW]) = 0.00000000;
+              *(fptr[BE]) = 0.00000000;
+              *(fptr[TN]) = 0.00000000;
+              *(fptr[BS]) = 0.00000000;
+              *(fptr[TS]) = 0.00000000;
+              *(fptr[BN]) = 0.00000000;
+            }
 
 #if 0 // TEMP
-	    if( i==1 && j==1)
-	    {
-	      *(fptr[C ]) = 0.99999999;
-	      *(fptr[E ]) = 1.0;
-	      *(fptr[W ]) = 2.0;
-	      *(fptr[N ]) = 3.0;
-	      *(fptr[S ]) = 4.0;
-	      *(fptr[NE]) = 5.0;
-	      *(fptr[SW]) = 6.0;
-	      *(fptr[NW]) = 7.0;
-	      *(fptr[SE]) = 8.0;
-	    }
-	    else
-	    {
-	      *(fptr[C ]) = 0.0;
-	      *(fptr[E ]) = 0.0;
-	      *(fptr[W ]) = 0.0;
-	      *(fptr[N ]) = 0.0;
-	      *(fptr[S ]) = 0.0;
-	      *(fptr[NE]) = 0.0;
-	      *(fptr[SW]) = 0.0;
-	      *(fptr[NW]) = 0.0;
-	      *(fptr[SE]) = 0.0;
-	    }
+            if( i==1 && j==1)
+            {
+              *(fptr[C ]) = 0.99999999;
+              *(fptr[E ]) = 1.0;
+              *(fptr[W ]) = 2.0;
+              *(fptr[N ]) = 3.0;
+              *(fptr[S ]) = 4.0;
+              *(fptr[NE]) = 5.0;
+              *(fptr[SW]) = 6.0;
+              *(fptr[NW]) = 7.0;
+              *(fptr[SE]) = 8.0;
+            }
+            else
+            {
+              *(fptr[C ]) = 0.0;
+              *(fptr[E ]) = 0.0;
+              *(fptr[W ]) = 0.0;
+              *(fptr[N ]) = 0.0;
+              *(fptr[S ]) = 0.0;
+              *(fptr[NE]) = 0.0;
+              *(fptr[SW]) = 0.0;
+              *(fptr[NW]) = 0.0;
+              *(fptr[SE]) = 0.0;
+            }
 #endif
 
-	    n++;
-	  } // i
-	} // j
+            n++;
+          } // i
+        } // j
       } // k
     }
 
@@ -1420,9 +1418,10 @@ void destruct_lattice( lattice_ptr lattice)
   cudaFree(f_mem_d);
   cudaFree(mv_mem_d);
   cudaFree(solids_mem_d);
-  cudaFree(is_end_of_frame_mem_d);
+  //cudaFree(is_end_of_frame_mem_d);
 #endif
 
+  process_finalize();
 #endif
 } /* void destruct_lattice( lattice_ptr lattice) */
 
@@ -1450,166 +1449,166 @@ void dump_north_pointing_pdfs(
     {
       if( z_slice >= 0)
       {
-	k = z_slice;
+        k = z_slice;
 
-	gather_north_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
+        gather_north_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
 
-	printf("\n\n// Proc %d, k=%d >> North pointing, \"%s\".",
-	    get_proc_id( lattice), k, comment_str);
-	printf("\n ");
-	for( i=0; i<ni; i++)
-	{
-	  printf("+");
-	  printf("---");
-	  printf("---");
-	  printf("---");
-	  printf("-");
-	}
-	printf("+");
+        printf("\n\n// Proc %d, k=%d >> North pointing, \"%s\".",
+            get_proc_id( lattice), k, comment_str);
+        printf("\n ");
+        for( i=0; i<ni; i++)
+        {
+          printf("+");
+          printf("---");
+          printf("---");
+          printf("---");
+          printf("-");
+        }
+        printf("+");
 
-	for( j=0; j<nj; j++)
-	{
-	  // 0 1 2 3 4
-	  // O W E N S
+        for( j=0; j<nj; j++)
+        {
+          // 0 1 2 3 4
+          // O W E N S
 
-	  // South
-	  n = 5*j*ni + 4;
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("|");
-	    printf("   ");
-	    printf(" %2.0f", pdfs[n]);
-	    printf("   ");
-	    printf(" ");
-	    n+=5;
-	  }
-	  printf("|");
+          // South
+          n = 5*j*ni + 4;
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("|");
+            printf("   ");
+            printf(" %2.0f", pdfs[n]);
+            printf("   ");
+            printf(" ");
+            n+=5;
+          }
+          printf("|");
 
-	  // West/O/East
-	  n = 5*j*ni + 0;
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("|");
-	    printf(" %2.0f", pdfs[n+1]);
-	    printf(" %2.0f", pdfs[n]);
-	    printf(" %2.0f", pdfs[n+2]);
-	    printf(" ");
-	    n+=5;
-	  }
-	  printf("|");
+          // West/O/East
+          n = 5*j*ni + 0;
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("|");
+            printf(" %2.0f", pdfs[n+1]);
+            printf(" %2.0f", pdfs[n]);
+            printf(" %2.0f", pdfs[n+2]);
+            printf(" ");
+            n+=5;
+          }
+          printf("|");
 
-	  // North
-	  n = 5*j*ni + 3;
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("|");
-	    printf("   ");
-	    printf(" %2.0f", pdfs[n]);
-	    printf("   ");
-	    printf(" ");
-	    n+=5;
-	  }
-	  printf("|");
+          // North
+          n = 5*j*ni + 3;
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("|");
+            printf("   ");
+            printf(" %2.0f", pdfs[n]);
+            printf("   ");
+            printf(" ");
+            n+=5;
+          }
+          printf("|");
 
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("+");
-	    printf("---");
-	    printf("---");
-	    printf("---");
-	    printf("-");
-	  }
-	  printf("+");
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("+");
+            printf("---");
+            printf("---");
+            printf("---");
+            printf("-");
+          }
+          printf("+");
 
-	} /* if( j=0; j<nj; j++) */
+        } /* if( j=0; j<nj; j++) */
 
       } /* if( z_slice >= 0) */
 
       else
       {
-	for( k=0; k<get_LZ(lattice); k++)
-	{
+        for( k=0; k<get_LZ(lattice); k++)
+        {
 
-	  gather_north_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
+          gather_north_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
 
-	  printf("\n\n// Proc %d, k=%d >> North pointing, \"%s\".",
-	      get_proc_id( lattice), k, comment_str);
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("+");
-	    printf("---");
-	    printf("---");
-	    printf("---");
-	    printf("-");
-	  }
-	  printf("+");
+          printf("\n\n// Proc %d, k=%d >> North pointing, \"%s\".",
+              get_proc_id( lattice), k, comment_str);
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("+");
+            printf("---");
+            printf("---");
+            printf("---");
+            printf("-");
+          }
+          printf("+");
 
-	  for( j=0; j<nj; j++)
-	  {
-	    // 0 1 2 3 4
-	    // O W E N S
+          for( j=0; j<nj; j++)
+          {
+            // 0 1 2 3 4
+            // O W E N S
 
-	    // South
-	    n = 5*j*ni + 4;
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("|");
-	      printf("   ");
-	      printf(" %2.0f", pdfs[n]);
-	      printf("   ");
-	      printf(" ");
-	      n+=5;
-	    }
-	    printf("|");
+            // South
+            n = 5*j*ni + 4;
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("|");
+              printf("   ");
+              printf(" %2.0f", pdfs[n]);
+              printf("   ");
+              printf(" ");
+              n+=5;
+            }
+            printf("|");
 
-	    // West/O/East
-	    n = 5*j*ni + 0;
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("|");
-	      printf(" %2.0f", pdfs[n+1]);
-	      printf(" %2.0f", pdfs[n]);
-	      printf(" %2.0f", pdfs[n+2]);
-	      printf(" ");
-	      n+=5;
-	    }
-	    printf("|");
+            // West/O/East
+            n = 5*j*ni + 0;
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("|");
+              printf(" %2.0f", pdfs[n+1]);
+              printf(" %2.0f", pdfs[n]);
+              printf(" %2.0f", pdfs[n+2]);
+              printf(" ");
+              n+=5;
+            }
+            printf("|");
 
-	    // North
-	    n = 5*j*ni + 3;
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("|");
-	      printf("   ");
-	      printf(" %2.0f", pdfs[n]);
-	      printf("   ");
-	      printf(" ");
-	      n+=5;
-	    }
-	    printf("|");
+            // North
+            n = 5*j*ni + 3;
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("|");
+              printf("   ");
+              printf(" %2.0f", pdfs[n]);
+              printf("   ");
+              printf(" ");
+              n+=5;
+            }
+            printf("|");
 
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("+");
-	      printf("---");
-	      printf("---");
-	      printf("---");
-	      printf("-");
-	    }
-	    printf("+");
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("+");
+              printf("---");
+              printf("---");
+              printf("---");
+              printf("-");
+            }
+            printf("+");
 
-	  } /* if( j=0; j<nj; j++) */
+          } /* if( j=0; j<nj; j++) */
 
-	}
+        }
 
       } /* if( z_slice >= 0) else */
 
@@ -1647,166 +1646,166 @@ void dump_south_pointing_pdfs(
     {
       if( z_slice >= 0)
       {
-	k = z_slice;
+        k = z_slice;
 
-	gather_south_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
+        gather_south_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
 
-	printf("\n\n// Proc %d, k=%d >> South pointing, \"%s\".",
-	    get_proc_id( lattice), k, comment_str);
-	printf("\n ");
-	for( i=0; i<ni; i++)
-	{
-	  printf("+");
-	  printf("---");
-	  printf("---");
-	  printf("---");
-	  printf("-");
-	}
-	printf("+");
+        printf("\n\n// Proc %d, k=%d >> South pointing, \"%s\".",
+            get_proc_id( lattice), k, comment_str);
+        printf("\n ");
+        for( i=0; i<ni; i++)
+        {
+          printf("+");
+          printf("---");
+          printf("---");
+          printf("---");
+          printf("-");
+        }
+        printf("+");
 
-	for( j=0; j<nj; j++)
-	{
-	  // 0 1 2 3 4
-	  // O W E N S
+        for( j=0; j<nj; j++)
+        {
+          // 0 1 2 3 4
+          // O W E N S
 
-	  // South
-	  n = 5*j*ni + 4;
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("|");
-	    printf("   ");
-	    printf(" %2.0f", pdfs[n]);
-	    printf("   ");
-	    printf(" ");
-	    n+=5;
-	  }
-	  printf("|");
+          // South
+          n = 5*j*ni + 4;
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("|");
+            printf("   ");
+            printf(" %2.0f", pdfs[n]);
+            printf("   ");
+            printf(" ");
+            n+=5;
+          }
+          printf("|");
 
-	  // West/O/East
-	  n = 5*j*ni + 0;
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("|");
-	    printf(" %2.0f", pdfs[n+1]);
-	    printf(" %2.0f", pdfs[n]);
-	    printf(" %2.0f", pdfs[n+2]);
-	    printf(" ");
-	    n+=5;
-	  }
-	  printf("|");
+          // West/O/East
+          n = 5*j*ni + 0;
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("|");
+            printf(" %2.0f", pdfs[n+1]);
+            printf(" %2.0f", pdfs[n]);
+            printf(" %2.0f", pdfs[n+2]);
+            printf(" ");
+            n+=5;
+          }
+          printf("|");
 
-	  // North
-	  n = 5*j*ni + 3;
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("|");
-	    printf("   ");
-	    printf(" %2.0f", pdfs[n]);
-	    printf("   ");
-	    printf(" ");
-	    n+=5;
-	  }
-	  printf("|");
+          // North
+          n = 5*j*ni + 3;
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("|");
+            printf("   ");
+            printf(" %2.0f", pdfs[n]);
+            printf("   ");
+            printf(" ");
+            n+=5;
+          }
+          printf("|");
 
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("+");
-	    printf("---");
-	    printf("---");
-	    printf("---");
-	    printf("-");
-	  }
-	  printf("+");
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("+");
+            printf("---");
+            printf("---");
+            printf("---");
+            printf("-");
+          }
+          printf("+");
 
-	} /* if( j=0; j<nj; j++) */
+        } /* if( j=0; j<nj; j++) */
 
       } /* if( z_slice >= 0) */
 
       else
       {
-	for( k=0; k<get_LZ(lattice); k++)
-	{
+        for( k=0; k<get_LZ(lattice); k++)
+        {
 
-	  gather_south_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
+          gather_south_pointing_pdfs( lattice, pdfs, subs, k, which_pdf);
 
-	  printf("\n\n// Proc %d, k=%d >> South pointing, \"%s\".",
-	      get_proc_id( lattice), k, comment_str);
-	  printf("\n ");
-	  for( i=0; i<ni; i++)
-	  {
-	    printf("+");
-	    printf("---");
-	    printf("---");
-	    printf("---");
-	    printf("-");
-	  }
-	  printf("+");
+          printf("\n\n// Proc %d, k=%d >> South pointing, \"%s\".",
+              get_proc_id( lattice), k, comment_str);
+          printf("\n ");
+          for( i=0; i<ni; i++)
+          {
+            printf("+");
+            printf("---");
+            printf("---");
+            printf("---");
+            printf("-");
+          }
+          printf("+");
 
-	  for( j=0; j<nj; j++)
-	  {
-	    // 0 1 2 3 4
-	    // O W E N S
+          for( j=0; j<nj; j++)
+          {
+            // 0 1 2 3 4
+            // O W E N S
 
-	    // South
-	    n = 5*j*ni + 4;
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("|");
-	      printf("   ");
-	      printf(" %2.0f", pdfs[n]);
-	      printf("   ");
-	      printf(" ");
-	      n+=5;
-	    }
-	    printf("|");
+            // South
+            n = 5*j*ni + 4;
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("|");
+              printf("   ");
+              printf(" %2.0f", pdfs[n]);
+              printf("   ");
+              printf(" ");
+              n+=5;
+            }
+            printf("|");
 
-	    // West/O/East
-	    n = 5*j*ni + 0;
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("|");
-	      printf(" %2.0f", pdfs[n+1]);
-	      printf(" %2.0f", pdfs[n]);
-	      printf(" %2.0f", pdfs[n+2]);
-	      printf(" ");
-	      n+=5;
-	    }
-	    printf("|");
+            // West/O/East
+            n = 5*j*ni + 0;
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("|");
+              printf(" %2.0f", pdfs[n+1]);
+              printf(" %2.0f", pdfs[n]);
+              printf(" %2.0f", pdfs[n+2]);
+              printf(" ");
+              n+=5;
+            }
+            printf("|");
 
-	    // North
-	    n = 5*j*ni + 3;
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("|");
-	      printf("   ");
-	      printf(" %2.0f", pdfs[n]);
-	      printf("   ");
-	      printf(" ");
-	      n+=5;
-	    }
-	    printf("|");
+            // North
+            n = 5*j*ni + 3;
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("|");
+              printf("   ");
+              printf(" %2.0f", pdfs[n]);
+              printf("   ");
+              printf(" ");
+              n+=5;
+            }
+            printf("|");
 
-	    printf("\n ");
-	    for( i=0; i<ni; i++)
-	    {
-	      printf("+");
-	      printf("---");
-	      printf("---");
-	      printf("---");
-	      printf("-");
-	    }
-	    printf("+");
+            printf("\n ");
+            for( i=0; i<ni; i++)
+            {
+              printf("+");
+              printf("---");
+              printf("---");
+              printf("---");
+              printf("-");
+            }
+            printf("+");
 
-	  } /* if( j=0; j<nj; j++) */
+          } /* if( j=0; j<nj; j++) */
 
-	}
+        }
 
       } /* if( z_slice >= 0) else */
 
@@ -1896,20 +1895,20 @@ int get_sizeof_lattice( lattice_ptr lattice)
 
     + lattice->NumNodes
     * (
-	NUM_FLUID_COMPONENTS*sizeof(struct pdf_struct)
-	+ NUM_FLUID_COMPONENTS*sizeof(struct macro_vars_struct)
-	+ NUM_FLUID_COMPONENTS*sizeof(struct solids_struct)
+        NUM_FLUID_COMPONENTS*sizeof(struct pdf_struct)
+        + NUM_FLUID_COMPONENTS*sizeof(struct macro_vars_struct)
+        + NUM_FLUID_COMPONENTS*sizeof(struct solids_struct)
 #if NON_LOCAL_FORCES
-	+ NUM_FLUID_COMPONENTS*sizeof(struct force_struct)
+        + NUM_FLUID_COMPONENTS*sizeof(struct force_struct)
 #endif /* NON_LOCAL_FORCES */
 #if STORE_UEQ
-	+ sizeof(struct ueq_struct)
+        + sizeof(struct ueq_struct)
 #endif /* STORE_UEQ */
 #if POROUS_MEDIA
-	+ sizeof(struct ns_struct)
-	+ Q*sizeof(real) /* nsterm */
+        + sizeof(struct ns_struct)
+        + Q*sizeof(real) /* nsterm */
 #endif /* POROUS_MEDIA */
-	+ sizeof(struct process_struct)
+        + sizeof(struct process_struct)
       );
 
 #else

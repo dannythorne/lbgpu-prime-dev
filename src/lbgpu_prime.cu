@@ -6,8 +6,13 @@
 //
 //  - D2Q9 / D3Q19
 //
+#define DP_ON 0
 
+#if DP_ON
 typedef double real; // To be relocated (in flags.in?).
+#else
+typedef float real; // To be relocated (in flags.in?).
+#endif
 
 #ifdef __CUDACC__
 real* f_mem_d;
@@ -20,7 +25,6 @@ int* is_end_of_frame_mem_d;
 #endif
 
 #include "lbgpu_prime.h"
-
 int main( int argc, char **argv)
 {
   int subs;
@@ -89,7 +93,7 @@ int main( int argc, char **argv)
 
 #ifdef __CUDACC__
 
-  cudaMemcpy( solids_mem_d + get_end_bound_size( lattice)
+  cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice)
       , get_solids_ptr(lattice, 0)
       , get_NumNodes( lattice)*sizeof(unsigned char)
       , cudaMemcpyHostToDevice);
@@ -101,17 +105,39 @@ int main( int argc, char **argv)
 
 #if PARALLEL
   // We'll want something involving the MPI buffers here.
+
+  solid_send_recv_begin( lattice, 0);
+  solid_send_recv_end( lattice, 0);
+
+  // North / Top end
+  cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice) + get_NumNodes( lattice)
+      , lattice->process.neg_dir_solid_to_recv
+      , get_EndBoundSize( lattice)*sizeof(unsigned char)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "solid swap");
+
+  // South / Bottom end
+  cudaMemcpy( solids_mem_d
+      , lattice->process.pos_dir_solid_to_recv
+      , get_EndBoundSize( lattice)*sizeof(unsigned char)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "solid swap");
+
 #else
-  cudaMemcpy( solids_mem_d + get_end_bound_size( lattice) + get_NumNodes( lattice)
-      , solids_mem_d + get_end_bound_size( lattice)
-      , get_end_bound_size( lattice)*sizeof(unsigned char)
+  // North / Top end
+  cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice) + get_NumNodes( lattice)
+      , solids_mem_d + get_EndBoundSize( lattice)
+      , get_EndBoundSize( lattice)*sizeof(unsigned char)
       , cudaMemcpyDeviceToDevice);
 
   checkCUDAError( __FILE__, __LINE__, "solid swap");
 
+  // South / Bottom end
   cudaMemcpy( solids_mem_d
       , solids_mem_d + get_NumNodes( lattice)
-      , get_end_bound_size( lattice)*sizeof(unsigned char)
+      , get_EndBoundSize( lattice)*sizeof(unsigned char)
       , cudaMemcpyDeviceToDevice);
 
   checkCUDAError( __FILE__, __LINE__, "solid swap");
@@ -182,16 +208,41 @@ int main( int argc, char **argv)
 
     // Do boundary swaps. The direction depends on
     // whether time is even or odd. Here, time is odd.
+#if PARALLEL
+    for( subs = 0; subs < get_NumSubs( lattice); subs++)
+    {
+#ifdef __CUDACC__
+      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      {
+        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
+            , subs, dir, time, DEVICE_TO_HOST);
+      }
+#endif
+
+      process_send_recv_begin( lattice, subs);
+      process_send_recv_end(lattice, subs);
+
+#ifdef __CUDACC__
+      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      {
+        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
+            , subs, dir, time, HOST_TO_DEVICE);
+      }
+#endif
+    }
+#else
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-      for( dir=ubdir+1; dir < get_NumVelDirs( lattice); dir+=2)
+      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_swap( lattice, f_mem_d, cumul_stride
             , subs, dir, time);
       }
     }
 #endif
+#endif
+
 
     // Time steps are combined in a somewhat awkward way in order to minimize
     // the amount of temporary storage required and to allow the nodes to
@@ -202,6 +253,8 @@ int main( int argc, char **argv)
     // Flow Simulations using Graphics Processors, ICPP 2009.
     // http://www.tc.umn.edu/~bail0253/
 
+      //XXXXXXX
+#if 1
 #ifdef __CUDACC__
     k_stream_collide_stream
       <<<
@@ -219,27 +272,51 @@ int main( int argc, char **argv)
 #else
     stream_collide_stream( lattice);
 #endif
-
+#endif
     set_time( lattice, ++time);
-
+    //XXXXXX
     // Do boundary swaps. The direction depends on
-    // whether time is even or odd. Here, time is even.
+    // whether time is even or odd. Here, time is odd.
+#if PARALLEL
+    for( subs = 0; subs < get_NumSubs( lattice); subs++)
+    {
+#ifdef __CUDACC__
+      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      {
+        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
+            , subs, dir, time, DEVICE_TO_HOST);
+      }
+#endif
+
+      process_send_recv_begin( lattice, subs);
+      process_send_recv_end(lattice, subs);
+
+#ifdef __CUDACC__
+      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      {
+        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
+            , subs, dir, time, HOST_TO_DEVICE);
+      }
+#endif
+    }
+#else
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-      for( dir=ubdir+1; dir < get_NumVelDirs( lattice); dir+=2)
+      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_swap( lattice, f_mem_d, cumul_stride
             , subs, dir, time);
       }
     }
 #endif
+#endif
 
 #ifdef __CUDACC__
 #if 1
     if( is_end_of_frame(lattice,time))
     {
-      int temp = 1;
+      temp = 1;
       cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
 #if 0
       cudaMemcpy( is_end_of_frame_mem_d
@@ -251,6 +328,7 @@ int main( int argc, char **argv)
 #endif
     }
 #endif
+#if 1
     k_collide
       <<<
       gridDim
@@ -260,14 +338,14 @@ int main( int argc, char **argv)
       * get_BX( lattice)
       * get_BY( lattice)
       * get_BZ( lattice)
-      >>>( f_mem_d, mv_mem_d, solids_mem_d, is_end_of_frame_mem_d);
+      >>>( f_mem_d, mv_mem_d, solids_mem_d);
     cudaThreadSynchronize();
     checkCUDAError( __FILE__, __LINE__, "k_collide");
-
+#endif
 #if 1
     if( is_end_of_frame(lattice,time))
     {
-      int temp = 0;
+      temp = 0;
       cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
 #if 0
       cudaMemcpy( is_end_of_frame_mem_d

@@ -117,10 +117,10 @@ struct process_struct
   real *pos_dir_rho_to_recv;
   real *neg_dir_rho_to_send;
   real *neg_dir_rho_to_recv;
-  int *pos_dir_solid_to_send;
-  int *pos_dir_solid_to_recv;
-  int *neg_dir_solid_to_send;
-  int *neg_dir_solid_to_recv;
+  unsigned char *pos_dir_solid_to_send;
+  unsigned char *pos_dir_solid_to_recv;
+  unsigned char *neg_dir_solid_to_send;
+  unsigned char *neg_dir_solid_to_recv;
 
 
   MPI_Request send_req_0;
