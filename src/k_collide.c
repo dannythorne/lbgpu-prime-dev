@@ -239,7 +239,7 @@ void k_collide(
 
             if( /*debug*/0)
             {
-              set_mv_d( mv_mem_d, subs, n, a, 1.);
+              set_mv_d( mv_mem_d, subs, n, a, 1.1);
             }
           }
           //}

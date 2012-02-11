@@ -20,10 +20,10 @@
 #define CLK_TCK CLOCKS_PER_SEC
 #endif
 
-#include "flags.h"
+//#include "flags.h"   //included in lbgpu_prime.cu
 //#include "bc_flags.h"
 #include "process.h"
-#include "lattice.h"
+#include "lattice.h"   //included in process.h
 #include "forward_declarations.h"
 
 // D3Q19
@@ -36,6 +36,45 @@
 ////             C  W  E  N  S  T  B  N  N  S  S  T  T  B  B  T  T  B  B
 ////                                  W  E  W  E  W  E  W  E  N  S  N  S
 
+#if 0
+// A better configuration - minimizes the number of memcpys required
+// to fill the MPI buffers. D2Q9 still contiguous at the beginning,
+// and opposites separated by a stride (4 starting from E and 5 starting
+// from T. Before you implement this, do a test to see how much of a time 
+// reduction is involved... Yes there is a significant reduction, but this
+// is too simplistic - we're only transferring boundary cells from a few
+// directions, so even if those directions are adjecent in the f array,
+// we won't be able to do the transfer with a single memcpy.
+//             0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18
+//             |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+int vx[19] = { 0, 1, 0, 1,-1,-1, 0,-1, 1, 0, 1,-1, 0, 0, 0,-1, 1, 0, 0};
+int vy[19] = { 0, 0, 1, 1, 1, 0,-1,-1,-1, 0, 0, 0, 1,-1, 0, 0, 0,-1, 1};
+int vz[19] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,-1,-1,-1,-1,-1};
+//             C  E  N  N  N  W  S  S  S  T  T  T  T  T  B  B  B  B  B
+//                      E  W        W  E     E  W  N  S     W  E  S  N
+
+#define C   0
+#define E   1
+#define N   2
+#define NE  3
+#define NW  4
+#define W   5
+#define S   6
+#define SW  7
+#define SE  8
+#define T   9
+#define TE 10
+#define TW 11
+#define TN 12
+#define TS 13
+#define B  14
+#define BW 15
+#define BE 16
+#define BS 17
+#define BN 18
+
+#endif
+
 // Rearranged so that opposing directions are adjacent and the D2Q9 directions
 // are contiguous at the beginning.
 //             0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18
@@ -45,6 +84,7 @@ int vy[19] = { 0, 0, 0, 1,-1, 1,-1, 1,-1, 0, 0, 0, 0, 0, 0, 1,-1,-1, 1};
 int vz[19] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,-1, 1,-1, 1,-1, 1,-1, 1,-1};
 //             C  E  W  N  S  N  S  N  S  T  B  T  B  T  B  T  B  T  B
 //                            E  W  W  E        E  W  W  E  N  S  S  N
+
 real wt[19];
 int cumul_stride[20];
 

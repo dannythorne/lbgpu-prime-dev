@@ -624,6 +624,9 @@ struct lattice_struct
   int    NumSubs;
   int    NumDims;
   int    NumVelDirs;
+  int    NumBoundDirs;
+  int    NumUnboundDirs;
+  int    EndBoundSize;
   int    NumNodes;
   int    NumTimeSteps;
   int    time;
@@ -734,15 +737,48 @@ struct rgb_quad
 int get_LX( lattice_ptr lattice);
 int get_LY( lattice_ptr lattice);
 int get_LZ( lattice_ptr lattice);
+int get_BX( lattice_ptr lattice);
+int get_BY( lattice_ptr lattice);
+int get_BZ( lattice_ptr lattice);
+int get_ni( lattice_ptr lattice);
+int get_nj( lattice_ptr lattice);
+int get_nk( lattice_ptr lattice);
+int* get_ni_ptr( lattice_ptr lattice);
+int* get_nj_ptr( lattice_ptr lattice);
+int* get_nk_ptr( lattice_ptr lattice);
 void set_LX( lattice_ptr lattice, const int arg_LX);
 void set_LY( lattice_ptr lattice, const int arg_LY);
 void set_LZ( lattice_ptr lattice, const int arg_LZ);
 
-int get_NumNodes( lattice_ptr lattice);
-void set_NumNodes( lattice_ptr lattice);
+int get_FrameRate( lattice_ptr lattice);
+int get_NumFrames( lattice_ptr lattice);
+int get_Frame( lattice_ptr lattice);
 
+void set_NumNodes( lattice_ptr lattice);
+int get_NumNodes( lattice_ptr lattice);
+int* get_NumNodes_ptr( lattice_ptr lattice);
+
+void set_NumDims( lattice_ptr lattice, int value);
 int get_NumDims( lattice_ptr lattice);
+int* get_NumDims_ptr( lattice_ptr lattice);
+
+void set_NumVelDirs( lattice_ptr lattice, int value);
 int get_NumVelDirs( lattice_ptr lattice);
+int* get_NumVelDirs_ptr( lattice_ptr lattice);
+
+void set_NumBoundDirs( lattice_ptr lattice, int value);
+int get_NumBoundDirs( lattice_ptr lattice);
+
+void set_NumUnboundDirs( lattice_ptr lattice, int value);
+int get_NumUnboundDirs( lattice_ptr lattice);
+
+void set_EndBoundSize( lattice_ptr lattice, int value);
+int get_EndBoundSize( lattice_ptr lattice);
+int* get_EndBoundSize_ptr( lattice_ptr lattice);
+
+int get_NumSubs( lattice_ptr lattice);
+int* get_NumSubs_ptr( lattice_ptr lattice);
+
 
 int is_solid( lattice_ptr lattice, const int n);
 void set_is_solid(

@@ -6,7 +6,7 @@
 //
 //  - D2Q9 / D3Q19
 //
-#define DP_ON 0
+#include "flags.h"
 
 #if DP_ON
 typedef double real; // To be relocated (in flags.in?).
@@ -21,12 +21,14 @@ real* mv_mem_d;
 int mv_mem_size;
 unsigned char* solids_mem_d;
 int solids_mem_size;
-int* is_end_of_frame_mem_d;
 #endif
 
 #include "lbgpu_prime.h"
+
 int main( int argc, char **argv)
 {
+
+
   int subs;
   int time, frame;
 
@@ -89,10 +91,6 @@ int main( int argc, char **argv)
       get_LY( lattice) / get_BY( lattice),
       get_LZ( lattice) / get_BZ( lattice) );
 
-#endif
-
-#ifdef __CUDACC__
-
   cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice)
       , get_solids_ptr(lattice, 0)
       , get_NumNodes( lattice)*sizeof(unsigned char)
@@ -125,7 +123,7 @@ int main( int argc, char **argv)
 
   checkCUDAError( __FILE__, __LINE__, "solid swap");
 
-#else
+#else   // if !(PARALLEL)
   // North / Top end
   cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice) + get_NumNodes( lattice)
       , solids_mem_d + get_EndBoundSize( lattice)
@@ -141,12 +139,10 @@ int main( int argc, char **argv)
       , cudaMemcpyDeviceToDevice);
 
   checkCUDAError( __FILE__, __LINE__, "solid swap");
-#endif
+#endif  // if PARALLEL
 
   int dir;
-  const int ubdir = get_NumVelDirs( lattice) 
-    - get_NumBoundDirs( lattice);
-
+#if 1
   for( subs = 0; subs < get_NumSubs( lattice); subs++)
   {
     // In the final version, the CPU arrays may well have
@@ -155,13 +151,13 @@ int main( int argc, char **argv)
     cudaMemcpy( f_mem_d + subs * cumul_stride[get_NumVelDirs( lattice)]
         , get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
         , get_NumNodes( lattice)
-        *(ubdir)
+        *(get_NumUnboundDirs( lattice))
         *sizeof(real)
         , cudaMemcpyHostToDevice);
 
     checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 
-    for( dir=ubdir; dir < get_NumVelDirs( lattice); dir+=2)
+    for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
     {
 
       cudaMemcpy( f_mem_d + cumul_stride[dir]
@@ -185,23 +181,23 @@ int main( int argc, char **argv)
     checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 
   }
-
-  int temp = 0;
-  cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
-#if 0
-  cudaMemcpy( is_end_of_frame_mem_d
-      , &temp
-      , sizeof(int)
-      , cudaMemcpyHostToDevice);
-
-  checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 #endif
+  int temp_frame_switch = 0;
+  cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
+
 #if TEXTURE_FETCH
   cudaBindTexture(0, tex_solid, solids_mem_d);
 #endif
 
-#endif
+#endif  // ifdef __CUDACC__
 
+
+  cudaEvent_t start, stop;
+  real timertime;
+  real totaltime = 0.;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+#if 1
   for( frame = 0, time=1; time<=get_NumTimeSteps( lattice); time++)
   {
     set_time( lattice, time);
@@ -212,36 +208,52 @@ int main( int argc, char **argv)
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
 #ifdef __CUDACC__
-      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      //#if !(PAGE_LOCKED)
+
+      cudaEventRecord(start,0);
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, DEVICE_TO_HOST);
       }
+      cudaEventRecord(stop, 0);
+      cudaEventSynchronize(stop);
+      cudaEventElapsedTime(&timertime,start,stop);
+      totaltime += timertime;
+      //#endif
 #endif
 
       process_send_recv_begin( lattice, subs);
       process_send_recv_end(lattice, subs);
 
 #ifdef __CUDACC__
-      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      //#if !(PAGE_LOCKED)
+      cudaEventRecord(start,0);
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, HOST_TO_DEVICE);
       }
+      cudaEventRecord(stop, 0);
+      cudaEventSynchronize(stop);
+      cudaEventElapsedTime(&timertime,start,stop);
+      totaltime += timertime;
+
+      //#endif
 #endif
     }
-#else
+#else   // if !(PARALLEL)
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_swap( lattice, f_mem_d, cumul_stride
             , subs, dir, time);
       }
     }
 #endif
-#endif
+#endif  // if (PARALLEL)
 
 
     // Time steps are combined in a somewhat awkward way in order to minimize
@@ -253,8 +265,6 @@ int main( int argc, char **argv)
     // Flow Simulations using Graphics Processors, ICPP 2009.
     // http://www.tc.umn.edu/~bail0253/
 
-      //XXXXXXX
-#if 1
 #ifdef __CUDACC__
     k_stream_collide_stream
       <<<
@@ -265,70 +275,84 @@ int main( int argc, char **argv)
       * get_BX( lattice)
       * get_BY( lattice)
       * get_BZ( lattice)
-      >>>( f_mem_d, mv_mem_d, solids_mem_d);
+      >>>( f_mem_d, mv_mem_d, solids_mem_d
+         );
+
     cudaThreadSynchronize();
     checkCUDAError( __FILE__, __LINE__, "k_stream_collide_stream");
 
-#else
+    if( temp_frame_switch)
+    {
+      output_frame( lattice);
+      temp_frame_switch = 0;
+      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
+    }
+#else   // ifndef __CUDACC__
     stream_collide_stream( lattice);
-#endif
-#endif
+#endif  // ifdef __CUDACC__
+
     set_time( lattice, ++time);
-    //XXXXXX
+
     // Do boundary swaps. The direction depends on
     // whether time is even or odd. Here, time is odd.
 #if PARALLEL
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
 #ifdef __CUDACC__
-      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      //#if !(PAGE_LOCKED)
+      cudaEventRecord(start, 0);
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, DEVICE_TO_HOST);
       }
+      cudaEventRecord(stop, 0);
+      cudaEventSynchronize(stop);
+      cudaEventElapsedTime(&timertime,start,stop);
+      totaltime += timertime;
+
+      //#endif
 #endif
 
       process_send_recv_begin( lattice, subs);
       process_send_recv_end(lattice, subs);
 
 #ifdef __CUDACC__
-      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      //#if !(PAGE_LOCKED)
+      cudaEventRecord(start, 0);
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, HOST_TO_DEVICE);
       }
+      cudaEventRecord(stop, 0);
+      cudaEventSynchronize(stop);
+      cudaEventElapsedTime(&timertime,start,stop);
+      totaltime += timertime;
+
+      //#endif
 #endif
     }
-#else
+#else   // if !(PARALLEL)
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-      for( dir=ubdir; dir < get_NumVelDirs( lattice); dir++)
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_swap( lattice, f_mem_d, cumul_stride
             , subs, dir, time);
       }
     }
 #endif
-#endif
+#endif  // if PARALLEL
 
 #ifdef __CUDACC__
-#if 1
     if( is_end_of_frame(lattice,time))
     {
-      temp = 1;
-      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
-#if 0
-      cudaMemcpy( is_end_of_frame_mem_d
-          , &temp
-          , sizeof(int)
-          , cudaMemcpyHostToDevice);
-
-      checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-#endif
+      temp_frame_switch = 1;
+      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
     }
-#endif
-#if 1
+
     k_collide
       <<<
       gridDim
@@ -341,26 +365,17 @@ int main( int argc, char **argv)
       >>>( f_mem_d, mv_mem_d, solids_mem_d);
     cudaThreadSynchronize();
     checkCUDAError( __FILE__, __LINE__, "k_collide");
-#endif
-#if 1
-    if( is_end_of_frame(lattice,time))
-    {
-      temp = 0;
-      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
-#if 0
-      cudaMemcpy( is_end_of_frame_mem_d
-          , &temp
-          , sizeof(int)
-          , cudaMemcpyHostToDevice);
-      checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
-#endif
-    }
-#endif
-#else
+#else   // ifndef __CUDACC__
     collide( lattice);
-#endif
+#endif  // ifdef __CUDACC__
+
     if( is_end_of_frame(lattice,time))
-    {
+    { 
+      // Although it is necessary to copy device arrays to host at this point,
+      // it is inefficient to write them to file here. Rather, we write to file
+      // immediately after the first kernel, to allow concurrent host and
+      // device execution.  On the last frame of course, it is necessary to
+      // write to file here.
       set_frame( lattice, ++frame);
 
 #ifdef __CUDACC__
@@ -411,13 +426,13 @@ int main( int argc, char **argv)
           cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, 0)
               , f_mem_d + subs * cumul_stride[get_NumVelDirs( lattice)]
               , get_NumNodes( lattice)
-              *(ubdir)
+              *(get_NumUnboundDirs( lattice))
               *sizeof(real)
               , cudaMemcpyDeviceToHost);
 
           checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 
-          for( dir=ubdir; dir < get_NumVelDirs( lattice); dir+=2)
+          for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
           {
 
             cudaMemcpy( get_fptr(lattice, subs, 0,0,0, 0,0,0, dir)
@@ -431,9 +446,11 @@ int main( int argc, char **argv)
           }
         }
       }
-#endif
-
-      output_frame( lattice);
+#endif  // ifdef __CUDACC__
+      if( frame == get_NumFrames( lattice))
+      {
+        output_frame( lattice);
+      }
       process_toc( lattice);
       display_etime( lattice);
 
@@ -445,6 +462,7 @@ int main( int argc, char **argv)
     }
 
   } /* for( time=1; time<=lattice->NumTimeSteps; time++) */
+#endif
 
   process_barrier();
   process_toc( lattice);
@@ -459,6 +477,7 @@ int main( int argc, char **argv)
   printf("\n");
 #endif /* VERBOSITY_LEVEL > 0 */
 
+  printf(" \n\n\n Time taken for loop is %f \n\n", totaltime);
   return 0;
 
 } /* int main( int argc, char **argv) */

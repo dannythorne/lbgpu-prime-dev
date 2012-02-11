@@ -93,14 +93,33 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   set_NumDims( *lattice, NUM_DIMENSIONS);
   set_NumVelDirs( *lattice, 2*NUM_DIMENSIONS*NUM_DIMENSIONS + 1);
 
+  if( get_NumDims( *lattice) == 2)
+  {
+    set_NumBoundDirs( *lattice, 6);
+  }
+
+  if( get_NumDims( *lattice) == 3)
+  {
+    set_NumBoundDirs( *lattice, 10);
+  }
+
+  set_NumUnboundDirs( *lattice, get_NumVelDirs( *lattice)
+      - get_NumBoundDirs( *lattice));
+
   process_compute_local_params( *lattice);
+
 
 #ifdef __CUDACC__
   // Copy certain parameters to __constant__ memory on the gpu device
 
   cudaMemcpyToSymbol( vx_c, vx, 19*sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  
   cudaMemcpyToSymbol( vy_c, vy, 19*sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  
   cudaMemcpyToSymbol( vz_c, vz, 19*sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
   int a;
 
@@ -120,7 +139,8 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     for(    ; a<19; a++) { wt[a] = 0.;}
 
   }
-  else
+
+  if( get_NumDims( *lattice) == 3)
   {
     real W0 = 1./3.;
     real W1 = 1./18.;
@@ -141,12 +161,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   // i.e. the first non-boundary memory address in direction a is 
   // f + cumul_stride[a].  A final (additional) entry is the size
   // of a single substance's worth of pdfs.
-  const int ubdir = get_NumVelDirs( *lattice) 
-    - get_NumBoundDirs( *lattice);
 
   cumul_stride[0] = 0;
 
-  for( a=1; a<ubdir; a++)
+  for( a=1; a<get_NumUnboundDirs( *lattice); a++)
   {
     cumul_stride[a] = cumul_stride[a-1] + get_NumNodes( *lattice);
   }
@@ -166,13 +184,15 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
   cumul_stride[a] = cumul_stride[a-1] + get_NumNodes( *lattice) 
     + get_EndBoundSize( *lattice);
-
   cudaMemcpyToSymbol( wt_c, wt, 19*sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( cumul_stride_c, cumul_stride, 20*sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
   cudaMemcpyToSymbol( tau_c
       , get_tau_ptr( *lattice)
       , get_NumSubs(*lattice)*sizeof(real) );
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
   /*  printf(" \n\n %f %f %f %f %f %f \n\n", *((*lattice)->param.gforce[0])
       , *((*lattice)->param.gforce[0]+1)
@@ -192,6 +212,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
         , get_NumDims(*lattice)*sizeof(real)
         , subs*3*sizeof(real) // offset from gaccel_c
         , cudaMemcpyHostToDevice);
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   }
 
   // cudaMemcpyToSymbol( gaccel_c
@@ -207,32 +228,49 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   // }
 
   cudaMemcpyToSymbol( numsubs_c, get_NumSubs_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( numdims_c, get_NumDims_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( numdirs_c, get_NumVelDirs_ptr( *lattice), sizeof(int));
-  int temp = get_EndBoundSize( *lattice);
-  cudaMemcpyToSymbol( end_bound_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( end_bound_c, get_EndBoundSize_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( proc_id_c, get_proc_id_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( num_procs_c, get_num_procs_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
   cudaMemcpyToSymbol( ni_c, get_ni_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( nj_c, get_nj_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( nk_c, get_nk_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
+  int temp;
+#ifdef __CUDACC__
 #if __CUDACC__ >= 200
-  int temp_kloop = 1;
-  cudaMemcpyToSymbol( kloop_c, &temp_kloop, sizeof(int));
+  temp = 1;
+  cudaMemcpyToSymbol( kloop_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 #else
-  int temp_kloop = get_LZ( *lattice) / get_BZ( *lattice);
-  cudaMemcpyToSymbol( kloop_c, &temp_kloop, sizeof(int));
+  temp = get_LZ( *lattice) / get_BZ( *lattice);
+  cudaMemcpyToSymbol( kloop_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+#endif
 #endif
 
   temp = get_BX( *lattice) * get_BY( *lattice);
   cudaMemcpyToSymbol( bixbj_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   temp = get_ni( *lattice) * get_nj( *lattice);
   cudaMemcpyToSymbol( nixnj_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   temp = get_BX( *lattice)*get_BY( *lattice)*get_BZ( *lattice);
   cudaMemcpyToSymbol( blocksize_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( numnodes_c, get_NumNodes_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 #endif
 
   //The following has been moved above the cudaMemcpyToSymbol section
@@ -1419,6 +1457,12 @@ void destruct_lattice( lattice_ptr lattice)
   cudaFree(mv_mem_d);
   cudaFree(solids_mem_d);
   //cudaFree(is_end_of_frame_mem_d);
+#if PAGE_LOCKED
+  cudaFreeHost(lattice->process.pos_dir_pdf_to_send);
+  cudaFreeHost(lattice->process.pos_dir_pdf_to_recv);
+  cudaFreeHost(lattice->process.neg_dir_pdf_to_send);
+  cudaFreeHost(lattice->process.neg_dir_pdf_to_recv);
+#endif
 #endif
 
   process_finalize();

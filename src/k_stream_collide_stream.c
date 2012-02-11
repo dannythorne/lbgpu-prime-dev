@@ -4,7 +4,8 @@ __global__
 void k_stream_collide_stream(
     real* f_mem_d
     , real* mv_mem_d
-    , unsigned char* solids_mem_d )
+    , unsigned char* solids_mem_d
+    )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;

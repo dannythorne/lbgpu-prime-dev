@@ -16,17 +16,15 @@ all:
 
 cuda:
 	nvcc -v $(NAME_FLAG) ./src/lbgpu_prime.cu -lm $(CUDA_ARCH_FLAG)
-#lbgpu_prime.o: 
-#	nvcc -I$(MPI_INCLUDES) -DPARALLEL=1 -o lbgpu_prime.o -c ./src/lbgpu_prime.cu -lcudart -lm $(CUDA_ARCH_FLAG)
-#
-#multigpu: lbgpu_prime.o
-#	mpicc $(NAME_FLAG) lbgpu_prime.o -lm
 
 lbgpu_prime.o: 
 	nvcc -I$(MPI_INCLUDES) -DPARALLEL=1 -o lbgpu_prime.o -c ./src/lbgpu_prime.cu $(CUDA_ARCH_FLAG)
 
-multigpu: lbgpu_prime.o
+mpilink: lbgpu_prime.o
 	mpicc $(NAME_FLAG) lbgpu_prime.o -lcudart -lm -L$(CUDA_LIBS)
+
+multigpu: mpilink
+	/bin/rm -f lbgpu_prime.o
 
 mpi:
 	mpicc -DPARALLEL=1 -o lb3d ./src/lb3d_prime.c -lm
@@ -62,4 +60,13 @@ sweep:
 	/bin/rm -f ./out/*.raw
 
 clean:
-	/bin/rm -f lbgpu.exe lbgpu a.out slice.exe a.exe* *.stackdump *.o *.cubin
+	/bin/rm -f lbgpu
+	/bin/rm -f LBGPU*
+	/bin/rm -f *.o
+	/bin/rm -f *.stackdump
+	/bin/rm -f *.cubin
+	/bin/rm -f cuda-memcheck*
+	/bin/rm -f lbgpu.exe
+	/bin/rm -f a.out
+	/bin/rm -f slice.exe
+	/bin/rm -f a.exe

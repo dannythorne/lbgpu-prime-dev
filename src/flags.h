@@ -33,10 +33,17 @@
 // important when setting LX or LY to unity for a 2D simulation
 #define INTEGER_IC_BOUND 1
 
+// Use double precision (or not)
+
+#define DP_ON 0
 
 // Use 1D texture fetching for boundaries
 
 #define TEXTURE_FETCH 0
+
+// Use page-locked host memory for MPI transfers
+
+#define PAGE_LOCKED (1 && PARALLEL)
 
 // Report errors with CUDA host functions
 
