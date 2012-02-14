@@ -14,14 +14,14 @@ void process_init( lattice_ptr lattice, int argc, char **argv)
 #ifdef __CUDACC__
   cudaSetDevice( lattice->process.id);
   checkCUDAError( __FILE__, __LINE__, "cudaSetDevice");
-//  int *device;
-//  cudaGetDevice( device);
-//  checkCUDAError( __FILE__, __LINE__, "cudaGetDevice");
-//  printf("************\n");
-//  printf(" CUDA + MPI \n");
-//  printf("************\n");
-//  printf(" Host thread %d using device %d\n", 
-//      lattice->process.id, *device);
+  //  int *device;
+  //  cudaGetDevice( device);
+  //  checkCUDAError( __FILE__, __LINE__, "cudaGetDevice");
+  //  printf("************\n");
+  //  printf(" CUDA + MPI \n");
+  //  printf("************\n");
+  //  printf(" Host thread %d using device %d\n", 
+  //      lattice->process.id, *device);
 #endif
 #else
   lattice->process.id = 0;
@@ -75,7 +75,7 @@ void process_compute_local_params( lattice_ptr lattice)
     set_EndBoundSize( lattice, get_LX( lattice) * get_LY( lattice)); 
   }
 
-  int pdf_buffer_size = get_NumBoundDirs( lattice) 
+  int pdf_buffer_size = get_NumSubs( lattice) * get_NumBoundDirs( lattice) 
     * get_EndBoundSize( lattice) / 2;
   int rho_buffer_size = 2 * get_EndBoundSize( lattice);
   int sol_buffer_size = get_EndBoundSize( lattice); 
@@ -165,37 +165,67 @@ void process_compute_local_params( lattice_ptr lattice)
 #if PAGE_LOCKED         // Allocate MPI buffers as page-locked host memory
   // allowing the GPU to access them directly.  
 
-  unsigned int send_flags, recv_flags;
-//  flags = cudaHostAllocMapped;
-  send_flags = cudaHostAllocDefault;
-  recv_flags = send_flags;//cudaHostAllocWriteCombined;
+  unsigned int flags;
+#if POINTER_MAPPING
+  cudaDeviceProp deviceProp;
+  cudaGetDeviceProperties(&deviceProp, get_proc_id( lattice));
+
+#if CUDART_VERSION >= 2020
+  if(!deviceProp.canMapHostMemory)
+  {
+    fprintf(stderr, "Device %d cannot map host memory!\n", get_proc_id( lattice));
+    printf("Set POINTER_MAPPING = 0 in ./src/flags.h");
+    process_exit(1);
+  }
+  cudaSetDeviceFlags(cudaDeviceMapHost);
+#else
+  fprintf(stderr, "This CUDART version does not support <cudaDeviceProp.canMapHostMemory> field\n");
+  printf("Set POINTER_MAPPING = 0 in ./src/flags.h");
+  process_exit(1);
+#endif
+
+  flags = cudaHostAllocMapped;
+#else
+  flags = cudaHostAllocDefault;
+#endif
 
   cudaHostAlloc((void**)&(lattice->process.pos_dir_pdf_to_send)
-      , pdf_buffer_size*sizeof(real), send_flags);
+      , pdf_buffer_size*sizeof(real), flags);
   checkCUDAError( __FILE__, __LINE__, "cudaHostAlloc");
   cudaHostAlloc((void**)&(lattice->process.pos_dir_pdf_to_recv)
-      , pdf_buffer_size*sizeof(real), recv_flags);
+      , pdf_buffer_size*sizeof(real), flags);
   checkCUDAError( __FILE__, __LINE__, "cudaHostAlloc");
   cudaHostAlloc((void**)&(lattice->process.neg_dir_pdf_to_send)
-      , pdf_buffer_size*sizeof(real), send_flags);
+      , pdf_buffer_size*sizeof(real), flags);
   checkCUDAError( __FILE__, __LINE__, "cudaHostAlloc");
   cudaHostAlloc((void**)&(lattice->process.neg_dir_pdf_to_recv)
-      , pdf_buffer_size*sizeof(real), recv_flags);
+      , pdf_buffer_size*sizeof(real), flags);
   checkCUDAError( __FILE__, __LINE__, "cudaHostAlloc");
 
-#if 0
-  cudaHostGetDevicePointer((void**)&pos_dir_pdf_send_dptr
+#if POINTER_MAPPING
+  cudaHostGetDevicePointer((void**)&pos_dir_send_ptr_d
       , (void*) lattice->process.pos_dir_pdf_to_send, 0);
   checkCUDAError( __FILE__, __LINE__, "cudaHostGetDevicePointer");
-  cudaHostGetDevicePointer((void**)&pos_dir_pdf_recv_dptr
+  cudaHostGetDevicePointer((void**)&pos_dir_recv_ptr_d
       , (void*) lattice->process.pos_dir_pdf_to_recv, 0);
   checkCUDAError( __FILE__, __LINE__, "cudaHostGetDevicePointer");
-  cudaHostGetDevicePointer((void**)&neg_dir_pdf_send_dptr
+  cudaHostGetDevicePointer((void**)&neg_dir_send_ptr_d
       , (void*) lattice->process.neg_dir_pdf_to_send, 0);
   checkCUDAError( __FILE__, __LINE__, "cudaHostGetDevicePointer");
-  cudaHostGetDevicePointer((void**)&neg_dir_pdf_recv_dptr
+  cudaHostGetDevicePointer((void**)&neg_dir_recv_ptr_d
       , (void*) lattice->process.neg_dir_pdf_to_recv, 0);
   checkCUDAError( __FILE__, __LINE__, "cudaHostGetDevicePointer");
+#endif
+
+#if BOUNDARY_KERNEL && !(POINTER_MAPPING)
+  cudaMalloc((void**)&pos_dir_send_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+  cudaMalloc((void**)&pos_dir_recv_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+  cudaMalloc((void**)&neg_dir_send_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+  cudaMalloc((void**)&neg_dir_recv_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 #endif
 
   lattice->process.pos_dir_rho_to_send =
@@ -216,7 +246,7 @@ void process_compute_local_params( lattice_ptr lattice)
   lattice->process.neg_dir_solid_to_recv =
     (unsigned char*)malloc( sol_buffer_size*sizeof(unsigned char));
 
-#else
+#else   // !(PAGE_LOCKED)
   lattice->process.pos_dir_pdf_to_send =
     (real*)malloc( pdf_buffer_size*sizeof(real));
   lattice->process.pos_dir_pdf_to_recv =
@@ -225,6 +255,17 @@ void process_compute_local_params( lattice_ptr lattice)
     (real*)malloc( pdf_buffer_size*sizeof(real));
   lattice->process.neg_dir_pdf_to_recv =
     (real*)malloc( pdf_buffer_size*sizeof(real));
+
+#if BOUNDARY_KERNEL
+  cudaMalloc((void**)&pos_dir_send_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+  cudaMalloc((void**)&pos_dir_recv_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+  cudaMalloc((void**)&neg_dir_send_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+  cudaMalloc((void**)&neg_dir_recv_ptr_d, pdf_buffer_size * sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+#endif
 
   lattice->process.pos_dir_rho_to_send =
     (real*)malloc( rho_buffer_size*sizeof(real));
@@ -286,7 +327,7 @@ void process_send_recv_begin( lattice_ptr lattice, const int subs)
 {
 #if PARALLEL
   int mpierr;
-  int pdf_buffer_size = get_NumBoundDirs( lattice) 
+  int pdf_buffer_size = get_NumSubs( lattice) * get_NumBoundDirs( lattice) 
     * get_EndBoundSize( lattice) / 2;
   int rho_buffer_size = 2 * get_EndBoundSize( lattice);
   int sol_buffer_size = get_EndBoundSize( lattice); 
@@ -870,7 +911,7 @@ void solid_send_recv_begin( lattice_ptr lattice, const int subs)
       nj = get_LY( lattice);
   int mpierr;
 
-  int pdf_buffer_size = get_NumBoundDirs( lattice) 
+  int pdf_buffer_size = get_NumSubs( lattice) * get_NumBoundDirs( lattice) 
     * get_EndBoundSize( lattice) / 2;
   int rho_buffer_size = 2 * get_EndBoundSize( lattice);
   int sol_buffer_size = get_EndBoundSize( lattice); 

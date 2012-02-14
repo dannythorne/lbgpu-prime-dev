@@ -104,6 +104,16 @@ int get_NumBoundDirs( lattice_ptr lattice)
   //#endif
 }
 
+int* get_NumBoundDirs_ptr( lattice_ptr lattice)
+{
+  return &(lattice->NumBoundDirs);  
+  //#if NUM_DIMENSIONS == 2
+  //  return 6;
+  //#else
+  //  return 10;
+  //#endif
+}
+
 void set_NumUnboundDirs( lattice_ptr lattice, int value)
 {
   lattice->NumUnboundDirs = value;
@@ -112,6 +122,11 @@ void set_NumUnboundDirs( lattice_ptr lattice, int value)
 int get_NumUnboundDirs( lattice_ptr lattice)
 {
   return lattice->NumUnboundDirs;
+}
+
+int* get_NumUnboundDirs_ptr( lattice_ptr lattice)
+{
+  return &(lattice->NumUnboundDirs);
 }
 
 void set_EndBoundSize( lattice_ptr lattice, int value)
@@ -2189,6 +2204,8 @@ __constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
 __constant__ int numsubs_c;
 __constant__ int numdims_c;
 __constant__ int numdirs_c;
+__constant__ int numbounddirs_c;
+__constant__ int numunbounddirs_c;
 __constant__ int end_bound_c;
 __constant__ int proc_id_c;
 __constant__ int num_procs_c;
@@ -2299,144 +2316,158 @@ void pdf_boundary_swap( lattice_ptr lattice
 }
 
 #if PARALLEL
-void pdf_bound_to_host( lattice_ptr lattice
+void pdf_bound_DtH_odd_1( lattice_ptr lattice
     , real* f_mem_d
     , int* cstr
     , int subs
     , int dir
-    , int time 
     )
 {
-  int in_boundary, in_main;
+  cudaMemcpy( lattice->process.pos_dir_pdf_to_send
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] - get_EndBoundSize( lattice)+ get_NumNodes( lattice)
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToHost);
 
-  if ( dir%2) //dir%2 -- if dir is odd
-  {
-    in_boundary = subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] - get_EndBoundSize( lattice);
-    in_main = in_boundary + get_NumNodes( lattice);
-
-    if( time%2) //time%2 -- if time is odd
-    {
-      cudaMemcpy( lattice->process.pos_dir_pdf_to_send
-          + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
-          , f_mem_d + in_main
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyDeviceToHost);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-    else
-    {
-      cudaMemcpy( lattice->process.neg_dir_pdf_to_send
-          + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
-          , f_mem_d + in_boundary
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyDeviceToHost);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-  }
-  else
-  {
-    in_main = subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir];
-    in_boundary = in_main + get_NumNodes( lattice);
-
-    if( time%2) //time%2 -- if time is odd
-    {
-      cudaMemcpy( lattice->process.neg_dir_pdf_to_send
-          + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
-          , f_mem_d + in_main
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyDeviceToHost);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-    else
-    {
-      cudaMemcpy( lattice->process.pos_dir_pdf_to_send
-          + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
-          , f_mem_d + in_boundary
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyDeviceToHost);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-  }
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
 }
 
-void pdf_bound_to_device( lattice_ptr lattice
+void pdf_bound_DtH_even_1( lattice_ptr lattice
     , real* f_mem_d
     , int* cstr
     , int subs
     , int dir
-    , int time 
     )
 {
-  int in_boundary, in_main;
+  cudaMemcpy( lattice->process.neg_dir_pdf_to_send
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir]
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToHost);
 
-  if ( dir%2) //dir%2 -- if dir is odd
-  {
-    in_boundary = subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir] - get_EndBoundSize( lattice);
-    in_main = in_boundary + get_NumNodes( lattice);
-
-    if( time%2) //time%2 -- if time is odd
-    {
-      cudaMemcpy( f_mem_d + in_boundary
-          , lattice->process.pos_dir_pdf_to_recv
-          + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyHostToDevice);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-    else
-    {
-      cudaMemcpy( f_mem_d + in_main
-          , lattice->process.neg_dir_pdf_to_recv
-          + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyHostToDevice);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-  }
-  else
-  {
-    in_main = subs * cstr[get_NumVelDirs( lattice)]
-      + cstr[dir];
-    in_boundary = in_main + get_NumNodes( lattice);
-    if( time%2) //time%2 -- if time is odd
-    {
-      cudaMemcpy( f_mem_d + in_boundary
-          , lattice->process.neg_dir_pdf_to_recv
-          + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyHostToDevice);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-    else
-    {
-      cudaMemcpy( f_mem_d + in_main
-          , lattice->process.pos_dir_pdf_to_recv
-          + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
-          , get_EndBoundSize( lattice)
-          *sizeof(real)
-          , cudaMemcpyHostToDevice);
-
-      checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
-    }
-  }
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
 }
+
+void pdf_bound_DtH_odd_2( lattice_ptr lattice
+    , real* f_mem_d
+    , int* cstr
+    , int subs
+    , int dir
+    )
+{
+  cudaMemcpy( lattice->process.neg_dir_pdf_to_send
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] - get_EndBoundSize( lattice)
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToHost);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+}
+
+void pdf_bound_DtH_even_2( lattice_ptr lattice
+    , real* f_mem_d
+    , int* cstr
+    , int subs
+    , int dir
+    )
+{
+  cudaMemcpy( lattice->process.pos_dir_pdf_to_send
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
+      , f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] + get_NumNodes( lattice)
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyDeviceToHost);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+}
+
+void pdf_bound_HtD_odd_1( lattice_ptr lattice
+    , real* f_mem_d
+    , int* cstr
+    , int subs
+    , int dir
+    )
+{
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] - get_EndBoundSize( lattice)
+      , lattice->process.pos_dir_pdf_to_recv
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+}
+void pdf_bound_HtD_even_1( lattice_ptr lattice
+    , real* f_mem_d
+    , int* cstr
+    , int subs
+    , int dir
+    )
+{
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] + get_NumNodes( lattice)
+      , lattice->process.neg_dir_pdf_to_recv
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+}
+
+void pdf_bound_HtD_odd_2( lattice_ptr lattice
+    , real* f_mem_d
+    , int* cstr
+    , int subs
+    , int dir
+    )
+{
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir] - get_EndBoundSize( lattice) + get_NumNodes( lattice)
+      , lattice->process.neg_dir_pdf_to_recv
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice)) * get_EndBoundSize( lattice) / 2
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+}
+
+void pdf_bound_HtD_even_2( lattice_ptr lattice
+    , real* f_mem_d
+    , int* cstr
+    , int subs
+    , int dir
+    )
+{
+  cudaMemcpy( f_mem_d + subs * cstr[get_NumVelDirs( lattice)]
+      + cstr[dir]
+      , lattice->process.pos_dir_pdf_to_recv
+      + subs * get_NumBoundDirs( lattice) * get_EndBoundSize( lattice) / 2
+      + (dir - get_NumUnboundDirs( lattice) - 1) * get_EndBoundSize( lattice) / 2
+      , get_EndBoundSize( lattice)
+      *sizeof(real)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+}
+
+
 void pdf_boundary_parallel( lattice_ptr lattice
     , real* f_mem_d
     , int* cstr

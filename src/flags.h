@@ -45,6 +45,16 @@
 
 #define PAGE_LOCKED (1 && PARALLEL)
 
+// Write boundary cells to a device buffer using a kernel before transferring to MPI buffers
+// This will reduce the number of cudaMemcpys per step from 2*4*EndBoundSize to 2*4
+
+#define BOUNDARY_KERNEL (1 && PARALLEL)
+
+// Modifies the above flag - map pointer to device buffers onto page locked host memory
+
+#define POINTER_MAPPING (1 && PARALLEL && PAGE_LOCKED && BOUNDARY_KERNEL)
+
+
 // Report errors with CUDA host functions
 
 #define CUDA_ERROR_REPORTING 1
@@ -55,7 +65,7 @@
 
 // NUM_FLUID_COMPONENTS specifies the number of fluid components.
 // Flag: NUM_FLUID_COMPONENTS
-#define NUM_FLUID_COMPONENTS 1
+#define NUM_FLUID_COMPONENTS 2
 
 //if it is SPONGE, the total computational domain firstly initiallized
 //as randomly distributed fluid1 and fluid2 , however, the upper and

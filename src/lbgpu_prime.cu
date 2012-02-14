@@ -21,6 +21,13 @@ real* mv_mem_d;
 int mv_mem_size;
 unsigned char* solids_mem_d;
 int solids_mem_size;
+
+#if BOUNDARY_KERNEL
+real* pos_dir_send_ptr_d;
+real* pos_dir_recv_ptr_d;
+real* neg_dir_send_ptr_d;
+real* neg_dir_recv_ptr_d;
+#endif
 #endif
 
 #include "lbgpu_prime.h"
@@ -90,6 +97,24 @@ int main( int argc, char **argv)
   dim3 gridDim( get_LX( lattice) / get_BX( lattice),
       get_LY( lattice) / get_BY( lattice),
       get_LZ( lattice) / get_BZ( lattice) );
+
+#if BOUNDARY_KERNEL
+  dim3 blockboundDim(1, 1, 1);
+  dim3 gridboundDim(1, 1, 1);
+
+  if( get_NumDims( lattice) == 2)
+  { 
+    blockboundDim.x = get_BX( lattice); 
+    gridboundDim.x = get_LX( lattice) / get_BX( lattice); 
+  }
+  if( get_NumDims( lattice) == 3)
+  {  
+    blockboundDim.x = get_BX( lattice); 
+    gridboundDim.x = get_LX( lattice) / get_BX( lattice); 
+    blockboundDim.y = get_BY( lattice); 
+    gridboundDim.y = get_LY( lattice) / get_BY( lattice); 
+  }
+#endif
 
   cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice)
       , get_solids_ptr(lattice, 0)
@@ -197,7 +222,7 @@ int main( int argc, char **argv)
   real totaltime = 0.;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-#if 1
+
   for( frame = 0, time=1; time<=get_NumTimeSteps( lattice); time++)
   {
     set_time( lattice, time);
@@ -205,43 +230,125 @@ int main( int argc, char **argv)
     // Do boundary swaps. The direction depends on
     // whether time is even or odd. Here, time is odd.
 #if PARALLEL
+#ifdef __CUDACC__
+    cudaEventRecord(start,0);
+#if BOUNDARY_KERNEL
+    k_bound_DtH_1
+      <<<
+      gridboundDim
+      , blockboundDim
+      >>>( f_mem_d, pos_dir_send_ptr_d, neg_dir_send_ptr_d);
+
+    cudaThreadSynchronize();
+    checkCUDAError( __FILE__, __LINE__, "boundary kernel");
+
+#if !(POINTER_MAPPING)
+    cudaMemcpy( lattice->process.pos_dir_pdf_to_send
+        , pos_dir_send_ptr_d
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+    cudaMemcpy( lattice->process.neg_dir_pdf_to_send
+        , neg_dir_send_ptr_d
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+#endif  // !(POINTER_MAPPING)
+#else   // !(BOUNDARY_KERNEL)
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-#ifdef __CUDACC__
-      //#if !(PAGE_LOCKED)
-
-      cudaEventRecord(start,0);
+#if 0
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, DEVICE_TO_HOST);
       }
-      cudaEventRecord(stop, 0);
-      cudaEventSynchronize(stop);
-      cudaEventElapsedTime(&timertime,start,stop);
-      totaltime += timertime;
-      //#endif
+#else
+      // For D2Q9 and D3Q19, NumUnboundDirs is odd
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_DtH_odd_1( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
+      for( dir=get_NumUnboundDirs( lattice)+1; dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_DtH_even_1( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
 #endif
+    }
 
-      process_send_recv_begin( lattice, subs);
-      process_send_recv_end(lattice, subs);
+#endif  //BOUNDARY_KERNEL
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&timertime,start,stop);
+    totaltime += timertime;
+#endif  // #ifdef __CUDACC__
+    // Buffers now large enough to deal with all substances in one transfer.
+    // Currently, send a receives are activated if __CUDACC__ not defined,
+    // but that's bad because for that case they're totally broken.
+    process_send_recv_begin( lattice, 0);
+    process_send_recv_end(lattice, 0);
 
 #ifdef __CUDACC__
-      //#if !(PAGE_LOCKED)
-      cudaEventRecord(start,0);
+    cudaEventRecord(start,0);
+#if BOUNDARY_KERNEL
+#if !(POINTER_MAPPING)
+    cudaMemcpy( pos_dir_recv_ptr_d
+        , lattice->process.pos_dir_pdf_to_recv
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyHostToDevice);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+    cudaMemcpy( neg_dir_recv_ptr_d
+        , lattice->process.neg_dir_pdf_to_recv
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyHostToDevice);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+
+#endif  // !(POINTER_MAPPING)
+    k_bound_HtD_1
+      <<<
+      gridboundDim
+      , blockboundDim
+      >>>( f_mem_d, pos_dir_recv_ptr_d, neg_dir_recv_ptr_d);
+
+    cudaThreadSynchronize();
+    checkCUDAError( __FILE__, __LINE__, "boundary kernel");
+#else   // !(BOUNDARY_KERNEL)
+    for( subs = 0; subs < get_NumSubs( lattice); subs++)
+    {
+#if 0
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, HOST_TO_DEVICE);
       }
-      cudaEventRecord(stop, 0);
-      cudaEventSynchronize(stop);
-      cudaEventElapsedTime(&timertime,start,stop);
-      totaltime += timertime;
-
-      //#endif
+#else
+      // For D2Q9 and D3Q19, NumUnboundDirs is odd
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_HtD_odd_1( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
+      for( dir=get_NumUnboundDirs( lattice)+1; dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_HtD_even_1( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
 #endif
     }
+
+#endif  // BOUNDARY_KERNEL
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&timertime,start,stop);
+    totaltime += timertime;
+#endif  // #ifdef __CUDACC__
+
 #else   // if !(PARALLEL)
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
@@ -293,46 +400,127 @@ int main( int argc, char **argv)
 
     set_time( lattice, ++time);
 
-    // Do boundary swaps. The direction depends on
-    // whether time is even or odd. Here, time is odd.
+    // Do boundary swaps.
 #if PARALLEL
+#ifdef __CUDACC__
+    cudaEventRecord(start, 0);
+#if BOUNDARY_KERNEL
+    k_bound_DtH_2
+      <<<
+      gridboundDim
+      , blockboundDim
+      >>>( f_mem_d, pos_dir_send_ptr_d, neg_dir_send_ptr_d);
+
+    cudaThreadSynchronize();
+    checkCUDAError( __FILE__, __LINE__, "boundary kernel");
+
+#if !(POINTER_MAPPING)
+    cudaMemcpy( lattice->process.pos_dir_pdf_to_send
+        , pos_dir_send_ptr_d
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+    cudaMemcpy( lattice->process.neg_dir_pdf_to_send
+        , neg_dir_send_ptr_d
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+
+#endif  // !(POINTER_MAPPING)
+#else   // !(BOUNDARY_KERNEL)
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-#ifdef __CUDACC__
-      //#if !(PAGE_LOCKED)
-      cudaEventRecord(start, 0);
+#if 0
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, DEVICE_TO_HOST);
       }
-      cudaEventRecord(stop, 0);
-      cudaEventSynchronize(stop);
-      cudaEventElapsedTime(&timertime,start,stop);
-      totaltime += timertime;
-
-      //#endif
+#else
+      // For D2Q9 and D3Q19, NumUnboundDirs is odd
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_DtH_odd_2( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
+      for( dir=get_NumUnboundDirs( lattice)+1; dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_DtH_even_2( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
 #endif
+    }
+#endif  // BOUNDARY KERNEL
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&timertime,start,stop);
+    totaltime += timertime;
+#endif  // #ifdef __CUDACC__
 
-      process_send_recv_begin( lattice, subs);
-      process_send_recv_end(lattice, subs);
+    // Buffers now large enough to deal with all substances in one transfer.
+    // Currently, send a receives are activated if __CUDACC__ not defined,
+    // but that's bad because because for that case they're totally broken.
+    process_send_recv_begin( lattice, 0);
+    process_send_recv_end(lattice, 0);
 
 #ifdef __CUDACC__
-      //#if !(PAGE_LOCKED)
-      cudaEventRecord(start, 0);
+    cudaEventRecord(start, 0);
+#if BOUNDARY_KERNEL
+#if !(POINTER_MAPPING)
+    cudaMemcpy( pos_dir_recv_ptr_d
+        , lattice->process.pos_dir_pdf_to_recv
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyHostToDevice);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+    cudaMemcpy( neg_dir_recv_ptr_d
+        , lattice->process.neg_dir_pdf_to_recv
+        , get_NumBoundDirs( lattice) * get_EndBoundSize( lattice)
+        * get_NumSubs( lattice) * sizeof(real) / 2
+        , cudaMemcpyHostToDevice);
+    checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
+#endif  // !(POINTER_MAPPING)
+
+    k_bound_HtD_2
+      <<<
+      gridboundDim
+      , blockboundDim
+      >>>( f_mem_d, pos_dir_recv_ptr_d, neg_dir_recv_ptr_d);
+
+    cudaThreadSynchronize();
+    checkCUDAError( __FILE__, __LINE__, "boundary kernel");
+
+#else   // !(BOUNDARY_KERNEL)
+    for( subs = 0; subs < get_NumSubs( lattice); subs++)
+    {
+#if 0
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
       {
         pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
             , subs, dir, time, HOST_TO_DEVICE);
       }
-      cudaEventRecord(stop, 0);
-      cudaEventSynchronize(stop);
-      cudaEventElapsedTime(&timertime,start,stop);
-      totaltime += timertime;
-
-      //#endif
+#else
+      // For D2Q9 and D3Q19, NumUnboundDirs is odd
+      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_HtD_odd_2( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
+      for( dir=get_NumUnboundDirs( lattice)+1; dir < get_NumVelDirs( lattice); dir+=2)
+      {
+        pdf_bound_HtD_even_2( lattice, f_mem_d, cumul_stride
+            , subs, dir);
+      }
 #endif
     }
+#endif  // BOUNDARY_KERNEL
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&timertime,start,stop);
+    totaltime += timertime;
+#endif  // #ifdef __CUDACC__
 #else   // if !(PARALLEL)
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
@@ -462,13 +650,14 @@ int main( int argc, char **argv)
     }
 
   } /* for( time=1; time<=lattice->NumTimeSteps; time++) */
-#endif
+
 
   process_barrier();
   process_toc( lattice);
   display_etime( lattice);
 
   destruct_lattice( lattice);
+
 
 #if VERBOSITY_LEVEL > 0
   printf("\n");

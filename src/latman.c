@@ -233,6 +233,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( numdirs_c, get_NumVelDirs_ptr( *lattice), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( numbounddirs_c, get_NumBoundDirs_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( numunbounddirs_c, get_NumUnboundDirs_ptr( *lattice), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( end_bound_c, get_EndBoundSize_ptr( *lattice), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( proc_id_c, get_proc_id_ptr( *lattice), sizeof(int));
@@ -1462,6 +1466,23 @@ void destruct_lattice( lattice_ptr lattice)
   cudaFreeHost(lattice->process.pos_dir_pdf_to_recv);
   cudaFreeHost(lattice->process.neg_dir_pdf_to_send);
   cudaFreeHost(lattice->process.neg_dir_pdf_to_recv);
+
+#if BOUNDARY_KERNEL && !(POINTER_MAPPING)
+  cudaFree( pos_dir_send_ptr_d);
+  cudaFree( pos_dir_recv_ptr_d);
+  cudaFree( neg_dir_send_ptr_d);
+  cudaFree( neg_dir_recv_ptr_d);
+#endif
+
+#else
+
+#if BOUNDARY_KERNEL
+  cudaFree( pos_dir_send_ptr_d);
+  cudaFree( pos_dir_recv_ptr_d);
+  cudaFree( neg_dir_send_ptr_d);
+  cudaFree( neg_dir_recv_ptr_d);
+#endif
+
 #endif
 #endif
 
