@@ -217,11 +217,11 @@ int main( int argc, char **argv)
 #endif  // ifdef __CUDACC__
 
 
-  cudaEvent_t start, stop;
-  real timertime;
-  real totaltime = 0.;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
+  //cudaEvent_t start, stop;
+  //real timertime;
+  //real totaltime = 0.;
+  //cudaEventCreate(&start);
+  //cudaEventCreate(&stop);
 
   for( frame = 0, time=1; time<=get_NumTimeSteps( lattice); time++)
   {
@@ -231,7 +231,7 @@ int main( int argc, char **argv)
     // whether time is even or odd. Here, time is odd.
 #if PARALLEL
 #ifdef __CUDACC__
-    cudaEventRecord(start,0);
+    //cudaEventRecord(start,0);
 #if BOUNDARY_KERNEL
     k_bound_DtH_1
       <<<
@@ -281,10 +281,10 @@ int main( int argc, char **argv)
     }
 
 #endif  //BOUNDARY_KERNEL
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&timertime,start,stop);
-    totaltime += timertime;
+    //cudaEventRecord(stop, 0);
+    //cudaEventSynchronize(stop);
+    //cudaEventElapsedTime(&timertime,start,stop);
+    //totaltime += timertime;
 #endif  // #ifdef __CUDACC__
     // Buffers now large enough to deal with all substances in one transfer.
     // Currently, send a receives are activated if __CUDACC__ not defined,
@@ -293,7 +293,7 @@ int main( int argc, char **argv)
     process_send_recv_end(lattice, 0);
 
 #ifdef __CUDACC__
-    cudaEventRecord(start,0);
+    //cudaEventRecord(start,0);
 #if BOUNDARY_KERNEL
 #if !(POINTER_MAPPING)
     cudaMemcpy( pos_dir_recv_ptr_d
@@ -343,10 +343,10 @@ int main( int argc, char **argv)
     }
 
 #endif  // BOUNDARY_KERNEL
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&timertime,start,stop);
-    totaltime += timertime;
+    //cudaEventRecord(stop, 0);
+    //cudaEventSynchronize(stop);
+    //cudaEventElapsedTime(&timertime,start,stop);
+    //totaltime += timertime;
 #endif  // #ifdef __CUDACC__
 
 #else   // if !(PARALLEL)
@@ -403,7 +403,7 @@ int main( int argc, char **argv)
     // Do boundary swaps.
 #if PARALLEL
 #ifdef __CUDACC__
-    cudaEventRecord(start, 0);
+    //cudaEventRecord(start, 0);
 #if BOUNDARY_KERNEL
     k_bound_DtH_2
       <<<
@@ -453,10 +453,10 @@ int main( int argc, char **argv)
 #endif
     }
 #endif  // BOUNDARY KERNEL
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&timertime,start,stop);
-    totaltime += timertime;
+    //cudaEventRecord(stop, 0);
+    //cudaEventSynchronize(stop);
+    //cudaEventElapsedTime(&timertime,start,stop);
+    //totaltime += timertime;
 #endif  // #ifdef __CUDACC__
 
     // Buffers now large enough to deal with all substances in one transfer.
@@ -466,7 +466,7 @@ int main( int argc, char **argv)
     process_send_recv_end(lattice, 0);
 
 #ifdef __CUDACC__
-    cudaEventRecord(start, 0);
+    //cudaEventRecord(start, 0);
 #if BOUNDARY_KERNEL
 #if !(POINTER_MAPPING)
     cudaMemcpy( pos_dir_recv_ptr_d
@@ -516,10 +516,10 @@ int main( int argc, char **argv)
 #endif
     }
 #endif  // BOUNDARY_KERNEL
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&timertime,start,stop);
-    totaltime += timertime;
+    //cudaEventRecord(stop, 0);
+    //cudaEventSynchronize(stop);
+    //cudaEventElapsedTime(&timertime,start,stop);
+    //totaltime += timertime;
 #endif  // #ifdef __CUDACC__
 #else   // if !(PARALLEL)
 #ifdef __CUDACC__
@@ -651,6 +651,8 @@ int main( int argc, char **argv)
 
   } /* for( time=1; time<=lattice->NumTimeSteps; time++) */
 
+  // Explicit GPU thread exit call
+  cudaThreadExit();
 
   process_barrier();
   process_toc( lattice);
@@ -666,7 +668,7 @@ int main( int argc, char **argv)
   printf("\n");
 #endif /* VERBOSITY_LEVEL > 0 */
 
-  printf(" \n\n\n Time taken for loop is %f \n\n", totaltime);
-  return 0;
+  //printf(" \n\n\n Time taken for loop is %f \n\n", totaltime);
+  //return 0;
 
 } /* int main( int argc, char **argv) */

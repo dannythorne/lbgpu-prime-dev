@@ -114,10 +114,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
   cudaMemcpyToSymbol( vx_c, vx, 19*sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
-  
+
   cudaMemcpyToSymbol( vy_c, vy, 19*sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
-  
+
   cudaMemcpyToSymbol( vz_c, vz, 19*sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
@@ -212,7 +212,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
         , get_NumDims(*lattice)*sizeof(real)
         , subs*3*sizeof(real) // offset from gaccel_c
         , cudaMemcpyHostToDevice);
-  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   }
 
   // cudaMemcpyToSymbol( gaccel_c
@@ -687,6 +687,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 void init_problem( lattice_ptr lattice)
 {
   int    a, n, i, j, k, ni, nj, nk;
+  real *rho;
 
 #if STORE_UEQ
   real *ueq_x, *ueq_y, *ueq_z;
@@ -715,7 +716,7 @@ void init_problem( lattice_ptr lattice)
       j = N2J(n,ni,nj,nk);//n/lattice->param.LX;
       k = N2K(n,ni,nj,nk);
 
-      //rho = get_rho_ptr(lattice,subs,n);
+      rho = get_rho_ptr(lattice,subs,n);
       //u_x = get_ux_ptr(lattice,subs,n);
       //u_y = get_uy_ptr(lattice,subs,n);
       //u_z = get_uz_ptr(lattice,subs,n);
@@ -790,70 +791,110 @@ void init_problem( lattice_ptr lattice)
               }
               break;
             }
-
+#endif
           case 2: // Cube
             {
-#if PARALLEL
-#if 0
-              int id1 =  (int)floor(lattice->param.z1/(real)(nk);
-                  int newz1 =  (int)(lattice->param.z1) % (nk);
-                  int id2 =  (int)floor(lattice->param.z2/(real)(nk));
-                  int newz2 =  (int)(lattice->param.z2) % (nk);
-                  if(id2>get_num_procs(lattice))
+              switch( NUM_FLUID_COMPONENTS)
+              {
+                case 1:
                   {
-                  id2 = get_num_procs(lattice);
-                  newz2 = nk ;
-                  }
-#endif
-#endif
-                  switch( NUM_FLUID_COMPONENTS)
-                  {
-                  case 1:
-                  {
-#if PARALLEL
-#if 0
-                  if(get_proc_id(lattice) ==id1 ) {k1=newz1; k2 = nk;}
-                  if(get_proc_id(lattice) ==id2 ) {k1=0; k2 = newz2;}
-                  if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
-#endif
-#endif
-                  if( i >= lattice->param.x1 && i <= lattice->param.x2
-                      && j >= lattice->param.y1 && j <= lattice->param.y2
-#if PARALLEL
-                      && k+ get_proc_id(lattice)*nk >= lattice->param.z1
-                      && k+ get_proc_id(lattice)*nk <= lattice->param.z2
-                      // k >=k1 && k<=k2
-#else
-                      && k >= lattice->param.z1 && k <= lattice->param.z2
-#endif
-                    )
-                  {
-                    *rho = lattice->param.rho_A[0];
-                  }
-                  else
-                  {
-                    *rho = lattice->param.rho_B[0];
-                  }
-                  break;
-                  }
-
-                  case 2:
-                  {
-#if PARALLEL
-#if 0
-                    if(get_proc_id(lattice) ==id1 ) {k1=newz1; k2 = nk;}
-                    if(get_proc_id(lattice) ==id2 ) {k1=0; k2 = newz2;}
-                    if(get_proc_id(lattice) >id1 && get_proc_id(lattice) <id2 ) {k1=0; k2 = nk;}
-#endif
-#endif
                     if( i >= lattice->param.x1 && i <= lattice->param.x2
-                        && j >= lattice->param.y1 && j <= lattice->param.y2
 #if PARALLEL
+#if NUM_DIMENSIONS == 2
+                        && j+ get_proc_id(lattice)*nj >= lattice->param.y1 
+                        && j+ get_proc_id(lattice)*nj <= lattice->param.y2
+#else
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
                         && k+ get_proc_id(lattice)*nk >= lattice->param.z1
                         && k+ get_proc_id(lattice)*nk <= lattice->param.z2
-                        // k >=k1 && k<=k2
+#endif
+#else   // !(PARALLEL)
+#if NUM_DIMENSIONS == 2
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
 #else
-                        && k >= lattice->param.z1 && k <= lattice->param.z2
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
+                        && k >= lattice->param.z1
+                        && k <= lattice->param.z2
+#endif
+#endif
+                       )
+                    {
+                      *rho = lattice->param.rho_A[0];
+                    }
+                    else
+                    {
+                      *rho = lattice->param.rho_B[0];
+                    }
+                    break;
+                  }
+
+                case 2:
+                  {
+#if INAMURO_SIGMA_COMPONENT
+                    if( subs == 0)
+                    {
+                      *rho = lattice->param.rho_A[0];
+                    }
+                    else
+                    {
+                      if( i >= lattice->param.x1 && i <= lattice->param.x2
+#if PARALLEL
+#if NUM_DIMENSIONS == 2
+                        && j+ get_proc_id(lattice)*nj >= lattice->param.y1 
+                        && j+ get_proc_id(lattice)*nj <= lattice->param.y2
+#else
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
+                        && k+ get_proc_id(lattice)*nk >= lattice->param.z1
+                        && k+ get_proc_id(lattice)*nk <= lattice->param.z2
+#endif
+#else   // !(PARALLEL)
+#if NUM_DIMENSIONS == 2
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
+#else
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
+                        && k >= lattice->param.z1
+                        && k <= lattice->param.z2
+#endif
+#endif
+                        )
+                      {
+                        *rho = lattice->param.rho_sigma;
+                      }
+                      else
+                      {
+                        *rho = 0.;
+                      }
+                    }
+                    break;
+
+#else
+                    if( i >= lattice->param.x1 && i <= lattice->param.x2
+#if PARALLEL
+#if NUM_DIMENSIONS == 2
+                        && j+ get_proc_id(lattice)*nj >= lattice->param.y1 
+                        && j+ get_proc_id(lattice)*nj <= lattice->param.y2
+#else
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
+                        && k+ get_proc_id(lattice)*nk >= lattice->param.z1
+                        && k+ get_proc_id(lattice)*nk <= lattice->param.z2
+#endif
+#else   // !(PARALLEL)
+#if NUM_DIMENSIONS == 2
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
+#else
+                        && j >= lattice->param.y1 
+                        && j <= lattice->param.y2
+                        && k >= lattice->param.z1
+                        && k <= lattice->param.z2
+#endif
 #endif
                       )
                     {
@@ -864,9 +905,11 @@ void init_problem( lattice_ptr lattice)
                       *rho = lattice->param.rho_B[subs];
                     }
                     break;
+
+#endif
                   }
 
-                  default:
+                default:
                   {
                     printf("%s %d >> ERROR: Unhandled case %d.\n",
                         __FILE__,__LINE__,
@@ -874,11 +917,11 @@ void init_problem( lattice_ptr lattice)
                     process_exit(1);
                     break;
                   }
-                  }
+              }
 
               break;
             }
-
+#if 0
           case 3: // Sphere
             {
               switch( NUM_FLUID_COMPONENTS)

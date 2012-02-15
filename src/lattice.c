@@ -1906,7 +1906,12 @@ real get_rho_B( lattice_ptr lattice, int subs)
 {
   return lattice->param.rho_B[subs];
 }
-
+#if INAMURO_SIGMA_COMPONENT
+real get_rho_sigma( lattice_ptr lattice)
+{
+  return lattice->param.rho_sigma;
+}
+#endif
 void set_rho(
     lattice_ptr lattice
     , const int subs
@@ -2666,6 +2671,15 @@ __device__ void set_mv_d( real* mv_mem_d, int subs,
 
 }
 
+__device__ real get_mv_d( real* mv_mem_d, int subs,
+    int n, int a)
+{
+  return mv_mem_d[ subs*numnodes_c*(1 + numdims_c)
+    + a*numnodes_c + n ];
+
+}
+
+
 __device__ void set_f1d_d(
     real* f_mem_d
     , unsigned char* solids_mem_d
@@ -2734,6 +2748,26 @@ __device__ void calc_f_tilde_d(
     , real* f_temp
     , real usq)
 {
+#if INAMURO_SIGMA_COMPONENT
+  if( subs == 1)
+  {
+    f_temp[thread + dir*block_size] *= (1. - 1. / tau_c[subs]);
+
+    real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
+      + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*block_size];
+    if( numdims_c==3)
+    {
+      vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*block_size];
+    }
+
+    f_temp[thread + dir*block_size] += wt_c[dir]
+      * f_temp[ thread + numdirs_c*block_size]
+      * ( 1. + 3.*vdotu) / tau_c[subs];
+
+    return;
+  }
+#endif
+
   f_temp[thread + dir*block_size] *= (1. - 1. / tau_c[subs]);
 
   real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
