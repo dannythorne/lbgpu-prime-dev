@@ -267,6 +267,12 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   temp = get_BX( *lattice) * get_BY( *lattice);
   cudaMemcpyToSymbol( bixbj_c, &temp, sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  temp = get_BX( *lattice) * get_BZ( *lattice);
+  cudaMemcpyToSymbol( bixbk_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  temp = get_BY( *lattice) * get_BZ( *lattice);
+  cudaMemcpyToSymbol( bjxbk_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   temp = get_ni( *lattice) * get_nj( *lattice);
   cudaMemcpyToSymbol( nixnj_c, &temp, sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");

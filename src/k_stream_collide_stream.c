@@ -1,4 +1,5 @@
-extern __shared__ real fptr[];
+// Should be already defined in ./src/system_boundary_kernels.c
+//extern __shared__ real fptr[];
 
 __global__
 void k_stream_collide_stream(

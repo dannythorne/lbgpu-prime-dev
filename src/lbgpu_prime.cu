@@ -98,7 +98,8 @@ int main( int argc, char **argv)
       get_LY( lattice) / get_BY( lattice),
       get_LZ( lattice) / get_BZ( lattice) );
 
-#if BOUNDARY_KERNEL
+#if BOUNDARY_KERNEL  
+
   dim3 blockboundDim(1, 1, 1);
   dim3 gridboundDim(1, 1, 1);
 
@@ -114,6 +115,8 @@ int main( int argc, char **argv)
     blockboundDim.y = get_BY( lattice); 
     gridboundDim.y = get_LY( lattice) / get_BY( lattice); 
   }
+
+
 #endif
 
   cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice)
@@ -227,8 +230,11 @@ int main( int argc, char **argv)
   {
     set_time( lattice, time);
 
-    // Do boundary swaps. The direction depends on
-    // whether time is even or odd. Here, time is odd.
+    // TODO: All of the boundary swap stuff should be part of the
+    // mpi sendrecv functions.  For the case of CUDA without MPI, 
+    // the periodic boundary conditions implemented within get_f1
+    // should be restored using #if !(PARALLEL)
+    // Do boundary swaps
 #if PARALLEL
 #ifdef __CUDACC__
     //cudaEventRecord(start,0);
@@ -310,6 +316,7 @@ int main( int argc, char **argv)
     checkCUDAError( __FILE__, __LINE__, "boundary swap"); 
 
 #endif  // !(POINTER_MAPPING)
+
     k_bound_HtD_1
       <<<
       gridboundDim
@@ -347,9 +354,14 @@ int main( int argc, char **argv)
     //cudaEventSynchronize(stop);
     //cudaEventElapsedTime(&timertime,start,stop);
     //totaltime += timertime;
+
 #endif  // #ifdef __CUDACC__
 
+
 #else   // if !(PARALLEL)
+    // Implement this inside get_f1_d functions,
+    // as per the old method
+#if 0   
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
@@ -360,7 +372,14 @@ int main( int argc, char **argv)
       }
     }
 #endif
+#endif
 #endif  // if (PARALLEL)
+    // Only implemented in 2D right now
+    if( get_NumDims( lattice) == 2)
+    {
+      // Implement boundary conditions
+      bcs_1( lattice, f_mem_d, mv_mem_d, solids_mem_d); 
+    }
 
 
     // Time steps are combined in a somewhat awkward way in order to minimize
@@ -520,8 +539,20 @@ int main( int argc, char **argv)
     //cudaEventSynchronize(stop);
     //cudaEventElapsedTime(&timertime,start,stop);
     //totaltime += timertime;
+
+    // Only implemented in 2D right now
+    if( get_NumDims( lattice) == 2)
+    {
+      // Implement boundary conditions
+      bcs_2( lattice, f_mem_d, solids_mem_d); 
+    }
+
 #endif  // #ifdef __CUDACC__
 #else   // if !(PARALLEL)
+    // Implement this inside get_f1_d functions,
+    // as per the old method
+#if 0   
+
 #ifdef __CUDACC__
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
@@ -532,7 +563,16 @@ int main( int argc, char **argv)
       }
     }
 #endif
+#endif
 #endif  // if PARALLEL
+
+    // Only implemented in 2D right now
+    if( get_NumDims( lattice) == 2)
+    {
+      // Implement boundary conditions
+      bcs_2( lattice, f_mem_d, solids_mem_d); 
+    }
+
 
 #ifdef __CUDACC__
     if( is_end_of_frame(lattice,time))

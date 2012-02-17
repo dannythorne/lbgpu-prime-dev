@@ -35,7 +35,7 @@
 
 // Use double precision (or not)
 
-#define DP_ON 0
+#define DP_ON 1
 
 // Use 1D texture fetching for boundaries
 
@@ -65,7 +65,7 @@
 
 // NUM_FLUID_COMPONENTS specifies the number of fluid components.
 // Flag: NUM_FLUID_COMPONENTS
-#define NUM_FLUID_COMPONENTS 2
+#define NUM_FLUID_COMPONENTS 1
 
 //if it is SPONGE, the total computational domain firstly initiallized
 //as randomly distributed fluid1 and fluid2 , however, the upper and
@@ -77,7 +77,7 @@
 // component for solute (or thermal) transport as in Inamuro & Yoshino
 // by turning on INAMURO_SIGMA_COMPONENT .
 // Flag: INAMURO_SIGMA_COMPONENT
-#define INAMURO_SIGMA_COMPONENT ( 1 && NUM_FLUID_COMPONENTS==2)
+#define INAMURO_SIGMA_COMPONENT ( 0 && NUM_FLUID_COMPONENTS==2)
 
 // Toggle Zhang & Chen energy transport method, PRE 67, 0066711 (2003).
 // Supposed to give thermodynamic consistency unlike old Shan & Chen method.

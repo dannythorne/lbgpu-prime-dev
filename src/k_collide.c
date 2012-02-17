@@ -308,7 +308,7 @@ void k_collide(
 #if INAMURO_SIGMA_COMPONENT
           }
 #endif  // INAMURO_SIGMA_COMPONENT
-
+#if 1
           //if( !d_skip_updating_macrovars())
           // {
           // Store macroscopic variables in global memory.
@@ -324,6 +324,7 @@ void k_collide(
             }
           }
           //}
+#endif
         }
 
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)

@@ -2219,10 +2219,13 @@ __constant__ int nj_c;
 __constant__ int nk_c;
 __constant__ int kloop_c;
 __constant__ int bixbj_c;
+__constant__ int bjxbk_c;
+__constant__ int bixbk_c;
 __constant__ int nixnj_c;
 __constant__ int blocksize_c;
 __constant__ int numnodes_c;
-
+__constant__ int subs_c;
+__constant__ real fixed_bound_var_c;
 
 #if TEXTURE_FETCH
 texture<unsigned char, 1, cudaReadModeElementType> tex_solid;
@@ -2630,6 +2633,7 @@ __device__ real get_f1d_d(
   int j = j0+dj;
   int k = k0+dk;
 
+#if PARALLEL
   if( i<0) { i+=ni_c;}
   if( i==ni_c) { i=0;}
 
@@ -2638,9 +2642,16 @@ __device__ real get_f1d_d(
     if( j<0) { j+=nj_c;}
     if( j==nj_c) { j=0;}
   }
+#else
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
 
-  //    if( k<0) { k+=nk_c;}
-  //    if( k==nk_c) { k=0;}
+  if( j<0) { j+=nj_c;}
+  if( j==nj_c) { j=0;}
+
+  if( k<0) { k+=nk_c;}
+  if( k==nk_c) { k=0;}
+#endif
 
   int n = i + ni_c*j + nixnj_c*k;
 #if !(IGNORE_SOLIDS)
@@ -2713,6 +2724,7 @@ __device__ void set_f1d_d(
     int j = j0+dj;
     int k = k0+dk;
 
+#if PARALLEL
     if( i<0) { i+=ni_c;}
     if( i==ni_c) { i=0;}
 
@@ -2721,9 +2733,17 @@ __device__ void set_f1d_d(
       if( j<0) { j+=nj_c;}
       if( j==nj_c) { j=0;}
     }
+#else
+    if( i<0) { i+=ni_c;}
+    if( i==ni_c) { i=0;}
 
-    //    if( k<0) { k+=nk_c;}
-    //    if( k==nk_c) { k=0;}
+    if( j<0) { j+=nj_c;}
+    if( j==nj_c) { j=0;}
+
+    if( k<0) { k+=nk_c;}
+    if( k==nk_c) { k=0;}
+#endif
+
     int n = i + ni_c*j + nixnj_c*k;
 #if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))

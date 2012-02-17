@@ -137,6 +137,7 @@ int cumul_stride[20];
 //#include "stream.c"
 #ifdef __CUDACC__
 #include "boundary_kernels.c"
+#include "system_boundary_kernels.c"
 #include "k_stream_collide_stream.c"
 #include "k_collide.c"
 #else

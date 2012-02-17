@@ -972,17 +972,33 @@ void dump_params( struct lattice_struct *lattice)
   fprintf( o, "plot_scale_dynamic   %d\n", lattice->param.plot_scale_dynamic);
   fprintf( o, "use_colormap         %d\n", lattice->param.use_colormap      );
   fprintf( o, "initial_condition    %d\n", lattice->param.initial_condition );
+#if INTEGER_IC_BOUND
+  fprintf( o, "x0                   %d\n", lattice->param.x0                );
+  fprintf( o, "y0                   %d\n", lattice->param.y0                );
+  fprintf( o, "z0                   %d\n", lattice->param.z0                );
+  fprintf( o, "r0                   %d\n", lattice->param.r0                );
+#else
   fprintf( o, "x0                   %f\n", lattice->param.x0                );
   fprintf( o, "y0                   %f\n", lattice->param.y0                );
   fprintf( o, "z0                   %f\n", lattice->param.z0                );
   fprintf( o, "r0                   %f\n", lattice->param.r0                );
+#endif
   fprintf( o, "cut                  %f\n", lattice->param.cut               );
+#if INTEGER_IC_BOUND
+  fprintf( o, "x1                   %d\n", lattice->param.x1                );
+  fprintf( o, "x2                   %d\n", lattice->param.x2                );
+  fprintf( o, "y1                   %d\n", lattice->param.y1                );
+  fprintf( o, "y2                   %d\n", lattice->param.y2                );
+  fprintf( o, "z1                   %d\n", lattice->param.z1                );
+  fprintf( o, "z2                   %d\n", lattice->param.z2                );
+#else
   fprintf( o, "x1                   %f\n", lattice->param.x1                );
   fprintf( o, "x2                   %f\n", lattice->param.x2                );
   fprintf( o, "y1                   %f\n", lattice->param.y1                );
   fprintf( o, "y2                   %f\n", lattice->param.y2                );
   fprintf( o, "z1                   %f\n", lattice->param.z1                );
   fprintf( o, "z2                   %f\n", lattice->param.z2                );
+#endif
   fprintf( o, "rel_x1               %f\n", lattice->param.rel_x1            );
   fprintf( o, "rel_x2               %f\n", lattice->param.rel_x2            );
   fprintf( o, "rel_y1               %f\n", lattice->param.rel_y1            );
