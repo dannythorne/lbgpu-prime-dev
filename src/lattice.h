@@ -613,6 +613,83 @@ struct attrib_struct
   real          flux[NUM_FLUID_COMPONENTS][/*MAX_DIMENSIONS+1*/4];
 };
 
+
+// struct bcs_in_struct
+//
+//  - Structure to hold input values for boundary conditions.
+//
+//  - These are activated by setting the corresponding flag to 2 in the
+//    params.in file. There must be a file with the corresponding name and
+//    suffix 'dat' in the 'in' folder, e.g., pressure_n_in0.in. The values
+//    in the input file will be used for the boundary conditions, successive
+//    values on successive time steps. If there are more timesteps than input
+//    values, the input values will be cycled. This is particularly useful for
+//    imposing temporally periodic boundary conditions, e.g., to simulate tidal
+//    periods.
+//
+struct bcs_in_struct
+{
+  real*  pressure_n_in0;
+  int      num_pressure_n_in0;
+
+  real*  pressure_s_in0;
+  int      num_pressure_s_in0;
+#if 0
+  double*  pressure_s_in0;
+  double* pressure_n_out0;
+  double* pressure_s_out0;
+  double*  velocity_n_in0;
+  double*  velocity_s_in0;
+  double* velocity_n_out0;
+  double* velocity_s_out0;
+  double*  pressure_e_in0;
+  double*  pressure_w_in0;
+  double* pressure_e_out0;
+  double* pressure_w_out0;
+  double*  velocity_e_in0;
+  double*  velocity_w_in0;
+  double* velocity_e_out0;
+  double* velocity_w_out0;
+  double*  pressure_n_in1;
+  double*  pressure_s_in1;
+  double* pressure_n_out1;
+  double* pressure_s_out1;
+  double*  velocity_n_in1;
+  double*  velocity_s_in1;
+  double* velocity_n_out1;
+  double* velocity_s_out1;
+  double*  pressure_e_in1;
+  double*  pressure_w_in1;
+  double* pressure_e_out1;
+  double* pressure_w_out1;
+  double*  velocity_e_in1;
+  double*  velocity_w_in1;
+  double* velocity_e_out1;
+  double* velocity_w_out1;
+  double*  constcon_n_in;
+  double*  constcon_s_in;
+  double* constcon_n_out;
+  double* constcon_s_out;
+  double*  constflx_n_in;
+  double*  constflx_s_in;
+  double* constflx_n_out;
+  double* constflx_s_out;
+  double*  constcon_e_in;
+  double*  constcon_w_in;
+  double* constcon_e_out;
+  double* constcon_w_out;
+  double*  constflx_e_in;
+  double*  constflx_w_in;
+  double* constflx_e_out;
+  double* constflx_w_out;
+#endif
+};
+
+typedef struct bcs_in_struct* bcs_in_ptr;
+
+
+
+
 // struct lattice_struct
 //
 //  - Structure with all the lattice information.
@@ -646,6 +723,9 @@ struct lattice_struct
   struct vars_struct* vars;
   unsigned char* solids_memblock;
   real* ns_memblock;
+
+  // For the time varying north and south pressure boundaries
+  struct bcs_in_struct      bcs_in[     NUM_FLUID_COMPONENTS];
 
 #if 0 // TODO
 #if STORE_UEQ

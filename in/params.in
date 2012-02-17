@@ -5,7 +5,7 @@ BX                     16
 BY                     2
 BZ                     1
 characteristic_length  40
-NumFrames              20
+NumFrames              40
 FrameRate              100
 tau[0]                 1.
 gforce_x[0]            0.0000
@@ -60,9 +60,9 @@ velocity_t_in[0]       0
 velocity_b_in[0]       0
 velocity_t_out[0]      0
 velocity_b_out[0]      0
-pressure_n_in[0]       0
-pressure_s_in[0]       1
-pressure_n_out[0]      1
+pressure_n_in[0]       2
+pressure_s_in[0]       2
+pressure_n_out[0]      0
 pressure_s_out[0]      0
 velocity_n_in[0]       0
 velocity_s_in[0]       0

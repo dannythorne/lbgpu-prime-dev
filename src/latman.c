@@ -425,6 +425,98 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
         (*lattice)->vars[subs].macrovars_memblock + i*get_NumNodes(*lattice);
     }
 
+
+
+    //for reading north boundary pressure from file ./in/pressure_n_in0.in
+    //and assigning it to the appropriate variable
+    if( (*lattice)->param.pressure_n_in[0] == 2)
+    {
+      sprintf(filename,"./in/pressure_n_in0.in");
+      printf("[%s,%d] construct_lattice() -- Reading %s\n", __FILE__, __LINE__
+          , filename);
+      FILE *in;
+      in = fopen(filename,"r");
+      if( !( in = fopen(filename,"r+")))
+      {
+        printf("%s %d >> WARNING: Can't load \"%s\".\n",
+            __FILE__,__LINE__,filename);
+        return;
+      }
+      *(num_pressure_n_in0_ptr(*lattice,0)) = 0;
+      double temp;
+      fscanf(in,"%lf",&temp);
+      while( !feof(in))
+      {
+        (*(num_pressure_n_in0_ptr(*lattice,0)))++;
+        fscanf(in,"%lf",&temp);
+      }
+
+      printf("num_pressure_n_in0_ptr = %d\n", num_pressure_n_in0(*lattice,0));
+
+      *pressure_n_in0_ptr(*lattice,0) =
+        (double*)malloc( num_pressure_n_in0(*lattice,0)*sizeof(double));
+
+      rewind(in);
+      int i;
+      for( i=0; i<num_pressure_n_in0(*lattice,0); i++)
+      {
+        fscanf(in,"%lf", pressure_n_in0(*lattice,0) + i);
+      }
+      fclose(in);
+
+      //for( i=0; i<num_pressure_n_in0(*lattice,0); i++)
+      //{
+      //  printf("%f\n",*( pressure_n_in0(*lattice,0) + i));
+      //}
+
+    }
+
+    //for reading south boundary pressure from file ./in/pressure_s_in0.in
+    //and assigning it to the appropriate variable
+    if( (*lattice)->param.pressure_s_in[0] == 2)
+    {
+      sprintf(filename,"./in/pressure_s_in0.in");
+      printf("[%s,%d] construct_lattice() -- Reading %s\n", __FILE__, __LINE__
+          , filename);
+      FILE *in;
+      in = fopen(filename,"r");
+      if( !( in = fopen(filename,"r+")))
+      {
+        printf("%s %d >> WARNING: Can't load \"%s\".\n",
+            __FILE__,__LINE__,filename);
+        return;
+      }
+      *(num_pressure_s_in0_ptr(*lattice,0)) = 0;
+      double temp;
+      fscanf(in,"%lf",&temp);
+      while( !feof(in))
+      {
+        (*(num_pressure_s_in0_ptr(*lattice,0)))++;
+        fscanf(in,"%lf",&temp);
+      }
+
+      printf("num_pressure_s_in0_ptr = %d\n", num_pressure_s_in0(*lattice,0));
+
+      *pressure_s_in0_ptr(*lattice,0) =
+        (double*)malloc( num_pressure_s_in0(*lattice,0)*sizeof(double));
+
+      rewind(in);
+      int i;
+      for( i=0; i<num_pressure_s_in0(*lattice,0); i++)
+      {
+        fscanf(in,"%lf", pressure_s_in0(*lattice,0) + i);
+      }
+      fclose(in);
+
+      //for( i=0; i<num_pressure_n_in0(*lattice,0); i++)
+      //{
+      //  printf("%f\n",*( pressure_n_in0(*lattice,0) + i));
+      //}
+
+    }
+
+
+
 #if 0 // TODO: Revise for new data structures or delete.
 #if NON_LOCAL_FORCES
     // Allocate NumNodes elements for force.
@@ -826,10 +918,10 @@ void init_problem( lattice_ptr lattice)
                         && k <= lattice->param.z2
 #endif
 #endif
-                       )
-                    {
-                      *rho = lattice->param.rho_A[0];
-                    }
+                        )
+                        {
+                          *rho = lattice->param.rho_A[0];
+                        }
                     else
                     {
                       *rho = lattice->param.rho_B[0];
@@ -849,29 +941,29 @@ void init_problem( lattice_ptr lattice)
                       if( i >= lattice->param.x1 && i <= lattice->param.x2
 #if PARALLEL
 #if NUM_DIMENSIONS == 2
-                        && j+ get_proc_id(lattice)*nj >= lattice->param.y1 
-                        && j+ get_proc_id(lattice)*nj <= lattice->param.y2
+                          && j+ get_proc_id(lattice)*nj >= lattice->param.y1 
+                          && j+ get_proc_id(lattice)*nj <= lattice->param.y2
 #else
-                        && j >= lattice->param.y1 
-                        && j <= lattice->param.y2
-                        && k+ get_proc_id(lattice)*nk >= lattice->param.z1
-                        && k+ get_proc_id(lattice)*nk <= lattice->param.z2
+                          && j >= lattice->param.y1 
+                          && j <= lattice->param.y2
+                          && k+ get_proc_id(lattice)*nk >= lattice->param.z1
+                          && k+ get_proc_id(lattice)*nk <= lattice->param.z2
 #endif
 #else   // !(PARALLEL)
 #if NUM_DIMENSIONS == 2
-                        && j >= lattice->param.y1 
-                        && j <= lattice->param.y2
+                          && j >= lattice->param.y1 
+                          && j <= lattice->param.y2
 #else
-                        && j >= lattice->param.y1 
-                        && j <= lattice->param.y2
-                        && k >= lattice->param.z1
-                        && k <= lattice->param.z2
+                          && j >= lattice->param.y1 
+                          && j <= lattice->param.y2
+                          && k >= lattice->param.z1
+                          && k <= lattice->param.z2
 #endif
 #endif
-                        )
-                      {
-                        *rho = lattice->param.rho_sigma;
-                      }
+                          )
+                          {
+                            *rho = lattice->param.rho_sigma;
+                          }
                       else
                       {
                         *rho = 0.;
@@ -902,10 +994,10 @@ void init_problem( lattice_ptr lattice)
                         && k <= lattice->param.z2
 #endif
 #endif
-                      )
-                    {
-                      *rho = lattice->param.rho_A[subs];
-                    }
+                        )
+                        {
+                          *rho = lattice->param.rho_A[subs];
+                        }
                     else
                     {
                       *rho = lattice->param.rho_B[subs];

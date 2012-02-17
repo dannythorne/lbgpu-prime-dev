@@ -282,15 +282,15 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
     {
       real rho;
 
-      /* if( lattice->param.pressure_n_in[subs]==2)
-         {
-         rho = *( pressure_n_in0( lattice, subs)
-         + get_time(lattice)%num_pressure_n_in0(lattice,subs));
-         }
-         else
-         {*/
-      rho = lattice->param.rho_in;
-      //}
+      if( lattice->param.pressure_n_in[subs]==2)
+      {
+        rho = *( pressure_n_in0( lattice, subs)
+            + get_time(lattice)%num_pressure_n_in0(lattice,subs));
+      }
+      else
+      {
+        rho = lattice->param.rho_in;
+      }
 
       cudaMemcpyToSymbol( fixed_bound_var_c
           , &rho, sizeof(real));
@@ -352,15 +352,15 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
     {
 
       real rho;
-      /*if( lattice->param.pressure_s_in[subs]==2)
-        {
+      if( lattice->param.pressure_s_in[subs]==2)
+      {
         rho = *( pressure_s_in0( lattice, subs)
-        + get_time(lattice)%num_pressure_s_in0(lattice,subs));
-        }
-        else
-        {*/
-      rho = lattice->param.rho_in;
-      //}
+            + get_time(lattice)%num_pressure_s_in0(lattice,subs));
+      }
+      else
+      {
+        rho = lattice->param.rho_in;
+      }
 
       cudaMemcpyToSymbol( fixed_bound_var_c
           , &rho, sizeof(real));
@@ -1095,15 +1095,15 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
     {
       real rho;
 
-      /*if( lattice->param.pressure_n_in[subs]==2)
-        {
+      if( lattice->param.pressure_n_in[subs]==2)
+      {
         rho = *( pressure_n_in0( lattice, subs)
-        + get_time(lattice)%num_pressure_n_in0(lattice,subs));
-        }
-        else
-        {*/
-      rho = lattice->param.rho_in;
-      //}
+            + get_time(lattice)%num_pressure_n_in0(lattice,subs));
+      }
+      else
+      {
+        rho = lattice->param.rho_in;
+      }
 
       cudaMemcpyToSymbol( fixed_bound_var_c
           , &rho, sizeof(real));
@@ -1164,15 +1164,15 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
         && lattice->param.pressure_s_in[subs] )
     {
       real rho;
-      /*if( lattice->param.pressure_s_in[subs]==2)
-        {
+      if( lattice->param.pressure_s_in[subs]==2)
+      {
         rho = *( pressure_s_in0( lattice, subs)
-        + get_time(lattice)%num_pressure_s_in0(lattice,subs));
-        }
-        else
-        {*/
-      rho = lattice->param.rho_in;
-      //}
+            + get_time(lattice)%num_pressure_s_in0(lattice,subs));
+      }
+      else
+      {
+        rho = lattice->param.rho_in;
+      }
 
       cudaMemcpyToSymbol( fixed_bound_var_c
           , &rho, sizeof(real));
