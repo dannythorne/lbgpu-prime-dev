@@ -6,6 +6,8 @@
 //
 //  - Preprocessor flags for lbgpu_prime.
 
+#define EPSILON 1.0e-6
+
 // set SAVE_MEMO to use the version of only ftemp without
 // save the feq, f, in the momory.
 #define SAVE_MEMO    0
@@ -113,11 +115,13 @@
 #define DO_NOT_STORE_SOLIDS 0
 // If IGNORE_SOLIDS is on, the code ignores all solids introduced through
 // the domain bitmap files in the 'in' folder.
-#define IGNORE_SOLIDS 0
-// If COMPUTE_ON_SOLIDS is on, macroscopic variables and feq will be computed
-// on solid nodes, even though they are not conceptually meaningful there.
-// This can be helpful for debugging purposes.
+//#define IGNORE_SOLIDS 0
+// If COMPUTE_ON_SOLIDS is on, the f's will be set to zero on solid nodes
+// and the macroscopic variables will be computed.
 #define COMPUTE_ON_SOLIDS 0
+
+#define SIMPLE_NS_CUSTOM 1
+
 // NON_LOCAL_FORCES toggles any mechanisms for computing and storing
 // non-local (interaction) forces.
 // Flag: NON_LOCAL_FORCES
@@ -188,7 +192,7 @@
 // In 2D mode, write bmp files instead of raw files.
 // Flag: WRITE_MACRO_VAR_RAW_FILES
 #define WRITE_MACRO_VAR_RAW_FILES 1 && !(NUM_DIMENSIONS==2)
-#define WRITE_MACRO_VAR_BMP_FILES 1 && NUM_DIMENSIONS==2
+#define WRITE_MACRO_VAR_BMP_FILES 0 && NUM_DIMENSIONS==2
 
 #define WRITE_PLOT_FILE 0
 //Write .txt file with one-dimensional array of vmag values precalculated

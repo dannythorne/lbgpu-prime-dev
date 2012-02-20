@@ -60,10 +60,10 @@ velocity_t_in[0]       0
 velocity_b_in[0]       0
 velocity_t_out[0]      0
 velocity_b_out[0]      0
-pressure_n_in[0]       2
-pressure_s_in[0]       2
+pressure_n_in[0]       1
+pressure_s_in[0]       0
 pressure_n_out[0]      0
-pressure_s_out[0]      0
+pressure_s_out[0]      1
 velocity_n_in[0]       0
 velocity_s_in[0]       0
 velocity_n_out[0]      0

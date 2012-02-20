@@ -26,7 +26,7 @@ void k_collide(
 
       n = i + j * ni_c + k * nixnj_c;
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
       if( d_is_not_solid( solids_mem_d, n + end_bound_c))
       {
 #endif
@@ -102,12 +102,6 @@ void k_collide(
 
           // Initialize shared memory values for calculating macro vars.
           fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
-          fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
-          fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
-          if( numdims_c==3)
-          {
-            fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
-          }
 
           // Calculate macroscopic variables.
           for( a=0; a<numdirs_c; a++)
@@ -117,33 +111,64 @@ void k_collide(
 
             if( /*debug*/0)
             {
-              fptr[b + (numdirs_c+0)*blocksize_c] = 9.;
-            }
-
-            fptr[b + (numdirs_c+1)*blocksize_c]
-              += vx_c[a]*fptr[b + a*blocksize_c];
-
-            fptr[b + (numdirs_c+2)*blocksize_c]
-              += vy_c[a]*fptr[b + a*blocksize_c];
-
-            if( numdims_c==3)
-            {
-              fptr[b + (numdirs_c+3)*blocksize_c]
-                += vz_c[a]*fptr[b + a*blocksize_c];
+              fptr[b + (numdirs_c+0)*blocksize_c] = 8.;
             }
           }
 
-          fptr[b + (numdirs_c+1)*blocksize_c] /=
-            fptr[b + (numdirs_c+0)*blocksize_c];
-
-          fptr[b + (numdirs_c+2)*blocksize_c] /=
-            fptr[b + (numdirs_c+0)*blocksize_c];
-
-          if( numdims_c==3)
+          if( numdims_c == 2)
           {
-            fptr[b + (numdirs_c+3)*blocksize_c] /=
-              fptr[b + (numdirs_c+0)*blocksize_c];
+            fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
+            fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
+
+            if( fptr[b + (numdirs_c+0)*blocksize_c] > EPSILON)
+            {
+              for( a=0; a<numdirs_c; a++)
+              {
+                fptr[b + (numdirs_c+1)*blocksize_c]
+                  += vx_c[a]*fptr[b + a*blocksize_c];
+
+                fptr[b + (numdirs_c+2)*blocksize_c]
+                  += vy_c[a]*fptr[b + a*blocksize_c];
+              }
+
+              fptr[b + (numdirs_c+1)*blocksize_c] /=
+                fptr[b + (numdirs_c+0)*blocksize_c];
+
+              fptr[b + (numdirs_c+2)*blocksize_c] /=
+                fptr[b + (numdirs_c+0)*blocksize_c];
+            }   //rho > EPSILON
           }
+          else  // numdims_c == 3
+          {
+            fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
+            fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
+            fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
+
+            if( fptr[b + (numdirs_c+0)*blocksize_c] > EPSILON)
+            {
+              for( a=0; a<numdirs_c; a++)
+              {
+                fptr[b + (numdirs_c+1)*blocksize_c]
+                  += vx_c[a]*fptr[b + a*blocksize_c];
+
+                fptr[b + (numdirs_c+2)*blocksize_c]
+                  += vy_c[a]*fptr[b + a*blocksize_c];
+
+                fptr[b + (numdirs_c+3)*blocksize_c]
+                  += vz_c[a]*fptr[b + a*blocksize_c];
+
+              }
+              fptr[b + (numdirs_c+1)*blocksize_c] /=
+                fptr[b + (numdirs_c+0)*blocksize_c];
+
+              fptr[b + (numdirs_c+2)*blocksize_c] /=
+                fptr[b + (numdirs_c+0)*blocksize_c];
+
+              fptr[b + (numdirs_c+3)*blocksize_c] /=
+                fptr[b + (numdirs_c+0)*blocksize_c];
+
+            }   //rho > EPSILON
+          }     // numdims_c == 2
 
 #if INAMURO_SIGMA_COMPONENT
         }
@@ -327,7 +352,7 @@ void k_collide(
 #endif
         }
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
       }  /*if( d_is_not_solid(solids_mem_d, n))*/
 #endif
 #if __CUDA_ARCH__ < 200

@@ -2629,45 +2629,54 @@ __device__ real get_f1d_d(
 {
   // Getting f_a from node (i+di,j+dj,k+dk).
 
-  int i = i0+di;
-  int j = j0+dj;
-  int k = k0+dk;
+#if COMPUTE_ON_SOLIDS
+  if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
+  {
+#endif
+
+    int i = i0+di;
+    int j = j0+dj;
+    int k = k0+dk;
 
 #if PARALLEL
-  if( i<0) { i+=ni_c;}
-  if( i==ni_c) { i=0;}
+    if( i<0) { i+=ni_c;}
+    if( i==ni_c) { i=0;}
 
-  if( numdims_c == 3)
-  {
+    if( numdims_c == 3)
+    {
+      if( j<0) { j+=nj_c;}
+      if( j==nj_c) { j=0;}
+    }
+#else
+    if( i<0) { i+=ni_c;}
+    if( i==ni_c) { i=0;}
+
     if( j<0) { j+=nj_c;}
     if( j==nj_c) { j=0;}
-  }
-#else
-  if( i<0) { i+=ni_c;}
-  if( i==ni_c) { i=0;}
 
-  if( j<0) { j+=nj_c;}
-  if( j==nj_c) { j=0;}
-
-  if( k<0) { k+=nk_c;}
-  if( k==nk_c) { k=0;}
+    if( k<0) { k+=nk_c;}
+    if( k==nk_c) { k=0;}
 #endif
 
-  int n = i + ni_c*j + nixnj_c*k;
-#if !(IGNORE_SOLIDS)
-  if( d_is_not_solid( solids_mem_d, n + end_bound_c))
-  {
-#endif
-    return f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-      + cumul_stride_c[a] + n];
-#if !(IGNORE_SOLIDS)
+    int n = i + ni_c*j + nixnj_c*k;
+
+    if( d_is_not_solid( solids_mem_d, n + end_bound_c))
+    {
+      return f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+        + cumul_stride_c[a] + n];
+    }
+    else
+    { 
+      // If neighboring node is a solid, return the f at node (i0,j0,k0) that
+      // would be streamed out for halfway bounceback.
+      return f_mem_d[ subs*cumul_stride_c[numdirs_c]
+        + cumul_stride_c[a+da] + n0];
+    }
+#if COMPUTE_ON_SOLIDS
   }
   else
-  { 
-    // If neighboring node is a solid, return the f at node (i0,j0,k0) that
-    // would be streamed out for halfway bounceback.
-    return f_mem_d[ subs*cumul_stride_c[numdirs_c]
-      + cumul_stride_c[a+da] + n0];
+  {
+    return 0.;
   }
 #endif
 }
@@ -2707,16 +2716,9 @@ __device__ void set_f1d_d(
 {
   // Setting f to node (i+di,j+dj,k+dk). The 'd_is_not_solid' conditional
   // statement is vital for the correct functioning of the bounceback
-  // boundary conditions.
-#if !(IGNORE_SOLIDS) && COMPUTE_ON_SOLIDS 
-  //COMPUTE_ON_SOLIDS
-  // This conditional statement is vital for the bounceback boundary conditions,
-  // but we do not wish to evaluate the same conditional statement twice (c.f.
-  // k_stream_collide_stream.c and k_collide.c)
-  // if  I &&  C then 0
-  // if  I && !C then 0
-  // if !I &&  C then 1
-  // if !I && !C then 0
+  // boundary conditions. If !(COMPUTE_ON_SOLIDS), this conditional statement
+  // exists inside the kernels instead.
+#if COMPUTE_ON_SOLIDS 
   if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
   {
 #endif
@@ -2745,19 +2747,21 @@ __device__ void set_f1d_d(
 #endif
 
     int n = i + ni_c*j + nixnj_c*k;
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
-#endif
       f_mem_d[ subs*cumul_stride_c[numdirs_c] 
         + cumul_stride_c[a] + n] = value;
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
     }
-#endif
-
-#if !(IGNORE_SOLIDS) && COMPUTE_ON_SOLIDS 
+#if COMPUTE_ON_SOLIDS
+    else
+    {
+      f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+        + cumul_stride_c[a] + n] = 0.;
+    }
   }
 #endif
+
 }
 __device__ void calc_f_tilde_d(
     real* f_mem_d

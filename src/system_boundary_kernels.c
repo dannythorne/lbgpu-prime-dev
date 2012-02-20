@@ -22,12 +22,7 @@ void k_sysbound_pressure_n_1(
 #endif
     n = i + j * ni_c + k * nixnj_c;
 
-#if 0
-    set_mv_d( mv_mem_d
-        , 0, n, 0
-        , fixed_bound_var_c);
-#else
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
 #endif
@@ -59,17 +54,6 @@ void k_sysbound_pressure_n_1(
             , a, -1);
       }
 
-#if 0
-      for( a=0; a<numdirs_c; a++)
-      { 
-        fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
-              , subs_c
-              , i,j,k,n
-              , 0, 0, 0
-              , a, 0);
-      }
-#endif
       fptr[b + numdirs_c*bixbk_c] = -fixed_bound_var_c
         + fptr[b + C*bixbk_c]
         + fptr[b + E*bixbk_c]
@@ -107,9 +91,8 @@ void k_sysbound_pressure_n_1(
           , -vx_c[SW],-vy_c[SW],-vz_c[SW]
           , SW, fptr[b + SW*bixbk_c]);
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     }
-#endif
 #endif
 
 #if __CUDA_ARCH__ < 200
@@ -139,7 +122,7 @@ void k_sysbound_pressure_n_2(
 #endif
     n = i + j * ni_c + k * nixnj_c;
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
 #endif
@@ -174,36 +157,6 @@ void k_sysbound_pressure_n_2(
               , 0,0,0
               , a-1, 0);
       }
-
-#if 0
-      fptr[b + 0*bixbk_c] 
-        = get_f1d_d( f_mem_d, solids_mem_d
-            , subs_c
-            , i,j,k,n
-            , vx_c[0],vy_c[0],vz_c[0]
-            , 0, 0);
-
-      for( a=1; a<numdirs_c; a+=2)
-      { 
-        fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
-              , subs_c
-              , i,j,k,n
-              , vx_c[a],vy_c[a],vz_c[a]
-              , a+1, 0);
-      }
-
-      for( a=2; a<numdirs_c; a+=2)
-      { 
-        fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
-              , subs_c
-              , i,j,k,n
-              , vx_c[a],vy_c[a],vz_c[a]
-              , a-1, 0);
-      }
-
-#endif
 
      
       fptr[b + numdirs_c*bixbk_c] = -fixed_bound_var_c
@@ -243,7 +196,7 @@ void k_sysbound_pressure_n_2(
           , 0,0,0
           , NE, fptr[b + SW*bixbk_c]);
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     }
 #endif
 
@@ -275,7 +228,7 @@ void k_sysbound_pressure_s_1(
 #endif
     n = i + j * ni_c + k * nixnj_c;
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
 #endif
@@ -306,18 +259,6 @@ void k_sysbound_pressure_s_1(
             , -vx_c[a],-vy_c[a],-vz_c[a]
             , a, -1);
       }
-
-#if 0
-      for( a=0; a<numdirs_c; a++)
-      { 
-        fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
-              , subs_c
-              , i,j,k,n
-              , 0, 0, 0
-              , a, 0);
-      }
-#endif
 
       fptr[b + numdirs_c*bixbk_c] = fixed_bound_var_c
         - fptr[b + C*bixbk_c]
@@ -356,7 +297,7 @@ void k_sysbound_pressure_s_1(
           , -vx_c[NE],-vy_c[NE],-vz_c[NE]
           , NE, fptr[b + NE*bixbk_c]);
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     }
 #endif
 
@@ -388,7 +329,7 @@ void k_sysbound_pressure_s_2(
 #endif
     n = i + j * ni_c + k * nixnj_c;
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
 #endif
@@ -423,36 +364,6 @@ void k_sysbound_pressure_s_2(
               , 0,0,0
               , a-1, 0);
       }
-
-#if 0
-      fptr[b + 0*bixbk_c] 
-        = get_f1d_d( f_mem_d, solids_mem_d
-            , subs_c
-            , i,j,k,n
-            , vx_c[0],vy_c[0],vz_c[0]
-            , 0, 0);
-
-      for( a=1; a<numdirs_c; a+=2)
-      { 
-        fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
-              , subs_c
-              , i,j,k,n
-              , vx_c[a],vy_c[a],vz_c[a]
-              , a+1, 0);
-      }
-
-      for( a=2; a<numdirs_c; a+=2)
-      { 
-        fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
-              , subs_c
-              , i,j,k,n
-              , vx_c[a],vy_c[a],vz_c[a]
-              , a-1, 0);
-      }
-
-#endif
 
       fptr[b + numdirs_c*bixbk_c] = fixed_bound_var_c
         - fptr[b + C*bixbk_c]
@@ -491,7 +402,7 @@ void k_sysbound_pressure_s_2(
           , 0,0,0
           , SW, fptr[b + NE*bixbk_c]);
 
-#if !(IGNORE_SOLIDS) && !(COMPUTE_ON_SOLIDS)
+#if !(COMPUTE_ON_SOLIDS)
     }
 #endif
 
