@@ -46,6 +46,42 @@ void process_matrix( struct lattice_struct *lattice, int **matrix)
 
 } /* void process_matrix( struct lattice_struct *lattice, int **matrix) */
 
+#if SIMPLE_NS_CUSTOM
+void process_ns( struct lattice_struct *lattice, int **matrix)
+{
+  // Variable declarations.
+  int i,  j;
+  int ei, ej;
+  int n;
+
+  // Ending indices.
+  ei = get_LX(lattice)-1;
+  ej = get_LY(lattice)-1;
+
+  for( j=0; j<=ej; j++)
+  {
+    n = j*get_LX(lattice);
+
+    for( i=0; i<=ei; i++, n++)
+    {
+      if(matrix[j][i] == 1)
+      {
+        set_ns( lattice, n, lattice->param.ns);
+      }
+      else
+      {
+        set_ns( lattice, n, 0.);
+      }
+
+    } /* for( i=0; i<=ei; i++, n++) */
+
+  } /* for( j=0; j<=ej; j++) */
+
+} /* void process_ns( struct lattice_struct *lattice, int **matrix) */
+#endif 
+
+
+
 // void construct_lattice( struct lattice_struct *lattice)
 //##############################################################################
 //
@@ -251,6 +287,11 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( nk_c, get_nk_ptr( *lattice), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
+#if SIMPLE_NS_CUSTOM
+  cudaMemcpyToSymbol( ns_c, &((*lattice)->param.ns), sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+#endif
+
   int temp;
 #ifdef __CUDACC__
 #if __CUDACC__ >= 200
@@ -290,6 +331,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   (*lattice)->solids_memblock =
     (unsigned char*)malloc((*lattice)->NumNodes*sizeof(unsigned char));
 
+  // Allocate space for ns values.
+  (*lattice)->ns_memblock =
+    (real*)malloc((*lattice)->NumNodes*sizeof(real));
+
   if( get_NumDims(*lattice)==2)
   {
     // Allocate matrix for storing information from bmp file.
@@ -316,6 +361,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
         __FILE__, __LINE__, filename);
     spy_bmp( *lattice, filename, matrix);
     process_matrix( *lattice, matrix);
+    // set ns value using solids bmp
+#if SIMPLE_NS_CUSTOM
+    process_ns( *lattice, matrix);
+#endif
   }
   else
   {
@@ -382,6 +431,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
     cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+
+    cudaMalloc( (void**)&ns_mem_d, solids_mem_size*sizeof(real));
+    checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+
 #if 0
     cudaMalloc( (void**)&is_end_of_frame_mem_d, sizeof(int));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
@@ -1591,6 +1644,7 @@ void destruct_lattice( lattice_ptr lattice)
 
   // Deallocate space for solids.
   free( lattice->solids_memblock);
+  free( lattice->ns_memblock);
 
   // Deallocate the lattice structure.
   free( lattice);
@@ -1601,6 +1655,7 @@ void destruct_lattice( lattice_ptr lattice)
   cudaFree(f_mem_d);
   cudaFree(mv_mem_d);
   cudaFree(solids_mem_d);
+  cudaFree(ns_mem_d);
   //cudaFree(is_end_of_frame_mem_d);
 #if PAGE_LOCKED
   cudaFreeHost(lattice->process.pos_dir_pdf_to_send);

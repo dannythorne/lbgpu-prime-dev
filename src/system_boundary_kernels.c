@@ -1,10 +1,11 @@
 extern __shared__ real fptr[];
-
+#if 0
 __global__
 void k_sysbound_pressure_n_1(
     real* f_mem_d
     , real* mv_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -31,7 +32,7 @@ void k_sysbound_pressure_n_1(
       // Load variables into shared memory. It remains to be seen
       // whether this is necessary or not.
 
-      fptr[b] = get_f1d_d( f_mem_d, solids_mem_d
+      fptr[b] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[0],-vy_c[0],-vz_c[0]
@@ -39,7 +40,7 @@ void k_sysbound_pressure_n_1(
 
       for( a=1; a<numdirs_c; a+=2)
       { 
-        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d
+        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs_c
             , i,j,k,n
             , -vx_c[a],-vy_c[a],-vz_c[a]
@@ -47,7 +48,7 @@ void k_sysbound_pressure_n_1(
       }
       for( a=2; a<numdirs_c; a+=2)
       { 
-        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d
+        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs_c
             , i,j,k,n
             , -vx_c[a],-vy_c[a],-vz_c[a]
@@ -73,19 +74,19 @@ void k_sysbound_pressure_n_1(
         + (1./2.) * (fptr[b + W*bixbk_c]-fptr[b + E*bixbk_c])
         - (1./6.) * fptr[b + numdirs_c*bixbk_c];
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[S],-vy_c[S],-vz_c[S]
           , S, fptr[b + S*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[SE],-vy_c[SE],-vz_c[SE]
           , SE, fptr[b + SE*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[SW],-vy_c[SW],-vz_c[SW]
@@ -105,6 +106,7 @@ __global__
 void k_sysbound_pressure_n_2(
     real* f_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -132,7 +134,7 @@ void k_sysbound_pressure_n_2(
       // whether this is necessary or not.
       
       fptr[b + 0*bixbk_c] 
-        = get_f1d_d( f_mem_d, solids_mem_d
+        = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs_c
             , i,j,k,n
             , 0,0,0
@@ -141,7 +143,7 @@ void k_sysbound_pressure_n_2(
       for( a=1; a<numdirs_c; a+=2)
       { 
         fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
+          = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs_c
               , i,j,k,n
               , 0,0,0
@@ -151,7 +153,7 @@ void k_sysbound_pressure_n_2(
       for( a=2; a<numdirs_c; a+=2)
       { 
         fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
+          = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs_c
               , i,j,k,n
               , 0,0,0
@@ -178,19 +180,19 @@ void k_sysbound_pressure_n_2(
         + (1./2.) * (fptr[b + W*bixbk_c]-fptr[b + E*bixbk_c])
         - (1./6.) * fptr[b + numdirs_c*bixbk_c];
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
           , N, fptr[b + S*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
           , NW, fptr[b + SE*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
@@ -211,6 +213,7 @@ __global__
 void k_sysbound_pressure_s_1(
     real* f_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -237,7 +240,7 @@ void k_sysbound_pressure_s_1(
       // Load variables into shared memory. It remains to be seen
       // whether this is necessary or not.
 
-      fptr[b] = get_f1d_d( f_mem_d, solids_mem_d
+      fptr[b] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[0],-vy_c[0],-vz_c[0]
@@ -245,7 +248,7 @@ void k_sysbound_pressure_s_1(
 
       for( a=1; a<numdirs_c; a+=2)
       { 
-        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d
+        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs_c
             , i,j,k,n
             , -vx_c[a],-vy_c[a],-vz_c[a]
@@ -253,7 +256,7 @@ void k_sysbound_pressure_s_1(
       }
       for( a=2; a<numdirs_c; a+=2)
       { 
-        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d
+        fptr[b + a*bixbk_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs_c
             , i,j,k,n
             , -vx_c[a],-vy_c[a],-vz_c[a]
@@ -279,19 +282,19 @@ void k_sysbound_pressure_s_1(
         + (1./2.) * (fptr[b + E*bixbk_c]-fptr[b + W*bixbk_c])
         + (1./6.) * fptr[b + numdirs_c*bixbk_c];
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[N],-vy_c[N],-vz_c[N]
           , N, fptr[b + N*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[NW],-vy_c[NW],-vz_c[NW]
           , NW, fptr[b + NW*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[NE],-vy_c[NE],-vz_c[NE]
@@ -312,6 +315,7 @@ __global__
 void k_sysbound_pressure_s_2(
     real* f_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -339,7 +343,7 @@ void k_sysbound_pressure_s_2(
       // whether this is necessary or not.
 
       fptr[b + 0*bixbk_c] 
-        = get_f1d_d( f_mem_d, solids_mem_d
+        = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs_c
             , i,j,k,n
             , 0,0,0
@@ -348,7 +352,7 @@ void k_sysbound_pressure_s_2(
       for( a=1; a<numdirs_c; a+=2)
       { 
         fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
+          = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs_c
               , i,j,k,n
               , 0,0,0
@@ -358,7 +362,7 @@ void k_sysbound_pressure_s_2(
       for( a=2; a<numdirs_c; a+=2)
       { 
         fptr[b + a*bixbk_c] 
-          = get_f1d_d( f_mem_d, solids_mem_d
+          = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs_c
               , i,j,k,n
               , 0,0,0
@@ -384,19 +388,19 @@ void k_sysbound_pressure_s_2(
         + (1./2.) * (fptr[b + E*bixbk_c]-fptr[b + W*bixbk_c])
         + (1./6.) * fptr[b + numdirs_c*bixbk_c];
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
           , S, fptr[b + N*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
           , SE, fptr[b + NW*bixbk_c]);
 
-      set_f1d_d( f_mem_d, solids_mem_d
+      set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
@@ -412,3 +416,5 @@ void k_sysbound_pressure_s_2(
 #endif
 
 }
+
+#endif

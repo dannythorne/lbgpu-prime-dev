@@ -246,6 +246,15 @@ void process_compute_local_params( lattice_ptr lattice)
   lattice->process.neg_dir_solid_to_recv =
     (unsigned char*)malloc( sol_buffer_size*sizeof(unsigned char));
 
+  lattice->process.pos_dir_ns_to_send =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+  lattice->process.pos_dir_ns_to_recv =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+  lattice->process.neg_dir_ns_to_send =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+  lattice->process.neg_dir_ns_to_recv =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+
 #else   // !(PAGE_LOCKED)
   lattice->process.pos_dir_pdf_to_send =
     (real*)malloc( pdf_buffer_size*sizeof(real));
@@ -284,6 +293,17 @@ void process_compute_local_params( lattice_ptr lattice)
     (unsigned char*)malloc( sol_buffer_size*sizeof(unsigned char));
   lattice->process.neg_dir_solid_to_recv =
     (unsigned char*)malloc( sol_buffer_size*sizeof(unsigned char));
+
+  lattice->process.pos_dir_ns_to_send =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+  lattice->process.pos_dir_ns_to_recv =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+  lattice->process.neg_dir_ns_to_send =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+  lattice->process.neg_dir_ns_to_recv =
+    (real*)malloc( sol_buffer_size*sizeof(real));
+
+
 #endif  //PAGE_LOCKED
 
 #endif
@@ -1115,6 +1135,222 @@ void solid_send_recv_end( lattice_ptr lattice, const int subs)
 #endif
 } /* void rho_send_recv_end( lattice_ptr lattice, const int subs) */
 //#####################################################################
+
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+void ns_send_recv_begin( lattice_ptr lattice, const int subs)
+{
+#if PARALLEL
+  int n, cnt;
+  int i, j, k;
+  int ni = get_LX( lattice),
+      nj = get_LY( lattice);
+  int mpierr;
+
+  int pdf_buffer_size = get_NumSubs( lattice) * get_NumBoundDirs( lattice) 
+    * get_EndBoundSize( lattice) / 2;
+  int rho_buffer_size = 2 * get_EndBoundSize( lattice);
+  int sol_buffer_size = get_EndBoundSize( lattice); 
+
+  //rev Huang
+  //To send "rho" and "ns" to neighbour blocks
+  cnt = 0;
+#if SAVE_MEMO
+
+#else
+  if( get_NumDims( lattice) == 2)
+  {    
+    j = get_LY(lattice)-1;
+    for( i=0; i<ni; i++)
+    {
+      lattice->process.pos_dir_ns_to_send[cnt] =
+        lattice->ns_memblock[ IJ2N( i , j , ni)];
+      lattice->process.neg_dir_ns_to_send[cnt] =
+        lattice->ns_memblock[ IJ2N( i , 0, ni)];
+      cnt++;
+    }    
+  }
+  else
+  {  
+    k = get_LZ(lattice)-1;
+    for( j=0; j<nj; j++)
+    {
+      for( i=0; i<ni; i++)
+      {
+
+        lattice->process.pos_dir_ns_to_send[cnt] =
+          lattice->ns_memblock[ IJK2N( i , j , k, ni, nj)];
+        lattice->process.neg_dir_ns_to_send[cnt] =
+          lattice->ns_memblock[ IJK2N( i , j , 0, ni, nj)];
+        cnt++;
+      } /* if( i=0; i<ni; i++) */
+    } /* if( j=0; j<nj; j++) */
+  }
+#endif
+
+  // SOLID S E N D   I N   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
+#if VERBOSITY_LEVEL > 1
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+#endif
+  mpierr =
+    MPI_Isend(
+        /*void *buf*/          lattice->process.pos_dir_ns_to_send,
+        /*int count*/          sol_buffer_size,
+        /*MPI_Datatype dtype*/ MPI_DATATYPE,
+        /*int dest*/         ( get_proc_id(lattice)
+          + get_num_procs(lattice)+1)
+        % get_num_procs(lattice),
+        /*int tag*/            4,
+        /*MPI_Comm comm*/      MPI_COMM_WORLD,
+        /*MPI_Request *req*/   &(lattice->process.send_req_6)
+        );
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+        "ERROR: %d <-- MPI_Isend( %04d)"
+        "\n",
+        __FILE__,__LINE__,get_proc_id(lattice),
+        mpierr,
+        (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // SOLID R E C V   F R O M   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
+#if VERBOSITY_LEVEL > 1
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+#endif
+  mpierr =
+    MPI_Irecv(
+        /*void *buf*/          lattice->process.pos_dir_ns_to_recv,
+        /*int count*/          sol_buffer_size,
+        /*MPI_Datatype dtype*/ MPI_DATATYPE,
+        /*int src*/          ( get_proc_id(lattice)
+          + get_num_procs(lattice)-1)
+        % get_num_procs(lattice),
+        /*int tag*/            4,
+        /*MPI_Comm comm*/      MPI_COMM_WORLD,
+        /*MPI_Request *req*/   &(lattice->process.recv_req_6)
+        );
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+        "ERROR: %d <-- MPI_Irecv( %04d)"
+        "\n",
+        __FILE__,__LINE__,get_proc_id(lattice),
+        mpierr,
+        (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // SOLID S E N D   I N   N E G A T I V E   D I R E C T I O N
+  //#########################################################################
+#if VERBOSITY_LEVEL > 1
+  printf( "%s %d %04d >> "
+      "MPI_Isend( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+#endif
+  mpierr =
+    MPI_Isend(
+        /*void *buf*/          lattice->process.neg_dir_ns_to_send,
+        /*int count*/          sol_buffer_size,
+        /*MPI_Datatype dtype*/ MPI_DATATYPE,
+        /*int dest*/         ( get_proc_id(lattice)
+          + get_num_procs(lattice)-1)
+        % get_num_procs(lattice),
+        /*int tag*/            5,
+        /*MPI_Comm comm*/      MPI_COMM_WORLD,
+        /*MPI_Request *req*/   &(lattice->process.send_req_7)
+        );
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+        "ERROR: %d <-- MPI_Isend( %04d)"
+        "\n",
+        __FILE__,__LINE__,get_proc_id(lattice),
+        mpierr,
+        (get_proc_id(lattice)+get_num_procs(lattice)-1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+  // SOLID R E C V   F R O M   P O S I T I V E   D I R E C T I O N
+  //#########################################################################
+#if VERBOSITY_LEVEL > 1
+  printf( "%s %d %04d >> "
+      "MPI_Irecv( %04d)"
+      "\n",
+      __FILE__,__LINE__,get_proc_id(lattice),
+      (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+#endif
+  mpierr =
+    MPI_Irecv(
+        /*void *buf*/          lattice->process.neg_dir_ns_to_recv,
+        /*int count*/          sol_buffer_size,
+        /*MPI_Datatype dtype*/ MPI_DATATYPE,
+        /*int src*/          ( get_proc_id(lattice)
+          + get_num_procs(lattice)+1)
+        % get_num_procs(lattice),
+        /*int tag*/            5,
+        /*MPI_Comm comm*/      MPI_COMM_WORLD,
+        /*MPI_Request *req*/   &(lattice->process.recv_req_7)
+        );
+  if( mpierr != MPI_SUCCESS)
+  {
+    printf( "%s %d %04d >> "
+        "ERROR: %d <-- MPI_Irecv( %04d)"
+        "\n",
+        __FILE__,__LINE__,get_proc_id(lattice),
+        mpierr,
+        (get_proc_id(lattice)+get_num_procs(lattice)+1)%get_num_procs(lattice));
+    process_finalize();
+    process_exit(1);
+  }
+
+
+
+#endif
+} /* void rho_send_recv_begin( lattice_ptr lattice, const int subs) */
+
+
+void ns_send_recv_end( lattice_ptr lattice, const int subs)
+{
+#if PARALLEL
+  /*int n;
+    int i, j, k;
+    int ni = get_LX( lattice),
+    nj = get_LY( lattice);
+    int ip, in;
+    int jp, jn;*/
+  int mpierr;
+
+  mpierr = MPI_Wait(
+      /* MPI_Request *req */&(lattice->process.send_req_6),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
+  mpierr = MPI_Wait(
+      /* MPI_Request *req */&(lattice->process.recv_req_6),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
+  mpierr = MPI_Wait(
+      /* MPI_Request *req */&(lattice->process.send_req_7),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
+  mpierr = MPI_Wait(
+      /* MPI_Request *req */&(lattice->process.recv_req_7),
+      /* MPI_Status *stat */&(lattice->process.mpi_status));
+
+
+#endif
+} /* void rho_send_recv_end( lattice_ptr lattice, const int subs) */
+//#####################################################################
+
 //#####################################################################
 
 

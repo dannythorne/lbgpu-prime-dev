@@ -20,6 +20,7 @@ int f_mem_size;
 real* mv_mem_d;
 int mv_mem_size;
 unsigned char* solids_mem_d;
+real* ns_mem_d;
 int solids_mem_size;
 
 #if BOUNDARY_KERNEL
@@ -168,6 +169,61 @@ int main( int argc, char **argv)
 
   checkCUDAError( __FILE__, __LINE__, "solid swap");
 #endif  // if PARALLEL
+
+  // Same as above, but for the array of ns values
+#if SIMPLE_NS_CUSTOM
+  cudaMemcpy( ns_mem_d + get_EndBoundSize( lattice)
+      , get_ns_ptr(lattice, 0)
+      , get_NumNodes( lattice)*sizeof(real)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+  // Do boundary swap for ns.  This only needs to be done
+  // once, of course.
+
+#if PARALLEL
+  // We'll want something involving the MPI buffers here.
+
+  ns_send_recv_begin( lattice, 0);
+  ns_send_recv_end( lattice, 0);
+
+  // North / Top end
+  cudaMemcpy( ns_mem_d + get_EndBoundSize( lattice) + get_NumNodes( lattice)
+      , lattice->process.neg_dir_ns_to_recv
+      , get_EndBoundSize( lattice)*sizeof(real)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "ns swap");
+
+  // South / Bottom end
+  cudaMemcpy( ns_mem_d
+      , lattice->process.pos_dir_ns_to_recv
+      , get_EndBoundSize( lattice)*sizeof(real)
+      , cudaMemcpyHostToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "ns swap");
+
+#else   // if !(PARALLEL)
+  // North / Top end
+  cudaMemcpy( ns_mem_d + get_EndBoundSize( lattice) + get_NumNodes( lattice)
+      , ns_mem_d + get_EndBoundSize( lattice)
+      , get_EndBoundSize( lattice)*sizeof(real)
+      , cudaMemcpyDeviceToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "ns swap");
+
+  // South / Bottom end
+  cudaMemcpy( ns_mem_d
+      , ns_mem_d + get_NumNodes( lattice)
+      , get_EndBoundSize( lattice)*sizeof(real)
+      , cudaMemcpyDeviceToDevice);
+
+  checkCUDAError( __FILE__, __LINE__, "ns swap");
+#endif  // if PARALLEL
+
+#endif
+
 
   int dir;
 #if 1
@@ -374,13 +430,15 @@ int main( int argc, char **argv)
 #endif
 #endif
 #endif  // if (PARALLEL)
+
+#if 0
     // Only implemented in 2D right now
     if( get_NumDims( lattice) == 2)
     {
       // Implement boundary conditions
       bcs_1( lattice, f_mem_d, mv_mem_d, solids_mem_d); 
     }
-
+#endif
 
     // Time steps are combined in a somewhat awkward way in order to minimize
     // the amount of temporary storage required and to allow the nodes to
@@ -401,7 +459,7 @@ int main( int argc, char **argv)
       * get_BX( lattice)
       * get_BY( lattice)
       * get_BZ( lattice)
-      >>>( f_mem_d, mv_mem_d, solids_mem_d
+      >>>( f_mem_d, mv_mem_d, solids_mem_d, ns_mem_d
          );
 
     cudaThreadSynchronize();
@@ -540,12 +598,14 @@ int main( int argc, char **argv)
     //cudaEventElapsedTime(&timertime,start,stop);
     //totaltime += timertime;
 
+#if 0
     // Only implemented in 2D right now
     if( get_NumDims( lattice) == 2)
     {
       // Implement boundary conditions
       bcs_2( lattice, f_mem_d, solids_mem_d); 
     }
+#endif
 
 #endif  // #ifdef __CUDACC__
 #else   // if !(PARALLEL)
@@ -566,13 +626,14 @@ int main( int argc, char **argv)
 #endif
 #endif  // if PARALLEL
 
+#if 0
     // Only implemented in 2D right now
     if( get_NumDims( lattice) == 2)
     {
       // Implement boundary conditions
       bcs_2( lattice, f_mem_d, solids_mem_d); 
     }
-
+#endif
 
 #ifdef __CUDACC__
     if( is_end_of_frame(lattice,time))
@@ -590,7 +651,7 @@ int main( int argc, char **argv)
       * get_BX( lattice)
       * get_BY( lattice)
       * get_BZ( lattice)
-      >>>( f_mem_d, mv_mem_d, solids_mem_d);
+      >>>( f_mem_d, mv_mem_d, solids_mem_d, ns_mem_d);
     cudaThreadSynchronize();
     checkCUDAError( __FILE__, __LINE__, "k_collide");
 #else   // ifndef __CUDACC__

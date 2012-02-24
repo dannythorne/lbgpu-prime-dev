@@ -219,6 +219,7 @@ void bcs( lattice_ptr lattice)
 //
 // Apply boundary conditions before stream_collide_stream.
 //
+#if 0
 void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *solids_mem_d)
 {
 #ifdef __CUDACC__
@@ -305,7 +306,7 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, mv_mem_d, solids_mem_d);
+        >>>( f_mem_d, mv_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -334,7 +335,7 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, mv_mem_d, solids_mem_d);
+        >>>( f_mem_d, mv_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -375,7 +376,7 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, solids_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -404,7 +405,7 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, solids_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -1026,12 +1027,13 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
 
 #endif
 }
-
+#endif
 //                                   BCS_2
 //##############################################################################
 //
 // Apply boundary conditions after stream_collide_stream.
 //
+#if 0
 void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
 {
 #ifdef __CUDACC__
@@ -1118,7 +1120,7 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, solids_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -1147,7 +1149,7 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, solids_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -1187,7 +1189,7 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, solids_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -1217,7 +1219,7 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
         * get_BX( lattice)
         * get_BZ( lattice)
 
-        >>>( f_mem_d, solids_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -1840,7 +1842,7 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
 
 #endif
 }
-
+#endif
 
 
 #endif

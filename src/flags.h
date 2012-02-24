@@ -118,9 +118,9 @@
 //#define IGNORE_SOLIDS 0
 // If COMPUTE_ON_SOLIDS is on, the f's will be set to zero on solid nodes
 // and the macroscopic variables will be computed.
-#define COMPUTE_ON_SOLIDS 0
+#define COMPUTE_ON_SOLIDS 1
 
-#define SIMPLE_NS_CUSTOM 1
+#define SIMPLE_NS_CUSTOM (1 && COMPUTE_ON_SOLIDS)
 
 // NON_LOCAL_FORCES toggles any mechanisms for computing and storing
 // non-local (interaction) forces.

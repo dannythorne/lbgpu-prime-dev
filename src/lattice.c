@@ -180,6 +180,14 @@ void set_is_solid(
   lattice->solids_memblock[n] = val;
 }
 
+void set_ns(
+    lattice_ptr lattice
+    , const int n
+    , const real val)
+{
+  lattice->ns_memblock[n] = val;
+}
+
 int is_not_solid( lattice_ptr lattice, const int n)
 {
   return !is_solid( lattice, n);
@@ -2193,6 +2201,12 @@ unsigned char* get_solids_ptr( lattice_ptr lattice, const int n)
   return lattice->solids_memblock + n;
 }
 
+real* get_ns_ptr( lattice_ptr lattice, const int n)
+{
+  return lattice->ns_memblock + n;
+}
+
+
 #ifdef __CUDACC__
 
 __constant__ int vx_c[19];     //
@@ -2225,7 +2239,11 @@ __constant__ int nixnj_c;
 __constant__ int blocksize_c;
 __constant__ int numnodes_c;
 __constant__ int subs_c;
+
 __constant__ real fixed_bound_var_c;
+#if SIMPLE_NS_CUSTOM
+__constant__ real ns_c;
+#endif
 
 #if TEXTURE_FETCH
 texture<unsigned char, 1, cudaReadModeElementType> tex_solid;
@@ -2616,6 +2634,7 @@ void pdf_boundary_parallel( lattice_ptr lattice
 __device__ real get_f1d_d(
     real* f_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     , int subs
     , int i0
     , int j0
@@ -2625,15 +2644,67 @@ __device__ real get_f1d_d(
     , int dj
     , int dk
     , int a
-    , int da )
+    , int da
+#if SIMPLE_NS_CUSTOM
+    , int alpha_switch 
+#endif
+    )
 {
   // Getting f_a from node (i+di,j+dj,k+dk).
 
-#if COMPUTE_ON_SOLIDS
-  if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
+#if SIMPLE_NS_CUSTOM
+  int i = i0+di;
+  int j = j0+dj;
+  int k = k0+dk;
+
+#if PARALLEL
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( numdims_c == 3)
   {
+    if( j<0) { j+=nj_c;}
+    if( j==nj_c) { j=0;}
+  }
+#else
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( j<0) { j+=nj_c;}
+  if( j==nj_c) { j=0;}
+
+  if( k<0) { k+=nk_c;}
+  if( k==nk_c) { k=0;}
 #endif
 
+  int n = i + ni_c*j + nixnj_c*k;
+
+  real alpha = (1. - ns_mem_d[n + end_bound_c]) * (1. - ns_mem_d[n0 + end_bound_c]);
+  //real alpha = (real) ((1 - solids_mem_d[n + end_bound_c]) * (1 - solids_mem_d[n0 + end_bound_c]));
+
+  if( alpha_switch)     // k_stream_collide_stream
+  {
+    return alpha 
+      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a] + n]
+      + (1. - alpha)
+      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a+da] + n0];
+  }
+  else  // k_collide
+  {
+    return (1. - alpha) 
+      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a] + n]
+      + alpha
+      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a+da] + n0];
+  }
+#else   // !(SIMPLE_NS_CUSTOM)
+#if COMPUTE_ON_SOLIDS
+
+  if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
+  {
     int i = i0+di;
     int j = j0+dj;
     int k = k0+dk;
@@ -2672,13 +2743,54 @@ __device__ real get_f1d_d(
       return f_mem_d[ subs*cumul_stride_c[numdirs_c]
         + cumul_stride_c[a+da] + n0];
     }
-#if COMPUTE_ON_SOLIDS
   }
   else
   {
     return 0.;
   }
+
+#else   // !(COMPUTE_ON_SOLIDS)
+  int i = i0+di;
+  int j = j0+dj;
+  int k = k0+dk;
+
+#if PARALLEL
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( numdims_c == 3)
+  {
+    if( j<0) { j+=nj_c;}
+    if( j==nj_c) { j=0;}
+  }
+#else
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( j<0) { j+=nj_c;}
+  if( j==nj_c) { j=0;}
+
+  if( k<0) { k+=nk_c;}
+  if( k==nk_c) { k=0;}
 #endif
+
+  int n = i + ni_c*j + nixnj_c*k;
+
+  if( d_is_not_solid( solids_mem_d, n + end_bound_c))
+  {
+    return f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a] + n];
+  }
+  else
+  { 
+    // If neighboring node is a solid, return the f at node (i0,j0,k0) that
+    // would be streamed out for halfway bounceback.
+    return f_mem_d[ subs*cumul_stride_c[numdirs_c]
+      + cumul_stride_c[a+da] + n0];
+  }
+#endif  // COMPUTE_ON_SOLIDS
+#endif  // SIMPLE_NS_CUSTOM
+
 }
 
 
@@ -2703,6 +2815,7 @@ __device__ real get_mv_d( real* mv_mem_d, int subs,
 __device__ void set_f1d_d(
     real* f_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     , int subs
     , int i0
     , int j0
@@ -2718,10 +2831,41 @@ __device__ void set_f1d_d(
   // statement is vital for the correct functioning of the bounceback
   // boundary conditions. If !(COMPUTE_ON_SOLIDS), this conditional statement
   // exists inside the kernels instead.
-#if COMPUTE_ON_SOLIDS 
+
+#if SIMPLE_NS_CUSTOM
+  int i = i0+di;
+  int j = j0+dj;
+  int k = k0+dk;
+
+#if PARALLEL
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( numdims_c == 3)
+  {
+    if( j<0) { j+=nj_c;}
+    if( j==nj_c) { j=0;}
+  }
+#else
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( j<0) { j+=nj_c;}
+  if( j==nj_c) { j=0;}
+
+  if( k<0) { k+=nk_c;}
+  if( k==nk_c) { k=0;}
+#endif
+
+  int n = i + ni_c*j + nixnj_c*k;
+
+  f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+    + cumul_stride_c[a] + n] = value;
+
+#else   // !(SIMPLE_NS_CUSTOM)
+#if COMPUTE_ON_SOLIDS
   if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
   {
-#endif
     int i = i0+di;
     int j = j0+dj;
     int k = k0+dk;
@@ -2753,14 +2897,49 @@ __device__ void set_f1d_d(
       f_mem_d[ subs*cumul_stride_c[numdirs_c] 
         + cumul_stride_c[a] + n] = value;
     }
-#if COMPUTE_ON_SOLIDS
     else
     {
       f_mem_d[ subs*cumul_stride_c[numdirs_c] 
         + cumul_stride_c[a] + n] = 0.;
     }
   }
+
+#else   // !(COMPUTE_ON_SOLIDS)
+  int i = i0+di;
+  int j = j0+dj;
+  int k = k0+dk;
+
+#if PARALLEL
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( numdims_c == 3)
+  {
+    if( j<0) { j+=nj_c;}
+    if( j==nj_c) { j=0;}
+  }
+#else
+  if( i<0) { i+=ni_c;}
+  if( i==ni_c) { i=0;}
+
+  if( j<0) { j+=nj_c;}
+  if( j==nj_c) { j=0;}
+
+  if( k<0) { k+=nk_c;}
+  if( k==nk_c) { k=0;}
 #endif
+
+  int n = i + ni_c*j + nixnj_c*k;
+
+  if( d_is_not_solid( solids_mem_d, n + end_bound_c))
+  {
+    f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a] + n] = value;
+  }
+
+#endif  // COMPUTE_ON_SOLIDS
+#endif  // SIMPLE_NS_CUSTOM
+
 
 }
 __device__ void calc_f_tilde_d(

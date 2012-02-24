@@ -5,6 +5,7 @@ void k_collide(
     real* f_mem_d
     , real* mv_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -42,8 +43,36 @@ void k_collide(
 
         // If fptr = a for all nodes, then the correct values are displayed, therefore
         // fptr working, set_f1d_d working, problem must be with get_f1d_d;
-        
-        fptr[b] = get_f1d_d( f_mem_d, solids_mem_d
+
+#if SIMPLE_NS_CUSTOM
+        fptr[b] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+            , subs
+            , i,j,k,n
+            , -vx_c[0],-vy_c[0],-vz_c[0]
+            , 0, 0, 0);
+
+        for( a=1; a<numdirs_c; a+=2)
+        {
+          fptr[b + a*blocksize_c]
+            = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+                , subs
+                , i,j,k,n
+                , -vx_c[a],-vy_c[a],-vz_c[a]
+                , a, 1, 0);
+        }
+
+        for( a=2; a<numdirs_c; a+=2)
+        {
+          fptr[b + a*blocksize_c]
+            = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+                , subs
+                , i,j,k,n
+                , -vx_c[a],-vy_c[a],-vz_c[a]
+                , a, -1, 0);
+        }
+
+#else   // !(SIMPLE_NS_CUSTOM)
+        fptr[b] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs
             , i,j,k,n
             , 0,0,0
@@ -52,7 +81,7 @@ void k_collide(
         for( a=1; a<numdirs_c; a+=2)
         {
           fptr[b + a*blocksize_c]
-            = get_f1d_d( f_mem_d, solids_mem_d
+            = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
                 , subs
                 , i,j,k,n
                 , 0,0,0
@@ -62,12 +91,14 @@ void k_collide(
         for( a=2; a<numdirs_c; a+=2)
         {
           fptr[b + a*blocksize_c]
-            = get_f1d_d( f_mem_d, solids_mem_d
+            = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
                 , subs
                 , i,j,k,n
                 , 0,0,0
                 , a-1, 0);
         }
+
+#endif  // SIMPLE_NS_CUSTOM
 
 #if INAMURO_SIGMA_COMPONENT 
         if( subs == 1)
@@ -242,7 +273,7 @@ void k_collide(
         
         for( a=0; a<numdirs_c; a++)
         {
-          set_f1d_d( f_mem_d, solids_mem_d
+          set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs
               , i,j,k,n
               , 0, 0, 0
@@ -345,7 +376,7 @@ void k_collide(
 
             if( /*debug*/0)
             {
-              set_mv_d( mv_mem_d, subs, n, a, 1.1);
+              set_mv_d( mv_mem_d, subs, n, a, f_mem_d[cumul_stride_c[1]+n]);
             }
           }
           //}

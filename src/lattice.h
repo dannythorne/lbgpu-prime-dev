@@ -122,6 +122,10 @@ struct process_struct
   unsigned char *neg_dir_solid_to_send;
   unsigned char *neg_dir_solid_to_recv;
 
+  real *pos_dir_ns_to_send;
+  real *pos_dir_ns_to_recv;
+  real *neg_dir_ns_to_send;
+  real *neg_dir_ns_to_recv;
 
   MPI_Request send_req_0;
   MPI_Request recv_req_0;
@@ -136,6 +140,10 @@ struct process_struct
   MPI_Request recv_req_4;
   MPI_Request send_req_5;
   MPI_Request recv_req_5;
+  MPI_Request send_req_6;
+  MPI_Request recv_req_6;
+  MPI_Request send_req_7;
+  MPI_Request recv_req_7;
 
   MPI_Status mpi_status;
   int mpierr;

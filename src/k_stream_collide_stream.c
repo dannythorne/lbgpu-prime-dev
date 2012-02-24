@@ -6,6 +6,7 @@ void k_stream_collide_stream(
     real* f_mem_d
     , real* mv_mem_d
     , unsigned char* solids_mem_d
+    , real* ns_mem_d
     )
 {
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -37,7 +38,32 @@ void k_stream_collide_stream(
         // surrounding nodes.  This is a streaming operation. Splitting to odd and
         // even parts is necessary for the boundary condition implementation.
 
-        fptr[b] = get_f1d_d( f_mem_d, solids_mem_d
+#if SIMPLE_NS_CUSTOM
+        fptr[b] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+            , subs
+            , i,j,k,n
+            , -vx_c[0],-vy_c[0],-vz_c[0]
+            , 0, 0, 1);
+
+        for( a=1; a<numdirs_c; a+=2)
+        { 
+          fptr[b + a*blocksize_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+              , subs
+              , i,j,k,n
+              , -vx_c[a],-vy_c[a],-vz_c[a]
+              , a, 1, 1);
+        }
+        for( a=2; a<numdirs_c; a+=2)
+        { 
+          fptr[b + a*blocksize_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+              , subs
+              , i,j,k,n
+              , -vx_c[a],-vy_c[a],-vz_c[a]
+              , a, -1, 1);
+        }
+
+#else   // !(SIMPLE_NS_CUSTOM)
+        fptr[b] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs
             , i,j,k,n
             , -vx_c[0],-vy_c[0],-vz_c[0]
@@ -45,7 +71,7 @@ void k_stream_collide_stream(
 
         for( a=1; a<numdirs_c; a+=2)
         { 
-          fptr[b + a*blocksize_c] = get_f1d_d( f_mem_d, solids_mem_d
+          fptr[b + a*blocksize_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs
               , i,j,k,n
               , -vx_c[a],-vy_c[a],-vz_c[a]
@@ -53,12 +79,15 @@ void k_stream_collide_stream(
         }
         for( a=2; a<numdirs_c; a+=2)
         { 
-          fptr[b + a*blocksize_c] = get_f1d_d( f_mem_d, solids_mem_d
+          fptr[b + a*blocksize_c] = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs
               , i,j,k,n
               , -vx_c[a],-vy_c[a],-vz_c[a]
               , a, -1);
         }
+
+#endif  // SIMPLE_NS_CUSTOM
+
 
 #if INAMURO_SIGMA_COMPONENT 
         if( subs == 1)
@@ -226,7 +255,7 @@ void k_stream_collide_stream(
         // surrounding nodes.  This is a streaming operation. Splitting to odd and
         // even parts is necessary for the boundary condition implementation.
 
-        set_f1d_d( f_mem_d, solids_mem_d
+        set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
             , subs
             , i,j,k,n
             , vx_c[0],vy_c[0],vz_c[0]
@@ -234,7 +263,7 @@ void k_stream_collide_stream(
 
         for( a=1; a<numdirs_c; a+=2)
         {
-          set_f1d_d( f_mem_d, solids_mem_d
+          set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs
               , i,j,k,n
               , vx_c[a],vy_c[a],vz_c[a]
@@ -243,7 +272,7 @@ void k_stream_collide_stream(
 
         for( a=2; a<numdirs_c; a+=2)
         {
-          set_f1d_d( f_mem_d, solids_mem_d
+          set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
               , subs
               , i,j,k,n
               , vx_c[a],vy_c[a],vz_c[a]
