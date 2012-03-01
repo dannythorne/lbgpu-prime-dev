@@ -219,8 +219,11 @@ void bcs( lattice_ptr lattice)
 //
 // Apply boundary conditions before stream_collide_stream.
 //
-#if 0
-void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *solids_mem_d)
+#if 1
+void bcs_1( lattice_ptr lattice
+    , real *f_mem_d
+    , unsigned char *solids_mem_d
+    , real *ns_mem_d)
 {
 #ifdef __CUDACC__
   int subs;
@@ -274,6 +277,7 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
     cudaMemcpyToSymbol( subs_c, &subs, sizeof(int));
 
     checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+
     // PRESSURE NORTH IN
     //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Constant pressure Zou-He boundary condition on north face
@@ -306,7 +310,7 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, mv_mem_d, solids_mem_d, ns_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -335,7 +339,7 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
         * ( get_NumVelDirs( lattice) + 1 )
         * get_BX( lattice)
         * get_BZ( lattice)
-        >>>( f_mem_d, mv_mem_d, solids_mem_d, ns_mem_d);
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
       cudaThreadSynchronize();
       checkCUDAError( __FILE__, __LINE__, "k_sysbound");
 
@@ -412,6 +416,61 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
     } /* if( lattice->param.pressure_n_in[subs] ) */
 
     //********************************************************************
+
+#if INAMURO_SIGMA_COMPONENT
+    // ZERO CONCENTRATION GRADIENT N
+    //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Zero concentration gradient / zero diffusive flux - north
+
+    if( subs == 1
+        && get_proc_id( lattice) == get_num_procs( lattice)-1
+        && lattice->param.zeroconcgrad_n )
+    {
+
+      // Kernel for setting system boundary conditions
+      k_sysbound_zeroconcgrad_n_1
+        <<<
+        gridYboundDim
+        , blockYboundDim
+        , sizeof(real)
+        * ( get_NumVelDirs( lattice) + 1 )
+        * get_BX( lattice)
+        * get_BZ( lattice)
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
+      cudaThreadSynchronize();
+      checkCUDAError( __FILE__, __LINE__, "k_sysbound");
+
+    } /* if( lattice->param.pressure_n_in[subs] ) */
+
+    //********************************************************************
+
+
+    // ZERO CONCENTRATION GRADIENT S
+    //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Zero concentration gradient / zero diffusive flux - south
+
+    if( subs == 1
+        && get_proc_id( lattice) == 0
+        && lattice->param.zeroconcgrad_s )
+    {
+
+      // Kernel for setting system boundary conditions
+      k_sysbound_zeroconcgrad_s_1
+        <<<
+        gridYboundDim
+        , blockYboundDim
+        , sizeof(real)
+        * ( get_NumVelDirs( lattice) + 1 )
+        * get_BX( lattice)
+        * get_BZ( lattice)
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
+      cudaThreadSynchronize();
+      checkCUDAError( __FILE__, __LINE__, "k_sysbound");
+
+    } /* if( lattice->param.pressure_n_in[subs] ) */
+
+    //********************************************************************
+#endif  // !(INAMURO_SIGMA_COMPONENT)
 
   }  // for( subs=0; subs<get_NumSubs( lattice); subs++)
 
@@ -1033,8 +1092,11 @@ void bcs_1( lattice_ptr lattice, real *f_mem_d, real *mv_mem_d, unsigned char *s
 //
 // Apply boundary conditions after stream_collide_stream.
 //
-#if 0
-void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
+#if 1
+void bcs_2( lattice_ptr lattice
+    , real *f_mem_d
+    , unsigned char *solids_mem_d
+    , real *ns_mem_d)
 {
 #ifdef __CUDACC__
   int subs;
@@ -1227,6 +1289,60 @@ void bcs_2( lattice_ptr lattice, real *f_mem_d, unsigned char *solids_mem_d)
 
     //********************************************************************
 
+#if INAMURO_SIGMA_COMPONENT
+    // ZERO CONCENTRATION GRADIENT N
+    //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Zero concentration gradient / zero diffusive flux - north
+
+    if( subs == 1
+        && get_proc_id( lattice) == get_num_procs( lattice)-1
+        && lattice->param.zeroconcgrad_n )
+    {
+
+      // Kernel for setting system boundary conditions
+      k_sysbound_zeroconcgrad_n_2
+        <<<
+        gridYboundDim
+        , blockYboundDim
+        , sizeof(real)
+        * ( get_NumVelDirs( lattice) + 1 )
+        * get_BX( lattice)
+        * get_BZ( lattice)
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
+      cudaThreadSynchronize();
+      checkCUDAError( __FILE__, __LINE__, "k_sysbound");
+
+    } /* if( lattice->param.pressure_n_in[subs] ) */
+
+    //********************************************************************
+
+
+    // ZERO CONCENTRATION GRADIENT S
+    //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Zero concentration gradient / zero diffusive flux - south
+
+    if( subs == 1
+        && get_proc_id( lattice) == 0
+        && lattice->param.zeroconcgrad_s )
+    {
+
+      // Kernel for setting system boundary conditions
+      k_sysbound_zeroconcgrad_s_2
+        <<<
+        gridYboundDim
+        , blockYboundDim
+        , sizeof(real)
+        * ( get_NumVelDirs( lattice) + 1 )
+        * get_BX( lattice)
+        * get_BZ( lattice)
+        >>>( f_mem_d, solids_mem_d, ns_mem_d);
+      cudaThreadSynchronize();
+      checkCUDAError( __FILE__, __LINE__, "k_sysbound");
+
+    } /* if( lattice->param.pressure_n_in[subs] ) */
+
+    //********************************************************************
+#endif  // !(INAMURO_SIGMA_COMPONENT)
 
   }  // for( subs=0; subs<get_NumSubs( lattice); subs++)
 

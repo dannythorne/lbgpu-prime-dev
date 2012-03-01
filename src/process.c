@@ -2033,6 +2033,7 @@ int* get_num_procs_ptr( lattice_ptr lattice) { return &(lattice->process.num_pro
 int is_on_root_proc( lattice_ptr lattice) { return !(lattice->process.id);}
 
 #if PARALLEL
+
 int get_g_LX( lattice_ptr lattice) { return lattice->process.g_LX;}
 int get_g_LY( lattice_ptr lattice) { return lattice->process.g_LY;}
 int get_g_LZ( lattice_ptr lattice) { return lattice->process.g_LZ;}
@@ -2042,6 +2043,19 @@ int get_g_SZ( lattice_ptr lattice) { return lattice->process.g_SZ;}
 int get_g_EX( lattice_ptr lattice) { return lattice->process.g_EX;}
 int get_g_EY( lattice_ptr lattice) { return lattice->process.g_EY;}
 int get_g_EZ( lattice_ptr lattice) { return lattice->process.g_EZ;}
+
+real g2lx( lattice_ptr lattice, real g_x)
+{
+  return g_x - get_g_SX(lattice);
+}
+real g2ly( lattice_ptr lattice, real g_y)
+{
+  return g_y - get_g_SY(lattice);
+}
+real g2lz( lattice_ptr lattice, real g_z)
+{
+  return g_z - get_g_SZ(lattice);
+}
 
 void set_g_LX( lattice_ptr lattice, const int arg_LX)
 {
@@ -2109,5 +2123,18 @@ int get_g_EY( lattice_ptr lattice) { return get_LY( lattice)-1;}
 int get_g_EZ( lattice_ptr lattice) { return get_LZ( lattice)-1;}
 int get_g_NumNodes( lattice_ptr lattice) { return get_NumNodes( lattice);}
 int get_g_StartNode( lattice_ptr lattice) { return 0;}
+
+real g2lx( lattice_ptr lattice, real g_x)
+{
+  return g_x;
+}
+real g2ly( lattice_ptr lattice, real g_y)
+{
+  return g_y;
+}
+real g2lz( lattice_ptr lattice, real g_z)
+{
+  return g_z;
+}
 #endif
 

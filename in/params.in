@@ -6,10 +6,10 @@ BY                     8
 BZ                     1
 characteristic_length  40
 NumFrames              40
-FrameRate              100
+FrameRate              1000
 tau[0]                 1.
 gforce_x[0]            0.0000
-gforce_y[0]            0.00001
+gforce_y[0]            0.00000
 gforce_z[0]            0.000
 end_grav[0]            0
 tau[1]                 0.8
@@ -62,10 +62,10 @@ velocity_t_in[0]       0
 velocity_b_in[0]       0
 velocity_t_out[0]      0
 velocity_b_out[0]      0
-pressure_n_in[0]       0
+pressure_n_in[0]       1
 pressure_s_in[0]       0
 pressure_n_out[0]      0
-pressure_s_out[0]      0
+pressure_s_out[0]      1
 velocity_n_in[0]       0
 velocity_s_in[0]       0
 velocity_n_out[0]      0
@@ -128,8 +128,8 @@ constflx_e_out         0
 constflx_w_out         0
 zeroconcgrad_t         0
 zeroconcgrad_b         0
-zeroconcgrad_n         0
-zeroconcgrad_s         0
+zeroconcgrad_n         1
+zeroconcgrad_s         1
 zeroconcgrad_e         0
 zeroconcgrad_w         0
 zeroconcgrad_full      0

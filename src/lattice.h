@@ -39,6 +39,22 @@ struct macro_vars_struct
 
 };
 
+#if PEST_OUTPUT_ON
+// struct conc_data_struct
+//
+//  - Structure to hold concentration data from an experiment.
+//
+struct conc_data_struct
+{
+  int countervar;
+  int timestep;
+  int x_coord;
+  int y_coord;
+  double norm_conc;
+};
+#endif
+
+
 #if STORE_UEQ
 // struct ueq_struct
 //
@@ -734,6 +750,12 @@ struct lattice_struct
   struct vars_struct* vars;
   unsigned char* solids_memblock;
   real* ns_memblock;
+
+#if PEST_OUTPUT_ON
+  int array_position;
+  int conc_array_size;
+  struct conc_data_struct  *concentration_data;
+#endif
 
   // For the time varying north and south pressure boundaries
   struct bcs_in_struct      bcs_in[     NUM_FLUID_COMPONENTS];

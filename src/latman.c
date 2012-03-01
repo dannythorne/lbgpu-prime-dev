@@ -321,7 +321,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
 #if INAMURO_SIGMA_COMPONENT
 
-//  printf(" \n\n%d     %d\n\n ", ( *lattice)->param.sigma_t_on, ( *lattice)->param.sigma_t_off);
+  //  printf(" \n\n%d     %d\n\n ", ( *lattice)->param.sigma_t_on, ( *lattice)->param.sigma_t_off);
 
   cudaMemcpyToSymbol( sigma_t_on_c, &(( *lattice)->param.sigma_t_on), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
@@ -503,7 +503,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
         return;
       }
       *(num_pressure_n_in0_ptr(*lattice,0)) = 0;
-      double temp;
+      real temp;
       fscanf(in,"%lf",&temp);
       while( !feof(in))
       {
@@ -514,7 +514,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       printf("num_pressure_n_in0_ptr = %d\n", num_pressure_n_in0(*lattice,0));
 
       *pressure_n_in0_ptr(*lattice,0) =
-        (double*)malloc( num_pressure_n_in0(*lattice,0)*sizeof(double));
+        (real*)malloc( num_pressure_n_in0(*lattice,0)*sizeof(real));
 
       rewind(in);
       int i;
@@ -547,7 +547,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
         return;
       }
       *(num_pressure_s_in0_ptr(*lattice,0)) = 0;
-      double temp;
+      real temp;
       fscanf(in,"%lf",&temp);
       while( !feof(in))
       {
@@ -558,7 +558,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       printf("num_pressure_s_in0_ptr = %d\n", num_pressure_s_in0(*lattice,0));
 
       *pressure_s_in0_ptr(*lattice,0) =
-        (double*)malloc( num_pressure_s_in0(*lattice,0)*sizeof(double));
+        (real*)malloc( num_pressure_s_in0(*lattice,0)*sizeof(real));
 
       rewind(in);
       int i;
@@ -830,6 +830,276 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   dump_params( *lattice);
 
 } /* void construct_lattice( struct lattice_struct **lattice) */
+
+// void read_PEST_in_files( lattice_ptr *lattice, int argc, char **argv)
+//##############################################################################
+//
+// READ PEST IN FILES
+//
+//  - Read the files timestep_file.in, x_coord_file.in and y_coord_file.in
+//
+//  - The function write_PEST_out_data will then save fluid 1 rho values
+//		(concentration) to an output file.
+//
+void read_PEST_in_files( lattice_ptr *lattice, int argc, char **argv)
+{
+#if PEST_OUTPUT_ON
+  //for reading concentration data from files in ./in/
+  //for use with PEST
+
+  char   filename[1024];
+  FILE *in;
+  int i;
+  //begin with timesteps
+  sprintf(filename,"./in/timestep_file.in");
+  printf("[%s,%d] construct_lattice() -- Reading %s\n", __FILE__, __LINE__
+      , filename);
+
+  in = fopen(filename,"r");
+  if( !( in = fopen(filename,"r+")))
+  {
+    printf("%s %d >> WARNING: Can't load \"%s\".\n",
+        __FILE__,__LINE__,filename);
+    return;
+  }
+
+
+  real temp;
+
+  (*lattice)->conc_array_size = 0;
+
+  fscanf(in,"%lf",&temp);
+  while( !feof(in))
+  {
+    (*lattice)->conc_array_size++;
+    fscanf(in,"%lf",&temp);
+  }
+
+  printf("Number of PEST points = %d\n", (*lattice)->conc_array_size);
+
+
+  (*lattice)->concentration_data =
+    ( struct conc_data_struct*)malloc(
+        (*lattice)->conc_array_size*sizeof( struct conc_data_struct));
+
+  rewind(in);
+
+  for( i=0; i<(*lattice)->conc_array_size; i++)
+  {
+    (*lattice)->concentration_data[i].countervar = i;
+    fscanf(in,"%d", &((*lattice)->concentration_data[i].timestep));
+  }
+  fclose(in);
+
+  for( i=1; i<(*lattice)->conc_array_size; i++)
+  {
+    if((*lattice)->concentration_data[i].timestep < (*lattice)->concentration_data[i-1].timestep)
+    {
+      printf("[%s,%d] PEST Failure - Concentration data not in time order\n", __FILE__, __LINE__);
+      exit (1);
+    }
+  }
+
+  //now do the space coordinates, starting with x
+  sprintf(filename,"./in/x_coord_file.in");
+  printf("[%s,%d] construct_lattice() -- Reading %s\n", __FILE__, __LINE__
+      , filename);
+
+  in = fopen(filename,"r");
+  if( !( in = fopen(filename,"r+")))
+  {
+    printf("%s %d >> WARNING: Can't load \"%s\".\n",
+        __FILE__,__LINE__,filename);
+    return;
+  }
+
+  for( i=0; i<(*lattice)->conc_array_size; i++)
+  {
+    fscanf(in,"%d", &((*lattice)->concentration_data[i].x_coord));
+  }
+  fclose(in);
+
+  //now do y
+  sprintf(filename,"./in/y_coord_file.in");
+  printf("[%s,%d] construct_lattice() -- Reading %s\n", __FILE__, __LINE__
+      , filename);
+
+  in = fopen(filename,"r");
+  if( !( in = fopen(filename,"r+")))
+  {
+    printf("%s %d >> WARNING: Can't load \"%s\".\n",
+        __FILE__,__LINE__,filename);
+    return;
+  }
+
+  for( i=0; i<(*lattice)->conc_array_size; i++)
+  {
+    fscanf(in,"%d", &((*lattice)->concentration_data[i].y_coord));
+  }
+  fclose(in);
+
+  //Now we must reduce our arrays so that they only contain concs valid for the local domain
+
+  int tempint;
+
+  for( i=0; i<(*lattice)->conc_array_size; i++)
+  {
+    if((*lattice)->concentration_data[i].y_coord < get_g_SY(*lattice)
+        || (*lattice)->concentration_data[i].y_coord > get_g_EY(*lattice)
+        || (*lattice)->concentration_data[i].x_coord < get_g_SX(*lattice)
+        || (*lattice)->concentration_data[i].x_coord > get_g_EX(*lattice)) 
+    {
+      (*lattice)->concentration_data[i].timestep = -1;
+    }
+    else
+    {
+      tempint = g2ly(*lattice, (*lattice)->concentration_data[i].y_coord);  
+      (*lattice)->concentration_data[i].y_coord = tempint;
+    }
+  }
+
+  int newcount = 0;
+  for( i=0; i<(*lattice)->conc_array_size; i++)
+  {
+    tempint = (*lattice)->concentration_data[i].timestep;
+    if(tempint > -1) 
+    {
+      (*lattice)->concentration_data[newcount].countervar = (*lattice)->concentration_data[i].countervar;
+      (*lattice)->concentration_data[newcount].timestep = (*lattice)->concentration_data[i].timestep;
+      (*lattice)->concentration_data[newcount].x_coord = (*lattice)->concentration_data[i].x_coord;
+      (*lattice)->concentration_data[newcount].y_coord = (*lattice)->concentration_data[i].y_coord;
+      newcount++;
+    }
+  }
+
+  (*lattice)->conc_array_size = newcount;
+
+  printf("Concentration array size for processor %d is %d. \n", get_proc_id(*lattice), (*lattice)->conc_array_size);
+
+  (*lattice)->array_position = 0;
+
+
+
+
+#endif
+}	/* void read_PEST_in_files */
+
+
+// void write_PEST_out_data( lattice_ptr *lattice, int argc, char **argv)
+//##############################################################################
+//
+// WRITE_PEST_OUT_DATA
+//
+//  - Write pest data to (*lattice)->concentration_data[0].norm_conc
+//
+//  - The function write_PEST_out_data will then save fluid 1 rho values
+//		(concentration) to an output file.
+//
+void write_PEST_out_data( lattice_ptr *lattice
+    , real *mv_mem_d
+    , int argc
+    , char **argv)
+{
+#if PEST_OUTPUT_ON //problem with not allocating space for time_array_position?
+
+#if 1
+#ifdef __CUDACC__
+  if((*lattice)->concentration_data[(*lattice)->array_position].timestep 
+      == (*lattice)->time - 1)
+  {
+    printf("Transferring subs %d "
+        "macrovars from device to host for PEST file writing. \n", 1);
+    cudaMemcpy( get_rho_ptr(*lattice, 1, 0)
+        , mv_mem_d
+        + 1*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
+        + 0*get_NumNodes( *lattice)
+        , get_NumNodes( *lattice)*sizeof(real)
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+  }
+#endif
+#if 1
+  while(((*lattice)->concentration_data[(*lattice)->array_position].timestep)%2==1)
+  {
+      int n = (*lattice)->concentration_data[(*lattice)->array_position].y_coord 
+        * get_LX(*lattice)
+        + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
+
+      (*lattice)->concentration_data[(*lattice)->array_position].norm_conc 
+        = -1.0;
+      (*lattice)->array_position++;
+
+  }
+#endif
+
+  while((*lattice)->concentration_data[(*lattice)->array_position].timestep 
+      == (*lattice)->time - 1)
+  {
+      int n = (*lattice)->concentration_data[(*lattice)->array_position].y_coord 
+        * get_LX(*lattice)
+        + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
+
+      (*lattice)->concentration_data[(*lattice)->array_position].norm_conc 
+        = get_rho( *lattice, 1, n);
+      (*lattice)->array_position++;
+
+  }
+#endif
+  if((*lattice)->concentration_data[(*lattice)->array_position].timestep 
+      == (*lattice)->time - 1)
+  {
+    printf("\n Process %d exiting function write_PEST_out_data\n", get_proc_id( *lattice));
+  }
+#endif
+}
+
+// void write_PEST_out_file( lattice_ptr *lattice, int argc, char **argv)
+//##############################################################################
+//
+// WRITE_PEST_OUT_FILE
+//
+//  - Write pest data to (*lattice)->concentration_data[0].norm_conc
+//
+//  - The function write_PEST_out_file will then save fluid 1 rho values
+//		(concentration) to an output file.
+//
+void write_PEST_out_file( lattice_ptr *lattice, int argc, char **argv)
+{
+#if PEST_OUTPUT_ON
+  FILE *fp;
+  char   filename[1024];
+  int aa;
+  sprintf( filename, "./out/conc_data_proc%04d.dat", (*lattice)->process.id);
+  fp=fopen(filename, "w+");
+  if( !( fp = fopen(filename,"w+")))
+  {
+    printf("%s %d >> WARNING: Can't load \"%s\".\n",
+        __FILE__,__LINE__,filename);
+    return;
+  }
+  for( aa = 0; aa < (*lattice)->conc_array_size; aa++)
+  {
+    fprintf(fp,"%20.17f\n", (*lattice)->concentration_data[aa].norm_conc);
+  }
+  fclose(fp);
+  sprintf( filename, "./out/conc_order_proc%04d.dat", (*lattice)->process.id);
+  fp=fopen(filename, "w+");
+  if( !( fp = fopen(filename,"w+")))
+  {
+    printf("%s %d >> WARNING: Can't load \"%s\".\n",
+        __FILE__,__LINE__,filename);
+    return;
+  }
+  for( aa = 0; aa < (*lattice)->conc_array_size; aa++)
+  {
+    fprintf(fp,"%d\n", (*lattice)->concentration_data[aa].countervar);
+  }
+  fclose(fp);
+#endif
+}
+
+
 
 // void init_problem( struct lattice_struct *lattice)
 //##############################################################################

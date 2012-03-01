@@ -39,14 +39,13 @@
 // and the macroscopic variables will be computed.
 #define COMPUTE_ON_SOLIDS 1
 
-// FULLWAY_BOUNCEBACK implements bounceback conditions by streaming fluid
-// into the solids and then reflecting on the collision step.  This way, the
-// solid begins at the center of the node instead of the edge.
-// #define FULLWAY_BOUNCEBACK (1 && COMPUTE_ON_SOLIDS)
-
 // WALSH_NS_ON implements the partial bounceback boundary conditions found
 // in Walsh et al., Computers & Geosciences, 35 (2009) 1186–1193
 #define WALSH_NS_ON (1 && COMPUTE_ON_SOLIDS)
+
+// PEST_OUTPUT_ON enables the output of a concentration list at various
+// timesteps and coordinates for use with PEST
+#define PEST_OUTPUT_ON 1
 
 //#define OUTPUT_AT_XYZT_ON 1
 

@@ -72,6 +72,11 @@ int get_g_EZ( lattice_ptr lattice);
 int get_g_NumNodes( lattice_ptr lattice);
 int get_g_StartNode( lattice_ptr lattice);
 
+real g2lx( lattice_ptr lattice, real g_x);
+real g2ly( lattice_ptr lattice, real g_y);
+real g2lz( lattice_ptr lattice, real g_z);
+
+
 #if PARALLEL
 int get_g_SX( lattice_ptr lattice);
 int get_g_SY( lattice_ptr lattice);

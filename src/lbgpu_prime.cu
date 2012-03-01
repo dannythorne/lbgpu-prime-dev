@@ -282,13 +282,17 @@ int main( int argc, char **argv)
   //cudaEventCreate(&start);
   //cudaEventCreate(&stop);
 
+  read_PEST_in_files( &lattice, argc, argv);
+
   for( frame = 0, time=1; time<=get_NumTimeSteps( lattice); time++)
   {
     set_time( lattice, time);
 
+    write_PEST_out_data( &lattice, mv_mem_d, argc, argv);
+
 #if INAMURO_SIGMA_COMPONENT
-  cudaMemcpyToSymbol( time_c, &(lattice->time), sizeof(int));
-  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+    cudaMemcpyToSymbol( time_c, &(lattice->time), sizeof(int));
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 #endif
 
     // TODO: All of the boundary swap stuff should be part of the
@@ -436,12 +440,12 @@ int main( int argc, char **argv)
 #endif
 #endif  // if (PARALLEL)
 
-#if 0
+#if 1
     // Only implemented in 2D right now
     if( get_NumDims( lattice) == 2)
     {
       // Implement boundary conditions
-      bcs_1( lattice, f_mem_d, mv_mem_d, solids_mem_d); 
+      bcs_1( lattice, f_mem_d, solids_mem_d, ns_mem_d); 
     }
 #endif
 
@@ -483,8 +487,8 @@ int main( int argc, char **argv)
     set_time( lattice, ++time);
 
 #if INAMURO_SIGMA_COMPONENT
-  cudaMemcpyToSymbol( time_c, &(lattice->time), sizeof(int));
-  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+    cudaMemcpyToSymbol( time_c, &(lattice->time), sizeof(int));
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 #endif
 
 
@@ -637,12 +641,12 @@ int main( int argc, char **argv)
 #endif
 #endif  // if PARALLEL
 
-#if 0
+#if 1
     // Only implemented in 2D right now
     if( get_NumDims( lattice) == 2)
     {
       // Implement boundary conditions
-      bcs_2( lattice, f_mem_d, solids_mem_d); 
+      bcs_2( lattice, f_mem_d, solids_mem_d, ns_mem_d); 
     }
 #endif
 
@@ -762,6 +766,8 @@ int main( int argc, char **argv)
     }
 
   } /* for( time=1; time<=lattice->NumTimeSteps; time++) */
+
+  write_PEST_out_file( &lattice, argc, argv);
 
   // Explicit GPU thread exit call
   cudaThreadExit();
