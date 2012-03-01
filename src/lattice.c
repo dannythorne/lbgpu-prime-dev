@@ -2241,8 +2241,11 @@ __constant__ int numnodes_c;
 __constant__ int subs_c;
 
 __constant__ real fixed_bound_var_c;
-#if SIMPLE_NS_CUSTOM
-__constant__ real ns_c;
+
+#if INAMURO_SIGMA_COMPONENT
+__constant__ int time_c;
+__constant__ int sigma_t_on_c;
+__constant__ int sigma_t_off_c;
 #endif
 
 #if TEXTURE_FETCH
@@ -2645,14 +2648,10 @@ __device__ real get_f1d_d(
     , int dk
     , int a
     , int da
-#if SIMPLE_NS_CUSTOM
-    , int alpha_switch 
-#endif
     )
 {
   // Getting f_a from node (i+di,j+dj,k+dk).
 
-#if SIMPLE_NS_CUSTOM
   int i = i0+di;
   int j = j0+dj;
   int k = k0+dk;
@@ -2679,58 +2678,14 @@ __device__ real get_f1d_d(
 
   int n = i + ni_c*j + nixnj_c*k;
 
-  real alpha = (1. - ns_mem_d[n + end_bound_c]) * (1. - ns_mem_d[n0 + end_bound_c]);
-  //real alpha = (real) ((1 - solids_mem_d[n + end_bound_c]) * (1 - solids_mem_d[n0 + end_bound_c]));
+#if WALSH_NS_ON
+  return f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+    + cumul_stride_c[a] + n];
 
-  if( alpha_switch)     // k_stream_collide_stream
-  {
-    return alpha 
-      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-      + cumul_stride_c[a] + n]
-      + (1. - alpha)
-      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-      + cumul_stride_c[a+da] + n0];
-  }
-  else  // k_collide
-  {
-    return (1. - alpha) 
-      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-      + cumul_stride_c[a] + n]
-      + alpha
-      * f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-      + cumul_stride_c[a+da] + n0];
-  }
-#else   // !(SIMPLE_NS_CUSTOM)
+#else   // !(WALSH_NS_ON)
 #if COMPUTE_ON_SOLIDS
-
   if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
   {
-    int i = i0+di;
-    int j = j0+dj;
-    int k = k0+dk;
-
-#if PARALLEL
-    if( i<0) { i+=ni_c;}
-    if( i==ni_c) { i=0;}
-
-    if( numdims_c == 3)
-    {
-      if( j<0) { j+=nj_c;}
-      if( j==nj_c) { j=0;}
-    }
-#else
-    if( i<0) { i+=ni_c;}
-    if( i==ni_c) { i=0;}
-
-    if( j<0) { j+=nj_c;}
-    if( j==nj_c) { j=0;}
-
-    if( k<0) { k+=nk_c;}
-    if( k==nk_c) { k=0;}
-#endif
-
-    int n = i + ni_c*j + nixnj_c*k;
-
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
       return f_mem_d[ subs*cumul_stride_c[numdirs_c] 
@@ -2748,34 +2703,7 @@ __device__ real get_f1d_d(
   {
     return 0.;
   }
-
 #else   // !(COMPUTE_ON_SOLIDS)
-  int i = i0+di;
-  int j = j0+dj;
-  int k = k0+dk;
-
-#if PARALLEL
-  if( i<0) { i+=ni_c;}
-  if( i==ni_c) { i=0;}
-
-  if( numdims_c == 3)
-  {
-    if( j<0) { j+=nj_c;}
-    if( j==nj_c) { j=0;}
-  }
-#else
-  if( i<0) { i+=ni_c;}
-  if( i==ni_c) { i=0;}
-
-  if( j<0) { j+=nj_c;}
-  if( j==nj_c) { j=0;}
-
-  if( k<0) { k+=nk_c;}
-  if( k==nk_c) { k=0;}
-#endif
-
-  int n = i + ni_c*j + nixnj_c*k;
-
   if( d_is_not_solid( solids_mem_d, n + end_bound_c))
   {
     return f_mem_d[ subs*cumul_stride_c[numdirs_c] 
@@ -2789,8 +2717,7 @@ __device__ real get_f1d_d(
       + cumul_stride_c[a+da] + n0];
   }
 #endif  // COMPUTE_ON_SOLIDS
-#endif  // SIMPLE_NS_CUSTOM
-
+#endif  // WALSH_NS_ON
 }
 
 
@@ -2832,7 +2759,6 @@ __device__ void set_f1d_d(
   // boundary conditions. If !(COMPUTE_ON_SOLIDS), this conditional statement
   // exists inside the kernels instead.
 
-#if SIMPLE_NS_CUSTOM
   int i = i0+di;
   int j = j0+dj;
   int k = k0+dk;
@@ -2859,39 +2785,14 @@ __device__ void set_f1d_d(
 
   int n = i + ni_c*j + nixnj_c*k;
 
+#if WALSH_NS_ON
   f_mem_d[ subs*cumul_stride_c[numdirs_c] 
     + cumul_stride_c[a] + n] = value;
 
-#else   // !(SIMPLE_NS_CUSTOM)
+#else   // !(WALSH_NS_ON)
 #if COMPUTE_ON_SOLIDS
   if( d_is_not_solid( solids_mem_d, n0 + end_bound_c))
   {
-    int i = i0+di;
-    int j = j0+dj;
-    int k = k0+dk;
-
-#if PARALLEL
-    if( i<0) { i+=ni_c;}
-    if( i==ni_c) { i=0;}
-
-    if( numdims_c == 3)
-    {
-      if( j<0) { j+=nj_c;}
-      if( j==nj_c) { j=0;}
-    }
-#else
-    if( i<0) { i+=ni_c;}
-    if( i==ni_c) { i=0;}
-
-    if( j<0) { j+=nj_c;}
-    if( j==nj_c) { j=0;}
-
-    if( k<0) { k+=nk_c;}
-    if( k==nk_c) { k=0;}
-#endif
-
-    int n = i + ni_c*j + nixnj_c*k;
-
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
       f_mem_d[ subs*cumul_stride_c[numdirs_c] 
@@ -2905,41 +2806,13 @@ __device__ void set_f1d_d(
   }
 
 #else   // !(COMPUTE_ON_SOLIDS)
-  int i = i0+di;
-  int j = j0+dj;
-  int k = k0+dk;
-
-#if PARALLEL
-  if( i<0) { i+=ni_c;}
-  if( i==ni_c) { i=0;}
-
-  if( numdims_c == 3)
-  {
-    if( j<0) { j+=nj_c;}
-    if( j==nj_c) { j=0;}
-  }
-#else
-  if( i<0) { i+=ni_c;}
-  if( i==ni_c) { i=0;}
-
-  if( j<0) { j+=nj_c;}
-  if( j==nj_c) { j=0;}
-
-  if( k<0) { k+=nk_c;}
-  if( k==nk_c) { k=0;}
-#endif
-
-  int n = i + ni_c*j + nixnj_c*k;
-
   if( d_is_not_solid( solids_mem_d, n + end_bound_c))
   {
     f_mem_d[ subs*cumul_stride_c[numdirs_c] 
       + cumul_stride_c[a] + n] = value;
   }
-
 #endif  // COMPUTE_ON_SOLIDS
-#endif  // SIMPLE_NS_CUSTOM
-
+#endif
 
 }
 __device__ void calc_f_tilde_d(
@@ -2962,6 +2835,8 @@ __device__ void calc_f_tilde_d(
     {
       vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*block_size];
     }
+
+    //vdotu = 0.;
 
     f_temp[thread + dir*block_size] += wt_c[dir]
       * f_temp[ thread + numdirs_c*block_size]
@@ -2995,17 +2870,17 @@ __device__ void apply_accel_mv(
     , int cmpnt   //1, 2 or 3
     , int thread
     , int block_size
-    , real* f_temp)
+    , int n
+    , real* f_temp
+    , real* ns_mem_d)
 {
-#if 1
+#if WALSH_NS_ON
   f_temp[thread + (numdirs_c+cmpnt)*block_size]
-    += gaccel_c[ subs*3 + cmpnt-1];
+    += (1. - ns_mem_d[n + end_bound_c]) 
+    * tau_c[ subs] * gaccel_c[ subs*3 + cmpnt-1];
 #else
-  // DT: Testing
-  if( subs==0 && cmpnt==1)
-  {
-    f_temp[thread + (numdirs_c+cmpnt)*block_size] += 0.00001;
-  }
+  f_temp[thread + (numdirs_c+cmpnt)*block_size]
+    += tau_c[ subs] * gaccel_c[ subs*3 + cmpnt-1];
 #endif
 }
 

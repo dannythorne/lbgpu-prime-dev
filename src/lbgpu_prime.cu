@@ -171,7 +171,7 @@ int main( int argc, char **argv)
 #endif  // if PARALLEL
 
   // Same as above, but for the array of ns values
-#if SIMPLE_NS_CUSTOM
+#if WALSH_NS_ON
   cudaMemcpy( ns_mem_d + get_EndBoundSize( lattice)
       , get_ns_ptr(lattice, 0)
       , get_NumNodes( lattice)*sizeof(real)
@@ -285,6 +285,11 @@ int main( int argc, char **argv)
   for( frame = 0, time=1; time<=get_NumTimeSteps( lattice); time++)
   {
     set_time( lattice, time);
+
+#if INAMURO_SIGMA_COMPONENT
+  cudaMemcpyToSymbol( time_c, &(lattice->time), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+#endif
 
     // TODO: All of the boundary swap stuff should be part of the
     // mpi sendrecv functions.  For the case of CUDA without MPI, 
@@ -476,6 +481,12 @@ int main( int argc, char **argv)
 #endif  // ifdef __CUDACC__
 
     set_time( lattice, ++time);
+
+#if INAMURO_SIGMA_COMPONENT
+  cudaMemcpyToSymbol( time_c, &(lattice->time), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+#endif
+
 
     // Do boundary swaps.
 #if PARALLEL

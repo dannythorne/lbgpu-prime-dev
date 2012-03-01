@@ -131,7 +131,7 @@ struct process_struct
   MPI_Request recv_req_0;
   MPI_Request send_req_1;
   MPI_Request recv_req_1;
-//rev Huang
+  //rev Huang
   MPI_Request send_req_2;
   MPI_Request recv_req_2;
   MPI_Request send_req_3;
@@ -247,7 +247,7 @@ struct param_struct
          BY,
          BZ;
 
- // int    NGPU;
+  // int    NGPU;
 
   // Param: length_scale
   // Type: int
@@ -362,6 +362,9 @@ struct param_struct
   real u_sigma;
   real u_sigma_in;
   real u_sigma_out;
+
+  int sigma_t_on;
+  int sigma_t_off;
 
   // Param: sigma_start;
   // Type: int    sigma_start;
@@ -616,8 +619,8 @@ struct vars_struct
 struct attrib_struct
 {
   real min_macrovars[NUM_FLUID_COMPONENTS][/*MAX_DIMENSIONS+1*/4]
-     , max_macrovars[NUM_FLUID_COMPONENTS][/*MAX_DIMENSIONS+1*/4]
-     , ave_macrovars[NUM_FLUID_COMPONENTS][/*MAX_DIMENSIONS+1*/4];
+    , max_macrovars[NUM_FLUID_COMPONENTS][/*MAX_DIMENSIONS+1*/4]
+    , ave_macrovars[NUM_FLUID_COMPONENTS][/*MAX_DIMENSIONS+1*/4];
   real          flux[NUM_FLUID_COMPONENTS][/*MAX_DIMENSIONS+1*/4];
 };
 
@@ -870,9 +873,9 @@ int* get_NumSubs_ptr( lattice_ptr lattice);
 
 int is_solid( lattice_ptr lattice, const int n);
 void set_is_solid(
-  lattice_ptr lattice
-, const int n
-, const unsigned char val);
+    lattice_ptr lattice
+    , const int n
+    , const unsigned char val);
 int is_not_solid( lattice_ptr lattice, const int n);
 
 real get_rho( lattice_ptr lattice, const int subs, const int n);

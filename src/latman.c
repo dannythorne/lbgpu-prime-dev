@@ -46,9 +46,9 @@ void process_matrix( struct lattice_struct *lattice, int **matrix)
 
 } /* void process_matrix( struct lattice_struct *lattice, int **matrix) */
 
-#if SIMPLE_NS_CUSTOM
 void process_ns( struct lattice_struct *lattice, int **matrix)
 {
+#if WALSH_NS_ON
   // Variable declarations.
   int i,  j;
   int ei, ej;
@@ -77,8 +77,8 @@ void process_ns( struct lattice_struct *lattice, int **matrix)
 
   } /* for( j=0; j<=ej; j++) */
 
-} /* void process_ns( struct lattice_struct *lattice, int **matrix) */
 #endif 
+} /* void process_ns( struct lattice_struct *lattice, int **matrix) */
 
 
 
@@ -287,10 +287,6 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( nk_c, get_nk_ptr( *lattice), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
-#if SIMPLE_NS_CUSTOM
-  cudaMemcpyToSymbol( ns_c, &((*lattice)->param.ns), sizeof(real));
-  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
-#endif
 
   int temp;
 #ifdef __CUDACC__
@@ -322,6 +318,17 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( numnodes_c, get_NumNodes_ptr( *lattice), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+
+#if INAMURO_SIGMA_COMPONENT
+
+//  printf(" \n\n%d     %d\n\n ", ( *lattice)->param.sigma_t_on, ( *lattice)->param.sigma_t_off);
+
+  cudaMemcpyToSymbol( sigma_t_on_c, &(( *lattice)->param.sigma_t_on), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( sigma_t_off_c, &(( *lattice)->param.sigma_t_off), sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+#endif
+
 #endif
 
   //The following has been moved above the cudaMemcpyToSymbol section
@@ -362,9 +369,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     spy_bmp( *lattice, filename, matrix);
     process_matrix( *lattice, matrix);
     // set ns value using solids bmp
-#if SIMPLE_NS_CUSTOM
     process_ns( *lattice, matrix);
-#endif
   }
   else
   {
@@ -432,8 +437,10 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     cudaMalloc( (void**)&solids_mem_d, solids_mem_size*sizeof(unsigned char));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
 
+#if WALSH_NS_ON
     cudaMalloc( (void**)&ns_mem_d, solids_mem_size*sizeof(real));
     checkCUDAError( __FILE__, __LINE__, "cudaMalloc");
+#endif
 
 #if 0
     cudaMalloc( (void**)&is_end_of_frame_mem_d, sizeof(int));

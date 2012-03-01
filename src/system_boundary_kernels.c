@@ -1,5 +1,5 @@
 extern __shared__ real fptr[];
-#if 0
+#if 1
 __global__
 void k_sysbound_pressure_n_1(
     real* f_mem_d

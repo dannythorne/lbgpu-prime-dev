@@ -46,18 +46,18 @@ void read_params( lattice_ptr lattice, const char *infile)
   // Store different scanf format specifier for single and double precision.
   const char* rspec = ((sizeof(real)==sizeof(float))?("%f"):("%lf"));
 
-//default
+  //default
   lattice->param.GZL = 0;
   lattice->param.PressureBC = 0;
-//default
+  //default
 
   if( !( in = fopen( infile, "r")))
   {
     printf("%s %d %04d>> ERROR: "
-      "fopen(\"%s\",\"r\") = NULL.  Bye, bye!\n",
-      __FILE__, __LINE__,
-      get_proc_id( lattice),
-      infile);
+        "fopen(\"%s\",\"r\") = NULL.  Bye, bye!\n",
+        __FILE__, __LINE__,
+        get_proc_id( lattice),
+        infile);
     process_exit(1);
   }
 
@@ -77,79 +77,81 @@ void read_params( lattice_ptr lattice, const char *infile)
   skip_label( in); fscanf( in, "%d",    lattice->param.end_grav        );
   if( NUM_FLUID_COMPONENTS==2)
   {
-  skip_label( in); fscanf( in, rspec,&( lattice->param.tau[1])         );
-  skip_label( in); fscanf( in, rspec,   lattice->param.gforce[1]       );
-  skip_label( in); fscanf( in, rspec,   lattice->param.gforce[1]+1     );
-  skip_label( in); fscanf( in, rspec,   lattice->param.gforce[1]+2     );
-  skip_label( in); fscanf( in, "%d",    lattice->param.end_grav+1      );
+    skip_label( in); fscanf( in, rspec,&( lattice->param.tau[1])         );
+    skip_label( in); fscanf( in, rspec,   lattice->param.gforce[1]       );
+    skip_label( in); fscanf( in, rspec,   lattice->param.gforce[1]+1     );
+    skip_label( in); fscanf( in, rspec,   lattice->param.gforce[1]+2     );
+    skip_label( in); fscanf( in, "%d",    lattice->param.end_grav+1      );
   }
   else if( NUM_FLUID_COMPONENTS==1)
   {
-  skip_label( in); fscanf( in, rspec,   &dblank                        );
-  skip_label( in); fscanf( in, rspec,   &dblank                        );
-  skip_label( in); fscanf( in, rspec,   &dblank                        );
-  skip_label( in); fscanf( in, rspec,   &dblank                        );
-  skip_label( in); fscanf( in, "%d",    &blank                         );
+    skip_label( in); fscanf( in, rspec,   &dblank                        );
+    skip_label( in); fscanf( in, rspec,   &dblank                        );
+    skip_label( in); fscanf( in, rspec,   &dblank                        );
+    skip_label( in); fscanf( in, rspec,   &dblank                        );
+    skip_label( in); fscanf( in, "%d",    &blank                         );
   }
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
-    skip_label( in); fscanf( in, "%d ", &(lattice->param.buoyancy      ) );
-    skip_label( in); fscanf( in, "%d ", &(lattice->param.incompressible) );
-    skip_label( in); fscanf( in, "%d ", &(lattice->param.simple_diffusion) );
-//  skip_label( in); fscanf( in, rspec, &(lattice->param.rhow)           );
-//    lattice->param.rhow = 1.0;
-    skip_label( in); fscanf( in, rspec, &(  lattice->param.rho_A[0])        );
+  skip_label( in); fscanf( in, "%d ", &(lattice->param.buoyancy      ) );
+  skip_label( in); fscanf( in, "%d ", &(lattice->param.incompressible) );
+  skip_label( in); fscanf( in, "%d ", &(lattice->param.simple_diffusion) );
+  //  skip_label( in); fscanf( in, rspec, &(lattice->param.rhow)           );
+  //    lattice->param.rhow = 1.0;
+  skip_label( in); fscanf( in, rspec, &(  lattice->param.rho_A[0])        );
 
-printf("rho_A = %f\n",lattice->param.rho_A[0]);
+  printf("rho_A = %f\n",lattice->param.rho_A[0]);
 
-    skip_label( in); fscanf( in, rspec, &(  lattice->param.rho_B[0])        );
-printf("rho_B = %f\n",lattice->param.rho_B[0]);
+  skip_label( in); fscanf( in, rspec, &(  lattice->param.rho_B[0])        );
+  printf("rho_B = %f\n",lattice->param.rho_B[0]);
 
 #if INAMURO_SIGMA_COMPONENT
-    skip_label( in); fscanf( in, rspec,&( lattice->param.rho_sigma)      );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.rho_sigma_in)   );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.rho_sigma_out)  );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.u_sigma)        );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.u_sigma_in)     );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.u_sigma_out)    );
-    skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_start)    );
-    skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_stop )    );
-    skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_btc_rate ));
-    skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_btc_spot ));
+  skip_label( in); fscanf( in, rspec,&( lattice->param.rho_sigma)      );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.rho_sigma_in)   );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.rho_sigma_out)  );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.u_sigma)        );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.u_sigma_in)     );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.u_sigma_out)    );
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_t_on)    );
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_t_off)    );
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_start)    );
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_stop )    );
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_btc_rate ));
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.sigma_btc_spot ));
 #else /* !( INAMURO_SIGMA_COMPONENT) */
-    skip_label( in); fscanf( in, rspec,   &dblank                        );
-    skip_label( in); fscanf( in, rspec,   &dblank                        );
-    skip_label( in); fscanf( in, rspec,   &dblank                        );
-    skip_label( in); fscanf( in, rspec,   &dblank                        );
-    skip_label( in); fscanf( in, rspec,   &dblank                        );
-    skip_label( in); fscanf( in, rspec,   &dblank                        );
-    skip_label( in); fscanf( in, "%d ",   &blank                         );
-    skip_label( in); fscanf( in, "%d ",   &blank                         );
-    skip_label( in); fscanf( in, "%d ",   &blank                         );
-    skip_label( in); fscanf( in, "%d ",   &blank                         );
+  skip_label( in); fscanf( in, rspec,   &dblank                        );
+  skip_label( in); fscanf( in, rspec,   &dblank                        );
+  skip_label( in); fscanf( in, rspec,   &dblank                        );
+  skip_label( in); fscanf( in, rspec,   &dblank                        );
+  skip_label( in); fscanf( in, rspec,   &dblank                        );
+  skip_label( in); fscanf( in, rspec,   &dblank                        );
+  skip_label( in); fscanf( in, "%d ",   &blank                         );
+  skip_label( in); fscanf( in, "%d ",   &blank                         );
+  skip_label( in); fscanf( in, "%d ",   &blank                         );
+  skip_label( in); fscanf( in, "%d ",   &blank                         );
 #endif /* INAMURO_SIGMA_COMPONENT */
-    skip_label( in); fscanf( in, "%d ",&( lattice->param.GZL   )         );
-    skip_label( in); fscanf( in, "%d ",&( lattice->param.PressureBC)     );
-    skip_label( in); fscanf( in, "%d ",&( lattice->param.AllBoundaryPeriodic)) ;
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.GZL   )         );
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.PressureBC)     );
+  skip_label( in); fscanf( in, "%d ",&( lattice->param.AllBoundaryPeriodic)) ;
 
-    skip_label( in); fscanf( in, rspec,&( lattice->param.rho_in)         );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.rho_out)        );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.ux_in)          );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.ux_out)         );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.uy_in)          );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.uy_out)         );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.uz_in)          );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.uz_out)         );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.big_V0)         );
-    skip_label( in); fscanf( in, rspec,   lattice->param.big_V0_solid+0  );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.rho_in)         );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.rho_out)        );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.ux_in)          );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.ux_out)         );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.uy_in)          );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.uy_out)         );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.uz_in)          );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.uz_out)         );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.big_V0)         );
+  skip_label( in); fscanf( in, rspec,   lattice->param.big_V0_solid+0  );
 
   if( NUM_FLUID_COMPONENTS==2)
   {
@@ -162,47 +164,47 @@ printf("rho_B = %f\n",lattice->param.rho_B[0]);
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
-    skip_label( in); fscanf( in, "%d", &( lattice->param.ns_flag       ) );
-    skip_label( in); fscanf( in, rspec,&( lattice->param.ns            ) );
-    skip_label( in); fscanf( in, "%d", &( lattice->param.ic_poisseuille) );
-    skip_label( in); fscanf( in, "%d", &( lattice->param.bc_poisseuille) );
-    skip_label( in); fscanf( in, "%d", &( lattice->param.bc_slip_north ) );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.ns_flag       ) );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.ns            ) );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.ic_poisseuille) );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.bc_poisseuille) );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.bc_slip_north ) );
 #if INAMURO_SIGMA_COMPONENT
-    skip_label( in); fscanf( in, "%d", &( lattice->param.bc_sigma_slip ) );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.bc_sigma_slip ) );
 #else /* !( INAMURO_SIGMA_COMPONENT) */
-    skip_label( in); fscanf( in, "%d",   &blank                          );
+  skip_label( in); fscanf( in, "%d",   &blank                          );
 #endif /* INAMURO_SIGMA_COMPONENT */
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_t_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_b_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_t_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_b_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_t_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_b_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_t_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_b_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_n_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_s_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_n_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_s_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_n_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_s_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_n_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_s_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_e_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_w_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_e_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.pressure_w_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_e_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_w_in+0 );
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_e_out+0);
-    skip_label( in); fscanf( in, "%d",    lattice->param.velocity_w_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_t_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_b_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_t_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_b_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_t_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_b_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_t_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_b_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_n_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_s_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_n_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_s_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_n_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_s_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_n_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_s_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_e_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_w_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_e_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.pressure_w_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_e_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_w_in+0 );
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_e_out+0);
+  skip_label( in); fscanf( in, "%d",    lattice->param.velocity_w_out+0);
   if( NUM_FLUID_COMPONENTS==2)
   {
 
@@ -261,11 +263,11 @@ printf("rho_B = %f\n",lattice->param.rho_B[0]);
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
   if( INAMURO_SIGMA_COMPONENT)
@@ -389,20 +391,32 @@ printf("rho_B = %f\n",lattice->param.rho_B[0]);
   if( (lattice->param.FrameRate)%2)
   {
     printf("%s %d >> read_params() -- "
-           "WARNING: "
-           "Frame rate should be even because time steps are performed "
-           "in pairs in this implementation. "
-           "Increasing frame rate from %d to %d."
-           "\n"
-          , __FILE__,__LINE__
-          , lattice->param.FrameRate
-          , lattice->param.FrameRate+1
-          );
+        "WARNING: "
+        "Frame rate should be even because time steps are performed "
+        "in pairs in this implementation. "
+        "Increasing frame rate from %d to %d."
+        "\n"
+        , __FILE__,__LINE__
+        , lattice->param.FrameRate
+        , lattice->param.FrameRate+1
+        );
     lattice->param.FrameRate++;
   }
 
   lattice->NumTimeSteps =
     lattice->param.NumFrames * lattice->param.FrameRate;
+
+#if INAMURO_SIGMA_COMPONENT
+  if( lattice->param.sigma_t_on < 0)
+  {
+    lattice->param.sigma_t_on = 0;
+  }
+
+  if( lattice->param.sigma_t_off < 0)
+  {
+    lattice->param.sigma_t_off = lattice->NumTimeSteps;
+  }
+#endif
 
   if( NUM_FLUID_COMPONENTS==2)
   {
@@ -410,7 +424,7 @@ printf("rho_B = %f\n",lattice->param.rho_B[0]);
     lattice->param.rho_B[1] = lattice->param.rho_A[0];
   }
 
- // Set default values for x0, y0 and r0 if they are negative.
+  // Set default values for x0, y0 and r0 if they are negative.
 #if INTEGER_IC_BOUND
   if( lattice->param.x0 < 0)
   {
@@ -621,7 +635,7 @@ printf("rho_B = %f\n",lattice->param.rho_B[0]);
       __FILE__,__LINE__);
 #endif /* VERBOSITY_LEVEL >= 1 */
 
-printf("rho_A = %f\n",lattice->param.rho_A);
+  printf("rho_A = %f\n",lattice->param.rho_A);
 
 } /* void read_params( struct lattice_struct *lattice) */
 
@@ -672,29 +686,29 @@ void dump_params( struct lattice_struct *lattice)
   fprintf( o, "end_grav[0]          %d\n", lattice->param.end_grav[0]    );
   if( NUM_FLUID_COMPONENTS==2)
   {
-  fprintf( o, "tau[1]               %f\n", lattice->param.tau[1]         );
-  fprintf( o, "gforce[1][0]         %f\n", lattice->param.gforce[1][0]   );
-  fprintf( o, "gforce[1][1]         %f\n", lattice->param.gforce[1][1]   );
-  fprintf( o, "gforce[1][2]         %f\n", lattice->param.gforce[1][2]   );
+    fprintf( o, "tau[1]               %f\n", lattice->param.tau[1]         );
+    fprintf( o, "gforce[1][0]         %f\n", lattice->param.gforce[1][0]   );
+    fprintf( o, "gforce[1][1]         %f\n", lattice->param.gforce[1][1]   );
+    fprintf( o, "gforce[1][2]         %f\n", lattice->param.gforce[1][2]   );
 
-  fprintf( o, "end_grav[1]          %d\n", lattice->param.end_grav[1]    );
+    fprintf( o, "end_grav[1]          %d\n", lattice->param.end_grav[1]    );
   }
   else if( NUM_FLUID_COMPONENTS==1)
   {
-  fprintf( o, "tau[1]               %s\n", "--"                          );
-  fprintf( o, "gforce[1][0]         %s\n", "--"                          );
-  fprintf( o, "gforce[1][1]         %s\n", "--"                          );
-  fprintf( o, "gforce[1][2]         %s\n", "--"                          );
-  fprintf( o, "end_grav[1]          %s\n", "--"                          );
+    fprintf( o, "tau[1]               %s\n", "--"                          );
+    fprintf( o, "gforce[1][0]         %s\n", "--"                          );
+    fprintf( o, "gforce[1][1]         %s\n", "--"                          );
+    fprintf( o, "gforce[1][2]         %s\n", "--"                          );
+    fprintf( o, "end_grav[1]          %s\n", "--"                          );
   }
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
   fprintf( o, "buoyancy             %d\n", lattice->param.buoyancy        );
@@ -704,22 +718,22 @@ void dump_params( struct lattice_struct *lattice)
   fprintf( o, "rho_B[0]             %f\n", lattice->param.rho_B[0]       );
   if( NUM_FLUID_COMPONENTS==2)
   {
-  fprintf( o, "rho_A[1]             %f\n", lattice->param.rho_A[1]       );
-  fprintf( o, "rho_B[1]             %f\n", lattice->param.rho_B[1]       );
+    fprintf( o, "rho_A[1]             %f\n", lattice->param.rho_A[1]       );
+    fprintf( o, "rho_B[1]             %f\n", lattice->param.rho_B[1]       );
   }
   else if( NUM_FLUID_COMPONENTS==1)
   {
-  fprintf( o, "rho_A[1]             %s\n", "--"                          );
-  fprintf( o, "rho_B[1]             %s\n", "--"                          );
+    fprintf( o, "rho_A[1]             %s\n", "--"                          );
+    fprintf( o, "rho_B[1]             %s\n", "--"                          );
   }
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
   //fprintf( o, "rho_w                %f\n", lattice->param.rhow          );
@@ -731,6 +745,8 @@ void dump_params( struct lattice_struct *lattice)
   fprintf( o, "u_sigma              %f\n", lattice->param.u_sigma        );
   fprintf( o, "u_sigma_in           %f\n", lattice->param.u_sigma_in     );
   fprintf( o, "u_sigma_out          %f\n", lattice->param.u_sigma_out    );
+  fprintf( o, "sigma_t_on          %d\n", lattice->param.sigma_t_on    );
+  fprintf( o, "sigma_t_off          %d\n", lattice->param.sigma_t_off    );
   fprintf( o, "sigma_start          %d\n", lattice->param.sigma_start    );
   fprintf( o, "sigma_stop           %d\n", lattice->param.sigma_stop     );
   fprintf( o, "sigma_btc_rate       %d\n", lattice->param.sigma_btc_rate );
@@ -742,6 +758,8 @@ void dump_params( struct lattice_struct *lattice)
   fprintf( o, "u_sigma              %s\n", "--"                          );
   fprintf( o, "u_sigma_in           %s\n", "--"                          );
   fprintf( o, "u_sigma_out          %s\n", "--"                          );
+  fprintf( o, "sigma_t_on          %s\n", "--"                          );
+  fprintf( o, "sigma_t_off          %s\n", "--"                          );
   fprintf( o, "sigma_start          %s\n", "--"                          );
   fprintf( o, "sigma_stop           %s\n", "--"                          );
   fprintf( o, "sigma_btc_rate       %s\n", "--"                          );
@@ -762,42 +780,42 @@ void dump_params( struct lattice_struct *lattice)
   fprintf( o, "big_V0_solid[0]      %f\n", lattice->param.big_V0_solid[0]);
   if( NUM_FLUID_COMPONENTS==2)
   {
-  fprintf( o, "big_V0_solid[1]      %f\n", lattice->param.big_V0_solid[1]);
+    fprintf( o, "big_V0_solid[1]      %f\n", lattice->param.big_V0_solid[1]);
   }
   else if( NUM_FLUID_COMPONENTS==1)
   {
-  fprintf( o, "big_V0_solid[1]      %s\n", "--"                          );
+    fprintf( o, "big_V0_solid[1]      %s\n", "--"                          );
   }
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
   fprintf( o, "periodic_x[0]        %d\n", lattice->periodic_x[0]        );
   fprintf( o, "periodic_y[0]        %d\n", lattice->periodic_y[0]        );
   if( NUM_FLUID_COMPONENTS==2)
   {
-  fprintf( o, "periodic_x[1]        %d\n", lattice->periodic_x[1]        );
-  fprintf( o, "periodic_y[1]        %d\n", lattice->periodic_y[1]        );
+    fprintf( o, "periodic_x[1]        %d\n", lattice->periodic_x[1]        );
+    fprintf( o, "periodic_y[1]        %d\n", lattice->periodic_y[1]        );
   }
   else if( NUM_FLUID_COMPONENTS==1)
   {
-  fprintf( o, "periodic_x[1]        %s\n", "--"                          );
-  fprintf( o, "periodic_y[1]        %s\n", "--"                          );
+    fprintf( o, "periodic_x[1]        %s\n", "--"                          );
+    fprintf( o, "periodic_y[1]        %s\n", "--"                          );
   }
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
   fprintf( o, "ns_flag              %d\n", lattice->param.ns_flag        );
@@ -838,135 +856,135 @@ void dump_params( struct lattice_struct *lattice)
   if( NUM_FLUID_COMPONENTS==2)
   {
 
-  fprintf( o, "pressure_t_in[0]     %d\n", lattice->param.pressure_t_in[1]  );
-  fprintf( o, "pressure_b_in[0]     %d\n", lattice->param.pressure_b_in[1]  );
-  fprintf( o, "pressure_t_out[0]    %d\n", lattice->param.pressure_t_out[1] );
-  fprintf( o, "pressure_b_out[0]    %d\n", lattice->param.pressure_b_out[1] );
-  fprintf( o, "velocity_t_in[0]     %d\n", lattice->param.velocity_t_in[1]  );
-  fprintf( o, "velocity_b_in[0]     %d\n", lattice->param.velocity_b_in[1]  );
-  fprintf( o, "velocity_t_out[0]    %d\n", lattice->param.velocity_t_out[1] );
-  fprintf( o, "velocity_b_out[0]    %d\n", lattice->param.velocity_b_out[1] );
-  fprintf( o, "pressure_n_in[1]     %d\n", lattice->param.pressure_n_in[1]  );
-  fprintf( o, "pressure_s_in[1]     %d\n", lattice->param.pressure_s_in[1]  );
-  fprintf( o, "pressure_n_out[1]    %d\n", lattice->param.pressure_n_out[1] );
-  fprintf( o, "pressure_s_out[1]    %d\n", lattice->param.pressure_s_out[1] );
-  fprintf( o, "velocity_n_in[1]     %d\n", lattice->param.velocity_n_in[1]  );
-  fprintf( o, "velocity_s_in[1]     %d\n", lattice->param.velocity_s_in[1]  );
-  fprintf( o, "velocity_n_out[1]    %d\n", lattice->param.velocity_n_out[1] );
-  fprintf( o, "velocity_s_out[1]    %d\n", lattice->param.velocity_s_out[1] );
-  fprintf( o, "pressure_e_in[1]     %d\n", lattice->param.pressure_e_in[1]  );
-  fprintf( o, "pressure_w_in[1]     %d\n", lattice->param.pressure_w_in[1]  );
-  fprintf( o, "pressure_e_out[1]    %d\n", lattice->param.pressure_e_out[1] );
-  fprintf( o, "pressure_w_out[1]    %d\n", lattice->param.pressure_w_out[1] );
-  fprintf( o, "velocity_e_in[1]     %d\n", lattice->param.velocity_e_in[1]  );
-  fprintf( o, "velocity_w_in[1]     %d\n", lattice->param.velocity_w_in[1]  );
-  fprintf( o, "velocity_e_out[1]    %d\n", lattice->param.velocity_e_out[1] );
-  fprintf( o, "velocity_w_out[1]    %d\n", lattice->param.velocity_w_out[1] );
+    fprintf( o, "pressure_t_in[0]     %d\n", lattice->param.pressure_t_in[1]  );
+    fprintf( o, "pressure_b_in[0]     %d\n", lattice->param.pressure_b_in[1]  );
+    fprintf( o, "pressure_t_out[0]    %d\n", lattice->param.pressure_t_out[1] );
+    fprintf( o, "pressure_b_out[0]    %d\n", lattice->param.pressure_b_out[1] );
+    fprintf( o, "velocity_t_in[0]     %d\n", lattice->param.velocity_t_in[1]  );
+    fprintf( o, "velocity_b_in[0]     %d\n", lattice->param.velocity_b_in[1]  );
+    fprintf( o, "velocity_t_out[0]    %d\n", lattice->param.velocity_t_out[1] );
+    fprintf( o, "velocity_b_out[0]    %d\n", lattice->param.velocity_b_out[1] );
+    fprintf( o, "pressure_n_in[1]     %d\n", lattice->param.pressure_n_in[1]  );
+    fprintf( o, "pressure_s_in[1]     %d\n", lattice->param.pressure_s_in[1]  );
+    fprintf( o, "pressure_n_out[1]    %d\n", lattice->param.pressure_n_out[1] );
+    fprintf( o, "pressure_s_out[1]    %d\n", lattice->param.pressure_s_out[1] );
+    fprintf( o, "velocity_n_in[1]     %d\n", lattice->param.velocity_n_in[1]  );
+    fprintf( o, "velocity_s_in[1]     %d\n", lattice->param.velocity_s_in[1]  );
+    fprintf( o, "velocity_n_out[1]    %d\n", lattice->param.velocity_n_out[1] );
+    fprintf( o, "velocity_s_out[1]    %d\n", lattice->param.velocity_s_out[1] );
+    fprintf( o, "pressure_e_in[1]     %d\n", lattice->param.pressure_e_in[1]  );
+    fprintf( o, "pressure_w_in[1]     %d\n", lattice->param.pressure_w_in[1]  );
+    fprintf( o, "pressure_e_out[1]    %d\n", lattice->param.pressure_e_out[1] );
+    fprintf( o, "pressure_w_out[1]    %d\n", lattice->param.pressure_w_out[1] );
+    fprintf( o, "velocity_e_in[1]     %d\n", lattice->param.velocity_e_in[1]  );
+    fprintf( o, "velocity_w_in[1]     %d\n", lattice->param.velocity_w_in[1]  );
+    fprintf( o, "velocity_e_out[1]    %d\n", lattice->param.velocity_e_out[1] );
+    fprintf( o, "velocity_w_out[1]    %d\n", lattice->param.velocity_w_out[1] );
   }
   else if( NUM_FLUID_COMPONENTS==1)
   {
-  fprintf( o, "pressure_t_in[1]     %s\n", "--"                             );
-  fprintf( o, "pressure_b_in[1]     %s\n", "--"                             );
-  fprintf( o, "pressure_t_out[1]    %s\n", "--"                             );
-  fprintf( o, "pressure_b_out[1]    %s\n", "--"                             );
-  fprintf( o, "velocity_t_in[1]     %s\n", "--"                             );
-  fprintf( o, "velocity_b_in[1]     %s\n", "--"                             );
-  fprintf( o, "velocity_t_out[1]    %s\n", "--"                             );
-  fprintf( o, "velocity_b_out[1]    %s\n", "--"                             );
-  fprintf( o, "pressure_n_in[1]     %s\n", "--"                             );
-  fprintf( o, "pressure_s_in[1]     %s\n", "--"                             );
-  fprintf( o, "pressure_n_out[1]    %s\n", "--"                             );
-  fprintf( o, "pressure_s_out[1]    %s\n", "--"                             );
-  fprintf( o, "velocity_n_in[1]     %s\n", "--"                             );
-  fprintf( o, "velocity_s_in[1]     %s\n", "--"                             );
-  fprintf( o, "velocity_n_out[1]    %s\n", "--"                             );
-  fprintf( o, "velocity_s_out[1]    %s\n", "--"                             );
-  fprintf( o, "pressure_e_in[1]     %s\n", "--"                             );
-  fprintf( o, "pressure_w_in[1]     %s\n", "--"                             );
-  fprintf( o, "pressure_e_out[1]    %s\n", "--"                             );
-  fprintf( o, "pressure_w_out[1]    %s\n", "--"                             );
-  fprintf( o, "velocity_e_in[1]     %s\n", "--"                             );
-  fprintf( o, "velocity_w_in[1]     %s\n", "--"                             );
-  fprintf( o, "velocity_e_out[1]    %s\n", "--"                             );
-  fprintf( o, "velocity_w_out[1]    %s\n", "--"                             );
+    fprintf( o, "pressure_t_in[1]     %s\n", "--"                             );
+    fprintf( o, "pressure_b_in[1]     %s\n", "--"                             );
+    fprintf( o, "pressure_t_out[1]    %s\n", "--"                             );
+    fprintf( o, "pressure_b_out[1]    %s\n", "--"                             );
+    fprintf( o, "velocity_t_in[1]     %s\n", "--"                             );
+    fprintf( o, "velocity_b_in[1]     %s\n", "--"                             );
+    fprintf( o, "velocity_t_out[1]    %s\n", "--"                             );
+    fprintf( o, "velocity_b_out[1]    %s\n", "--"                             );
+    fprintf( o, "pressure_n_in[1]     %s\n", "--"                             );
+    fprintf( o, "pressure_s_in[1]     %s\n", "--"                             );
+    fprintf( o, "pressure_n_out[1]    %s\n", "--"                             );
+    fprintf( o, "pressure_s_out[1]    %s\n", "--"                             );
+    fprintf( o, "velocity_n_in[1]     %s\n", "--"                             );
+    fprintf( o, "velocity_s_in[1]     %s\n", "--"                             );
+    fprintf( o, "velocity_n_out[1]    %s\n", "--"                             );
+    fprintf( o, "velocity_s_out[1]    %s\n", "--"                             );
+    fprintf( o, "pressure_e_in[1]     %s\n", "--"                             );
+    fprintf( o, "pressure_w_in[1]     %s\n", "--"                             );
+    fprintf( o, "pressure_e_out[1]    %s\n", "--"                             );
+    fprintf( o, "pressure_w_out[1]    %s\n", "--"                             );
+    fprintf( o, "velocity_e_in[1]     %s\n", "--"                             );
+    fprintf( o, "velocity_w_in[1]     %s\n", "--"                             );
+    fprintf( o, "velocity_e_out[1]    %s\n", "--"                             );
+    fprintf( o, "velocity_w_out[1]    %s\n", "--"                             );
   }
   else
   {
     printf(
-      "read_params() -- "
-      "Unhandled case "
-      "NUM_FLUID_COMPONENTS = %d .  "
-      "Exiting!\n",
-      NUM_FLUID_COMPONENTS);
+        "read_params() -- "
+        "Unhandled case "
+        "NUM_FLUID_COMPONENTS = %d .  "
+        "Exiting!\n",
+        NUM_FLUID_COMPONENTS);
     process_exit(1);
   }
   if( INAMURO_SIGMA_COMPONENT)
   {
-  fprintf( o, "constcon_t_in        %d\n", lattice->param.constcon_t_in  );
-  fprintf( o, "constcon_b_in        %d\n", lattice->param.constcon_b_in  );
-  fprintf( o, "constcon_t_out       %d\n", lattice->param.constcon_t_out );
-  fprintf( o, "constcon_b_out       %d\n", lattice->param.constcon_b_out );
-  fprintf( o, "constflx_t_in        %d\n", lattice->param.constflx_t_in  );
-  fprintf( o, "constflx_b_in        %d\n", lattice->param.constflx_b_in  );
-  fprintf( o, "constflx_t_out       %d\n", lattice->param.constflx_t_out );
-  fprintf( o, "constflx_b_out       %d\n", lattice->param.constflx_b_out );
-  fprintf( o, "constcon_n_in        %d\n", lattice->param.constcon_n_in  );
-  fprintf( o, "constcon_s_in        %d\n", lattice->param.constcon_s_in  );
-  fprintf( o, "constcon_n_out       %d\n", lattice->param.constcon_n_out );
-  fprintf( o, "constcon_s_out       %d\n", lattice->param.constcon_s_out );
-  fprintf( o, "constflx_n_in        %d\n", lattice->param.constflx_n_in  );
-  fprintf( o, "constflx_s_in        %d\n", lattice->param.constflx_s_in  );
-  fprintf( o, "constflx_n_out       %d\n", lattice->param.constflx_n_out );
-  fprintf( o, "constflx_s_out       %d\n", lattice->param.constflx_s_out );
-  fprintf( o, "constcon_e_in        %d\n", lattice->param.constcon_e_in  );
-  fprintf( o, "constcon_w_in        %d\n", lattice->param.constcon_w_in  );
-  fprintf( o, "constcon_e_out       %d\n", lattice->param.constcon_e_out );
-  fprintf( o, "constcon_w_out       %d\n", lattice->param.constcon_w_out );
-  fprintf( o, "constflx_e_in        %d\n", lattice->param.constflx_e_in  );
-  fprintf( o, "constflx_w_in        %d\n", lattice->param.constflx_w_in  );
-  fprintf( o, "constflx_e_out       %d\n", lattice->param.constflx_e_out );
-  fprintf( o, "constflx_w_out       %d\n", lattice->param.constflx_w_out );
-  fprintf( o, "zeroconcgrad_t       %d\n", lattice->param.zeroconcgrad_t );
-  fprintf( o, "zeroconcgrad_b       %d\n", lattice->param.zeroconcgrad_b );
-  fprintf( o, "zeroconcgrad_n       %d\n", lattice->param.zeroconcgrad_n );
-  fprintf( o, "zeroconcgrad_s       %d\n", lattice->param.zeroconcgrad_s );
-  fprintf( o, "zeroconcgrad_e       %d\n", lattice->param.zeroconcgrad_e );
-  fprintf( o, "zeroconcgrad_w       %d\n", lattice->param.zeroconcgrad_w );
-  fprintf( o, "zeroconcgrad_full    %d\n", lattice->param.zeroconcgrad_full );
+    fprintf( o, "constcon_t_in        %d\n", lattice->param.constcon_t_in  );
+    fprintf( o, "constcon_b_in        %d\n", lattice->param.constcon_b_in  );
+    fprintf( o, "constcon_t_out       %d\n", lattice->param.constcon_t_out );
+    fprintf( o, "constcon_b_out       %d\n", lattice->param.constcon_b_out );
+    fprintf( o, "constflx_t_in        %d\n", lattice->param.constflx_t_in  );
+    fprintf( o, "constflx_b_in        %d\n", lattice->param.constflx_b_in  );
+    fprintf( o, "constflx_t_out       %d\n", lattice->param.constflx_t_out );
+    fprintf( o, "constflx_b_out       %d\n", lattice->param.constflx_b_out );
+    fprintf( o, "constcon_n_in        %d\n", lattice->param.constcon_n_in  );
+    fprintf( o, "constcon_s_in        %d\n", lattice->param.constcon_s_in  );
+    fprintf( o, "constcon_n_out       %d\n", lattice->param.constcon_n_out );
+    fprintf( o, "constcon_s_out       %d\n", lattice->param.constcon_s_out );
+    fprintf( o, "constflx_n_in        %d\n", lattice->param.constflx_n_in  );
+    fprintf( o, "constflx_s_in        %d\n", lattice->param.constflx_s_in  );
+    fprintf( o, "constflx_n_out       %d\n", lattice->param.constflx_n_out );
+    fprintf( o, "constflx_s_out       %d\n", lattice->param.constflx_s_out );
+    fprintf( o, "constcon_e_in        %d\n", lattice->param.constcon_e_in  );
+    fprintf( o, "constcon_w_in        %d\n", lattice->param.constcon_w_in  );
+    fprintf( o, "constcon_e_out       %d\n", lattice->param.constcon_e_out );
+    fprintf( o, "constcon_w_out       %d\n", lattice->param.constcon_w_out );
+    fprintf( o, "constflx_e_in        %d\n", lattice->param.constflx_e_in  );
+    fprintf( o, "constflx_w_in        %d\n", lattice->param.constflx_w_in  );
+    fprintf( o, "constflx_e_out       %d\n", lattice->param.constflx_e_out );
+    fprintf( o, "constflx_w_out       %d\n", lattice->param.constflx_w_out );
+    fprintf( o, "zeroconcgrad_t       %d\n", lattice->param.zeroconcgrad_t );
+    fprintf( o, "zeroconcgrad_b       %d\n", lattice->param.zeroconcgrad_b );
+    fprintf( o, "zeroconcgrad_n       %d\n", lattice->param.zeroconcgrad_n );
+    fprintf( o, "zeroconcgrad_s       %d\n", lattice->param.zeroconcgrad_s );
+    fprintf( o, "zeroconcgrad_e       %d\n", lattice->param.zeroconcgrad_e );
+    fprintf( o, "zeroconcgrad_w       %d\n", lattice->param.zeroconcgrad_w );
+    fprintf( o, "zeroconcgrad_full    %d\n", lattice->param.zeroconcgrad_full );
   }
   else
   {
-  fprintf( o, "constcon_t_in        %s\n", "--"                             );
-  fprintf( o, "constcon_b_in        %s\n", "--"                             );
-  fprintf( o, "constcon_t_out       %s\n", "--"                             );
-  fprintf( o, "constcon_b_out       %s\n", "--"                             );
-  fprintf( o, "constflx_t_in        %s\n", "--"                             );
-  fprintf( o, "constflx_b_in        %s\n", "--"                             );
-  fprintf( o, "constflx_t_out       %s\n", "--"                             );
-  fprintf( o, "constflx_b_out       %s\n", "--"                             );
-  fprintf( o, "constcon_n_in        %s\n", "--"                             );
-  fprintf( o, "constcon_s_in        %s\n", "--"                             );
-  fprintf( o, "constcon_n_out       %s\n", "--"                             );
-  fprintf( o, "constcon_s_out       %s\n", "--"                             );
-  fprintf( o, "constflx_n_in        %s\n", "--"                             );
-  fprintf( o, "constflx_s_in        %s\n", "--"                             );
-  fprintf( o, "constflx_n_out       %s\n", "--"                             );
-  fprintf( o, "constflx_s_out       %s\n", "--"                             );
-  fprintf( o, "constcon_e_in        %s\n", "--"                             );
-  fprintf( o, "constcon_w_in        %s\n", "--"                             );
-  fprintf( o, "constcon_e_out       %s\n", "--"                             );
-  fprintf( o, "constcon_w_out       %s\n", "--"                             );
-  fprintf( o, "constflx_e_in        %s\n", "--"                             );
-  fprintf( o, "constflx_w_in        %s\n", "--"                             );
-  fprintf( o, "constflx_e_out       %s\n", "--"                             );
-  fprintf( o, "constflx_w_out       %s\n", "--"                             );
-  fprintf( o, "zeroconcgrad_t       %s\n", "--"                             );
-  fprintf( o, "zeroconcgrad_b       %s\n", "--"                             );
-  fprintf( o, "zeroconcgrad_n       %s\n", "--"                             );
-  fprintf( o, "zeroconcgrad_s       %s\n", "--"                             );
-  fprintf( o, "zeroconcgrad_e       %s\n", "--"                             );
-  fprintf( o, "zeroconcgrad_w       %s\n", "--"                             );
-  fprintf( o, "zeroconcgrad_full    %s\n", "--"                             );
+    fprintf( o, "constcon_t_in        %s\n", "--"                             );
+    fprintf( o, "constcon_b_in        %s\n", "--"                             );
+    fprintf( o, "constcon_t_out       %s\n", "--"                             );
+    fprintf( o, "constcon_b_out       %s\n", "--"                             );
+    fprintf( o, "constflx_t_in        %s\n", "--"                             );
+    fprintf( o, "constflx_b_in        %s\n", "--"                             );
+    fprintf( o, "constflx_t_out       %s\n", "--"                             );
+    fprintf( o, "constflx_b_out       %s\n", "--"                             );
+    fprintf( o, "constcon_n_in        %s\n", "--"                             );
+    fprintf( o, "constcon_s_in        %s\n", "--"                             );
+    fprintf( o, "constcon_n_out       %s\n", "--"                             );
+    fprintf( o, "constcon_s_out       %s\n", "--"                             );
+    fprintf( o, "constflx_n_in        %s\n", "--"                             );
+    fprintf( o, "constflx_s_in        %s\n", "--"                             );
+    fprintf( o, "constflx_n_out       %s\n", "--"                             );
+    fprintf( o, "constflx_s_out       %s\n", "--"                             );
+    fprintf( o, "constcon_e_in        %s\n", "--"                             );
+    fprintf( o, "constcon_w_in        %s\n", "--"                             );
+    fprintf( o, "constcon_e_out       %s\n", "--"                             );
+    fprintf( o, "constcon_w_out       %s\n", "--"                             );
+    fprintf( o, "constflx_e_in        %s\n", "--"                             );
+    fprintf( o, "constflx_w_in        %s\n", "--"                             );
+    fprintf( o, "constflx_e_out       %s\n", "--"                             );
+    fprintf( o, "constflx_w_out       %s\n", "--"                             );
+    fprintf( o, "zeroconcgrad_t       %s\n", "--"                             );
+    fprintf( o, "zeroconcgrad_b       %s\n", "--"                             );
+    fprintf( o, "zeroconcgrad_n       %s\n", "--"                             );
+    fprintf( o, "zeroconcgrad_s       %s\n", "--"                             );
+    fprintf( o, "zeroconcgrad_e       %s\n", "--"                             );
+    fprintf( o, "zeroconcgrad_w       %s\n", "--"                             );
+    fprintf( o, "zeroconcgrad_full    %s\n", "--"                             );
   }
 
   fprintf( o, "plot_scale_dynamic   %d\n", lattice->param.plot_scale_dynamic);

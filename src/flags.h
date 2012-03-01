@@ -35,6 +35,21 @@
 // important when setting LX or LY to unity for a 2D simulation
 #define INTEGER_IC_BOUND 1
 
+// If COMPUTE_ON_SOLIDS is on, the f's will be set to zero on solid nodes
+// and the macroscopic variables will be computed.
+#define COMPUTE_ON_SOLIDS 1
+
+// FULLWAY_BOUNCEBACK implements bounceback conditions by streaming fluid
+// into the solids and then reflecting on the collision step.  This way, the
+// solid begins at the center of the node instead of the edge.
+// #define FULLWAY_BOUNCEBACK (1 && COMPUTE_ON_SOLIDS)
+
+// WALSH_NS_ON implements the partial bounceback boundary conditions found
+// in Walsh et al., Computers & Geosciences, 35 (2009) 1186–1193
+#define WALSH_NS_ON (1 && COMPUTE_ON_SOLIDS)
+
+//#define OUTPUT_AT_XYZT_ON 1
+
 // Use double precision (or not)
 
 #define DP_ON 1
@@ -67,7 +82,7 @@
 
 // NUM_FLUID_COMPONENTS specifies the number of fluid components.
 // Flag: NUM_FLUID_COMPONENTS
-#define NUM_FLUID_COMPONENTS 1
+#define NUM_FLUID_COMPONENTS 2
 
 //if it is SPONGE, the total computational domain firstly initiallized
 //as randomly distributed fluid1 and fluid2 , however, the upper and
@@ -79,7 +94,7 @@
 // component for solute (or thermal) transport as in Inamuro & Yoshino
 // by turning on INAMURO_SIGMA_COMPONENT .
 // Flag: INAMURO_SIGMA_COMPONENT
-#define INAMURO_SIGMA_COMPONENT ( 0 && NUM_FLUID_COMPONENTS==2)
+#define INAMURO_SIGMA_COMPONENT ( 1 && NUM_FLUID_COMPONENTS==2)
 
 // Toggle Zhang & Chen energy transport method, PRE 67, 0066711 (2003).
 // Supposed to give thermodynamic consistency unlike old Shan & Chen method.
@@ -113,14 +128,7 @@
 // small (<~.7), this results in lower storage requirements.
 // Flag: DO_NOT_STORE_SOLIDS
 #define DO_NOT_STORE_SOLIDS 0
-// If IGNORE_SOLIDS is on, the code ignores all solids introduced through
-// the domain bitmap files in the 'in' folder.
-//#define IGNORE_SOLIDS 0
-// If COMPUTE_ON_SOLIDS is on, the f's will be set to zero on solid nodes
-// and the macroscopic variables will be computed.
-#define COMPUTE_ON_SOLIDS 1
 
-#define SIMPLE_NS_CUSTOM (1 && COMPUTE_ON_SOLIDS)
 
 // NON_LOCAL_FORCES toggles any mechanisms for computing and storing
 // non-local (interaction) forces.
