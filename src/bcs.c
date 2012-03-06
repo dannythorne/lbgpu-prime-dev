@@ -1264,8 +1264,8 @@ void bcs_2( lattice_ptr lattice
       real rho;
       if( lattice->param.pressure_s_in[subs]==2)
       {
-        rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_n_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
+        rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_s_in0( lattice, subs)
+            + get_time(lattice)%num_pressure_s_in0(lattice,subs)));
 
 //        rho = *( pressure_s_in0( lattice, subs)
   //          + get_time(lattice)%num_pressure_s_in0(lattice,subs));
