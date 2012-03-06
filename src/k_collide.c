@@ -207,7 +207,7 @@ void k_collide(
             else
             {
               fptr[b + (numdirs_c+0)*blocksize_c]
-                *= (1.0 - INAMURO_SINK_VALUE * tau_c[1]);
+                *= (1.0 - sink_c * tau_c[1]);
 
             }
 #endif
