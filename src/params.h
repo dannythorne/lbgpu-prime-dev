@@ -141,6 +141,9 @@ void read_params( lattice_ptr lattice, const char *infile)
   skip_label( in); fscanf( in, "%d ",&( lattice->param.GZL   )         );
   skip_label( in); fscanf( in, "%d ",&( lattice->param.PressureBC)     );
   skip_label( in); fscanf( in, "%d ",&( lattice->param.AllBoundaryPeriodic)) ;
+  skip_label( in); fscanf( in, rspec,&( lattice->param.sink)         );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.pfmul)        );
+  skip_label( in); fscanf( in, rspec,&( lattice->param.pfadd)         );
 
   skip_label( in); fscanf( in, rspec,&( lattice->param.rho_in)         );
   skip_label( in); fscanf( in, rspec,&( lattice->param.rho_out)        );
@@ -181,6 +184,8 @@ void read_params( lattice_ptr lattice, const char *infile)
 #else /* !( INAMURO_SIGMA_COMPONENT) */
   skip_label( in); fscanf( in, "%d",   &blank                          );
 #endif /* INAMURO_SIGMA_COMPONENT */
+  skip_label( in); fscanf( in, "%d", &( lattice->param.bc_ramp_start ) );
+  skip_label( in); fscanf( in, "%d", &( lattice->param.bc_ramp_stop ) );
   skip_label( in); fscanf( in, "%d",    lattice->param.pressure_t_in+0 );
   skip_label( in); fscanf( in, "%d",    lattice->param.pressure_b_in+0 );
   skip_label( in); fscanf( in, "%d",    lattice->param.pressure_t_out+0);
@@ -413,6 +418,17 @@ void read_params( lattice_ptr lattice, const char *infile)
   }
 
   if( lattice->param.sigma_t_off < 0)
+  {
+    lattice->param.sigma_t_off = lattice->NumTimeSteps;
+  }
+#endif
+#if 0
+  if( lattice->param.bc_ramp_start < 0)
+  {
+    lattice->param.sigma_t_on = 0;
+  }
+
+  if( lattice->param.bc_ramp_stop < 0)
   {
     lattice->param.sigma_t_off = lattice->NumTimeSteps;
   }
@@ -768,6 +784,9 @@ void dump_params( struct lattice_struct *lattice)
   fprintf( o, "GZL                  %d\n", lattice->param.GZL            );
   fprintf( o, "PressureBC           %d\n", lattice->param.PressureBC     );
   fprintf( o, "AllBoundaryPeriodic           %d\n", lattice->param.AllBoundaryPeriodic     );
+  fprintf( o, "sink               %f\n", lattice->param.sink         );
+  fprintf( o, "pfmul              %f\n", lattice->param.pfmul        );
+  fprintf( o, "pfadd                %f\n", lattice->param.pfadd          );
   fprintf( o, "rho_in               %f\n", lattice->param.rho_in         );
   fprintf( o, "rho_out              %f\n", lattice->param.rho_out        );
   fprintf( o, "ux_in                %f\n", lattice->param.ux_in          );
@@ -828,6 +847,8 @@ void dump_params( struct lattice_struct *lattice)
 #else /* !( INAMURO_SIGMA_COMPONENT) */
   fprintf( o, "bc_sigma_slip        %s\n", "--"                          );
 #endif /* INAMURO_SIGMA_COMPONENT */
+  fprintf( o, "bc_ramp_start        %d\n", lattice->param.bc_ramp_start  );
+  fprintf( o, "bc_ramp_stop        %d\n", lattice->param.bc_ramp_stop  );
   fprintf( o, "pressure_t_in[0]     %d\n", lattice->param.pressure_t_in[0]  );
   fprintf( o, "pressure_b_in[0]     %d\n", lattice->param.pressure_b_in[0]  );
   fprintf( o, "pressure_t_out[0]    %d\n", lattice->param.pressure_t_out[0] );

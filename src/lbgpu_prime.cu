@@ -65,6 +65,7 @@ int main( int argc, char **argv)
 
 #ifdef __CUDACC__
 
+#if 1
   if( get_LX( lattice) % get_BX( lattice) != 0)
   {
     printf("\n%s %d ERROR: LX = %d must be divisible by BX = %d. (Exiting.)\n\n"
@@ -92,7 +93,7 @@ int main( int argc, char **argv)
         , get_BZ( lattice));
     process_exit(1);
   }
-
+#endif
 
   dim3 blockDim( get_BX( lattice), get_BY( lattice), get_BZ( lattice));
   dim3 gridDim( get_LX( lattice) / get_BX( lattice),
@@ -288,7 +289,6 @@ int main( int argc, char **argv)
   {
     set_time( lattice, time);
 
-    write_PEST_out_data( &lattice, mv_mem_d, argc, argv);
 
 #if INAMURO_SIGMA_COMPONENT
     cudaMemcpyToSymbol( time_c, &(lattice->time), sizeof(int));
@@ -459,6 +459,14 @@ int main( int argc, char **argv)
     // http://www.tc.umn.edu/~bail0253/
 
 #ifdef __CUDACC__
+    if( is_end_of_frame(lattice,time))
+    {
+      temp_frame_switch = 1;
+      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
+    }
+
+    PEST_gpu_switch( &lattice, mv_mem_d, argc, argv);
+
     k_stream_collide_stream
       <<<
       gridDim
@@ -474,9 +482,61 @@ int main( int argc, char **argv)
     cudaThreadSynchronize();
     checkCUDAError( __FILE__, __LINE__, "k_stream_collide_stream");
 
+    write_PEST_out_data( &lattice, mv_mem_d, argc, argv);
+
     if( temp_frame_switch)
     {
+
+      // Although it is necessary to copy device arrays to host at this point,
+      // it is inefficient to write them to file here. Rather, we write to file
+      // immediately after the first kernel, to allow concurrent host and
+      // device execution.  On the last frame of course, it is necessary to
+      // write to file here.
+      set_frame( lattice, ++frame);
+
+      for( subs = 0; subs < get_NumSubs( lattice); subs++)
+      {
+        printf("Transferring subs %d "
+            "macrovars from device to host for output. \n", subs);
+        cudaMemcpy( get_rho_ptr(lattice, subs, 0)
+            , mv_mem_d
+            + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+            + 0*get_NumNodes( lattice)
+            , get_NumNodes( lattice)*sizeof(real)
+            , cudaMemcpyDeviceToHost);
+        checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        cudaMemcpy( get_ux_ptr(lattice, subs, 0)
+            , mv_mem_d
+            + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+            + 1*get_NumNodes( lattice)
+            , get_NumNodes( lattice)*sizeof(real)
+            , cudaMemcpyDeviceToHost);
+        checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        cudaMemcpy( get_uy_ptr(lattice, subs, 0)
+            , mv_mem_d
+            + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+            + 2*get_NumNodes( lattice)
+            , get_NumNodes( lattice)*sizeof(real)
+            , cudaMemcpyDeviceToHost);
+        checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        if(get_NumDims( lattice) == 3)
+        {
+          cudaMemcpy( get_uz_ptr(lattice, subs, 0)
+              , mv_mem_d
+              + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+              + 3*get_NumNodes( lattice)
+              , get_NumNodes( lattice)*sizeof(real)
+              , cudaMemcpyDeviceToHost);
+          checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        }
+      }
       output_frame( lattice);
+      process_toc( lattice);
+      display_etime( lattice);
       temp_frame_switch = 0;
       cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
     }
@@ -657,6 +717,9 @@ int main( int argc, char **argv)
       cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
     }
 
+
+    PEST_gpu_switch( &lattice, mv_mem_d, argc, argv);
+
     k_collide
       <<<
       gridDim
@@ -669,10 +732,75 @@ int main( int argc, char **argv)
       >>>( f_mem_d, mv_mem_d, solids_mem_d, ns_mem_d);
     cudaThreadSynchronize();
     checkCUDAError( __FILE__, __LINE__, "k_collide");
+
+    write_PEST_out_data( &lattice, mv_mem_d, argc, argv);
+
+    if( temp_frame_switch)
+    {
+      // Although it is necessary to copy device arrays to host at this point,
+      // it is inefficient to write them to file here. Rather, we write to file
+      // immediately after the first kernel, to allow concurrent host and
+      // device execution.  On the last frame of course, it is necessary to
+      // write to file here.
+      set_frame( lattice, ++frame);
+
+      for( subs = 0; subs < get_NumSubs( lattice); subs++)
+      {
+        printf("Transferring subs %d "
+            "macrovars from device to host for output. \n", subs);
+        cudaMemcpy( get_rho_ptr(lattice, subs, 0)
+            , mv_mem_d
+            + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+            + 0*get_NumNodes( lattice)
+            , get_NumNodes( lattice)*sizeof(real)
+            , cudaMemcpyDeviceToHost);
+        checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        cudaMemcpy( get_ux_ptr(lattice, subs, 0)
+            , mv_mem_d
+            + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+            + 1*get_NumNodes( lattice)
+            , get_NumNodes( lattice)*sizeof(real)
+            , cudaMemcpyDeviceToHost);
+        checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        cudaMemcpy( get_uy_ptr(lattice, subs, 0)
+            , mv_mem_d
+            + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+            + 2*get_NumNodes( lattice)
+            , get_NumNodes( lattice)*sizeof(real)
+            , cudaMemcpyDeviceToHost);
+        checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        if(get_NumDims( lattice) == 3)
+        {
+          cudaMemcpy( get_uz_ptr(lattice, subs, 0)
+              , mv_mem_d
+              + subs*get_NumNodes( lattice)*( 1 + get_NumDims( lattice))
+              + 3*get_NumNodes( lattice)
+              , get_NumNodes( lattice)*sizeof(real)
+              , cudaMemcpyDeviceToHost);
+          checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+        }
+      }
+
+
+
+      output_frame( lattice);
+      process_toc( lattice);
+      display_etime( lattice);
+
+      temp_frame_switch = 0;
+      cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
+    }
+
+
 #else   // ifndef __CUDACC__
     collide( lattice);
 #endif  // ifdef __CUDACC__
 
+#if 0
     if( is_end_of_frame(lattice,time))
     { 
       // Although it is necessary to copy device arrays to host at this point,
@@ -764,6 +892,7 @@ int main( int argc, char **argv)
       printf("**************\n");
 #endif
     }
+#endif
 
   } /* for( time=1; time<=lattice->NumTimeSteps; time++) */
 

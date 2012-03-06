@@ -82,6 +82,8 @@ void k_stream_collide_stream(
               fptr[b + (numdirs_c+0)*blocksize_c]
                 += fptr[b + a*blocksize_c];
             }
+
+
           }
           else
           {
@@ -181,8 +183,33 @@ void k_stream_collide_stream(
 #if INAMURO_SIGMA_COMPONENT
           }
 #endif  // INAMURO_SIGMA_COMPONENT
-#if 0
-          if( !d_skip_updating_macrovars())
+
+          if( !d_skip_body_force_term())
+          {
+            // Modify macroscopic variables with a body force
+#if INAMURO_SIGMA_COMPONENT
+            if( subs != 1)
+            {
+#endif
+              for( a=1; a<=numdims_c; a++)
+              {
+                apply_accel_mv( subs, a, b, blocksize_c, n, fptr, ns_mem_d);
+              }
+#if INAMURO_SIGMA_COMPONENT
+            }
+            else
+            {
+              fptr[b + (numdirs_c+0)*blocksize_c]
+                *= (1.0 - sink_c * tau_c[1]);
+
+            }
+#endif
+
+          }
+
+#if 1
+
+          if( is_end_of_frame_mem_c)
           {
             // Store macroscopic variables in global memory.
             for( a=0; a<=numdims_c; a++)
@@ -190,10 +217,20 @@ void k_stream_collide_stream(
               set_mv_d( mv_mem_d
                   , subs, n, a
                   , fptr[ b + (numdirs_c + a)*blocksize_c] );
+
               if( /*debug*/0)
               {
                 set_mv_d( mv_mem_d, subs, n, a, 6.);
               }
+            }
+          }
+          else
+          {
+            if( pest_output_flag_c && subs == 1)
+            {
+              set_mv_d( mv_mem_d
+                  , subs, n, 0
+                  , fptr[ b + (numdirs_c + 0)*blocksize_c] );
             }
           }
 #endif
@@ -221,22 +258,6 @@ void k_stream_collide_stream(
 #endif
             if( !d_skip_collision_step())
             {
-              if( !d_skip_body_force_term())
-              {
-                // Modify macroscopic variables with a body force
-#if INAMURO_SIGMA_COMPONENT
-                if( subs != 1)
-                {
-#endif
-                  for( a=1; a<=numdims_c; a++)
-                  {
-                    apply_accel_mv( subs, a, b, blocksize_c, n, fptr, ns_mem_d);
-                  }
-#if INAMURO_SIGMA_COMPONENT
-                }
-#endif
-
-              }
 
               // Calculate u-squared since it is used many times
               real usq;
@@ -264,7 +285,7 @@ void k_stream_collide_stream(
 
 #if WALSH_NS_ON
               real temp1, temp2;
-              
+
               temp1 = fptr[b];
               calc_f_tilde_d( f_mem_d, subs, 0, b, blocksize_c, fptr, usq);
               fptr[b] *= 1. - ns_mem_d[ n + end_bound_c];

@@ -289,12 +289,25 @@ void bcs_1( lattice_ptr lattice
 
       if( lattice->param.pressure_n_in[subs]==2)
       {
-        rho = *( pressure_n_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_n_in0(lattice,subs));
+        rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_n_in0( lattice, subs)
+            + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
       }
       else
       {
         rho = lattice->param.rho_in;
+      }
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_start >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = lattice->param.rho_A[subs];
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          rho *= ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+          / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+        }
       }
 
       cudaMemcpyToSymbol( fixed_bound_var_c
@@ -359,13 +372,31 @@ void bcs_1( lattice_ptr lattice
       real rho;
       if( lattice->param.pressure_s_in[subs]==2)
       {
-        rho = *( pressure_s_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_s_in0(lattice,subs));
+        rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_s_in0( lattice, subs)
+            + get_time(lattice)%num_pressure_s_in0(lattice,subs)));
+
+
+       // rho = *( pressure_s_in0( lattice, subs)
+       //     + get_time(lattice)%num_pressure_s_in0(lattice,subs));
       }
       else
       {
         rho = lattice->param.rho_in;
       }
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_start >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = lattice->param.rho_A[subs];
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          rho *= ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+          / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+        }
+      }
+
 
       cudaMemcpyToSymbol( fixed_bound_var_c
           , &rho, sizeof(real));
@@ -1161,8 +1192,11 @@ void bcs_2( lattice_ptr lattice
 
       if( lattice->param.pressure_n_in[subs]==2)
       {
-        rho = *( pressure_n_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_n_in0(lattice,subs));
+        rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_n_in0( lattice, subs)
+            + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
+
+//        rho = *( pressure_n_in0( lattice, subs)
+ //           + get_time(lattice)%num_pressure_n_in0(lattice,subs));
       }
       else
       {
@@ -1230,8 +1264,11 @@ void bcs_2( lattice_ptr lattice
       real rho;
       if( lattice->param.pressure_s_in[subs]==2)
       {
-        rho = *( pressure_s_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_s_in0(lattice,subs));
+        rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_n_in0( lattice, subs)
+            + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
+
+//        rho = *( pressure_s_in0( lattice, subs)
+  //          + get_time(lattice)%num_pressure_s_in0(lattice,subs));
       }
       else
       {

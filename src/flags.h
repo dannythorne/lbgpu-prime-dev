@@ -95,6 +95,11 @@
 // Flag: INAMURO_SIGMA_COMPONENT
 #define INAMURO_SIGMA_COMPONENT ( 1 && NUM_FLUID_COMPONENTS==2)
 
+#define INAMURO_SINK_VALUE 2.0e-5
+#define PFA 1.0
+#define PFM 1.30371
+
+
 // Toggle Zhang & Chen energy transport method, PRE 67, 0066711 (2003).
 // Supposed to give thermodynamic consistency unlike old Shan & Chen method.
 // And supports general equation of state P = P(rho,T).

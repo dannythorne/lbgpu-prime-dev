@@ -319,6 +319,14 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( numnodes_c, get_NumNodes_ptr( *lattice), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
+  cudaMemcpyToSymbol( sink_c, &((*lattice)->param.sink), sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( pfmul_c, &((*lattice)->param.pfmul), sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( pfadd_c, &((*lattice)->param.pfadd), sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+
+
 #if INAMURO_SIGMA_COMPONENT
 
   //  printf(" \n\n%d     %d\n\n ", ( *lattice)->param.sigma_t_on, ( *lattice)->param.sigma_t_off);
@@ -984,6 +992,32 @@ void read_PEST_in_files( lattice_ptr *lattice, int argc, char **argv)
 #endif
 }	/* void read_PEST_in_files */
 
+// void PEST_gpu_switch( lattice_ptr *lattice, int argc, char **argv)
+//##############################################################################
+//
+// PEST_gpu_switch
+//
+//  - Make GPU write appropriate macrovars for transfer to host
+//
+void PEST_gpu_switch( lattice_ptr *lattice
+    , real *mv_mem_d
+    , int argc
+    , char **argv)
+{
+#if PEST_OUTPUT_ON //problem with not allocating space for time_array_position?
+
+#ifdef __CUDACC__
+  if((*lattice)->concentration_data[(*lattice)->array_position].timestep 
+      == (*lattice)->time)
+  {
+      int gpu_switch = 1;
+      cudaMemcpyToSymbol( pest_output_flag_c, &gpu_switch, sizeof(int));
+  }
+#endif
+
+#endif
+}
+
 
 // void write_PEST_out_data( lattice_ptr *lattice, int argc, char **argv)
 //##############################################################################
@@ -1005,8 +1039,11 @@ void write_PEST_out_data( lattice_ptr *lattice
 #if 1
 #ifdef __CUDACC__
   if((*lattice)->concentration_data[(*lattice)->array_position].timestep 
-      == (*lattice)->time - 1)
+      == (*lattice)->time)
   {
+    int gpu_switch = 0;
+    cudaMemcpyToSymbol( pest_output_flag_c, &gpu_switch, sizeof(int));
+
     printf("Transferring subs %d "
         "macrovars from device to host for PEST file writing. \n", 1);
     cudaMemcpy( get_rho_ptr(*lattice, 1, 0)
@@ -1019,35 +1056,35 @@ void write_PEST_out_data( lattice_ptr *lattice
 
   }
 #endif
-#if 1
+#if 0
   while(((*lattice)->concentration_data[(*lattice)->array_position].timestep)%2==1)
   {
-      int n = (*lattice)->concentration_data[(*lattice)->array_position].y_coord 
-        * get_LX(*lattice)
-        + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
+    int n = (*lattice)->concentration_data[(*lattice)->array_position].y_coord 
+      * get_LX(*lattice)
+      + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
 
-      (*lattice)->concentration_data[(*lattice)->array_position].norm_conc 
-        = -1.0;
-      (*lattice)->array_position++;
+    (*lattice)->concentration_data[(*lattice)->array_position].norm_conc 
+      = -1.0;
+    (*lattice)->array_position++;
 
   }
 #endif
 
   while((*lattice)->concentration_data[(*lattice)->array_position].timestep 
-      == (*lattice)->time - 1)
+      == (*lattice)->time)
   {
-      int n = (*lattice)->concentration_data[(*lattice)->array_position].y_coord 
-        * get_LX(*lattice)
-        + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
+    int n = (*lattice)->concentration_data[(*lattice)->array_position].y_coord 
+      * get_LX(*lattice)
+      + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
 
-      (*lattice)->concentration_data[(*lattice)->array_position].norm_conc 
-        = get_rho( *lattice, 1, n);
-      (*lattice)->array_position++;
+    (*lattice)->concentration_data[(*lattice)->array_position].norm_conc 
+      = get_rho( *lattice, 1, n);
+    (*lattice)->array_position++;
 
   }
 #endif
   if((*lattice)->concentration_data[(*lattice)->array_position].timestep 
-      == (*lattice)->time - 1)
+      == (*lattice)->time)
   {
     printf("\n Process %d exiting function write_PEST_out_data\n", get_proc_id( *lattice));
   }

@@ -90,17 +90,9 @@ void k_collide(
               fptr[b + (numdirs_c+0)*blocksize_c]
                 += fptr[b + a*blocksize_c];
             }
-#if 0
-            if( is_end_of_frame_mem_c)
-            {
-              for( a=1; a<=numdims_c; a++)
-              {
-                // Velocity of subs 1 is identical to that of subs 0
-                fptr[b + (numdirs_c + a)*blocksize_c] = get_mv_d( mv_mem_d
-                    , 0, n, a);
-              }
-            }
-#endif
+            fptr[b + (numdirs_c+0)*blocksize_c]
+              *= (1.0 - sink_c * tau_c[1]);
+
           }
           else
           {
@@ -198,8 +190,33 @@ void k_collide(
 #if INAMURO_SIGMA_COMPONENT
           }
 #endif  // INAMURO_SIGMA_COMPONENT
-#if 0
-          if( !d_skip_updating_macrovars())
+
+          if( !d_skip_body_force_term())
+          {
+            // Modify macroscopic variables with a body force
+#if INAMURO_SIGMA_COMPONENT
+            if( subs != 1)
+            {
+#endif
+              for( a=1; a<=numdims_c; a++)
+              {
+                apply_accel_mv( subs, a, b, blocksize_c, n, fptr, ns_mem_d);
+              }
+#if INAMURO_SIGMA_COMPONENT
+            }
+            else
+            {
+              fptr[b + (numdirs_c+0)*blocksize_c]
+                *= (1.0 - INAMURO_SINK_VALUE * tau_c[1]);
+
+            }
+#endif
+
+          }
+
+
+#if 1
+          if( is_end_of_frame_mem_c)
           {
             // Store macroscopic variables in global memory.
             for( a=0; a<=numdims_c; a++)
@@ -214,263 +231,240 @@ void k_collide(
               }
             }
           }
-#endif
-#if 0 //WALSH_NS_ON
-          if( d_is_solid( solids_mem_d, n + end_bound_c))
-          {
-            real temp;
-            for( a=1; a<numdirs_c; a+=2)
-            { 
-              temp = fptr[b + (a+1)*blocksize_c];
-            }
-            for( a=2; a<numdirs_c; a+=2)
-            { 
-              fptr[b + a*blocksize_c] = fptr[b + (a-1)*blocksize_c];
-            }
-            for( a=1; a<numdirs_c; a+=2)
-            { 
-              fptr[b + a*blocksize_c]=  temp;
-            }
-          }
           else
           {
-#endif
-
-            if( !d_skip_collision_step())
+            if( pest_output_flag_c && subs == 1)
             {
-              if( !d_skip_body_force_term())
+              set_mv_d( mv_mem_d
+                  , subs, n, 0
+                  , fptr[ b + (numdirs_c + 0)*blocksize_c] );
+            }
+          }
+
+#endif
+
+          if( !d_skip_collision_step())
+          {
+
+            // Calculate u-squared since it is used many times
+            real usq;
+#if INAMURO_SIGMA_COMPONENT
+            if( subs != 1)
+            {
+#endif
+              usq = fptr[b + (numdirs_c+1)*blocksize_c]
+                * fptr[b + (numdirs_c+1)*blocksize_c]
+
+                + fptr[b + (numdirs_c+2)*blocksize_c]
+                * fptr[b + (numdirs_c+2)*blocksize_c];
+
+              if( numdims_c==3)
               {
-#if INAMURO_SIGMA_COMPONENT
-                if( subs != 1)
-                {
-#endif
-                  // Modify macroscopic variables with a body force
-                  for( a=1; a<=numdims_c; a++)
-                  {
-                    apply_accel_mv( subs, a, b, blocksize_c, n, fptr, ns_mem_d);
-                  }
-#if INAMURO_SIGMA_COMPONENT
-                }
-#endif
+                usq += fptr[b + (numdirs_c+3)*blocksize_c]
+                  * fptr[b + (numdirs_c+3)*blocksize_c];
               }
-
-              // Calculate u-squared since it is used many times
-              real usq;
 #if INAMURO_SIGMA_COMPONENT
-              if( subs != 1)
-              {
-#endif
-                usq = fptr[b + (numdirs_c+1)*blocksize_c]
-                  * fptr[b + (numdirs_c+1)*blocksize_c]
-
-                  + fptr[b + (numdirs_c+2)*blocksize_c]
-                  * fptr[b + (numdirs_c+2)*blocksize_c];
-
-                if( numdims_c==3)
-                {
-                  usq += fptr[b + (numdirs_c+3)*blocksize_c]
-                    * fptr[b + (numdirs_c+3)*blocksize_c];
-                }
-#if INAMURO_SIGMA_COMPONENT
-              }
+            }
 #endif
 
-              // Calculate the collision operator and add to f resulting from first
-              // streaming
+            // Calculate the collision operator and add to f resulting from first
+            // streaming
 
 #if WALSH_NS_ON
-              real temp1, temp2;
-              
-              temp1 = fptr[b];
-              calc_f_tilde_d( f_mem_d, subs, 0, b, blocksize_c, fptr, usq);
-              fptr[b] *= 1. - ns_mem_d[ n + end_bound_c];
-              fptr[b] += ns_mem_d[ n + end_bound_c] * temp1;
+            real temp1, temp2;
 
-              for( a=1; a<numdirs_c; a+=2)
-              {
-                temp1 = fptr[b + a*blocksize_c];
-                temp2 = fptr[b + (a+1)*blocksize_c];
-                calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
-                calc_f_tilde_d( f_mem_d, subs, a+1, b, blocksize_c, fptr, usq);
+            temp1 = fptr[b];
+            calc_f_tilde_d( f_mem_d, subs, 0, b, blocksize_c, fptr, usq);
+            fptr[b] *= 1. - ns_mem_d[ n + end_bound_c];
+            fptr[b] += ns_mem_d[ n + end_bound_c] * temp1;
 
-                fptr[b + a*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
-                fptr[b + a*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp2;
-                fptr[b + (a+1)*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
-                fptr[b + (a+1)*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp1;
+            for( a=1; a<numdirs_c; a+=2)
+            {
+              temp1 = fptr[b + a*blocksize_c];
+              temp2 = fptr[b + (a+1)*blocksize_c];
+              calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
+              calc_f_tilde_d( f_mem_d, subs, a+1, b, blocksize_c, fptr, usq);
 
-              }
+              fptr[b + a*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
+              fptr[b + a*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp2;
+              fptr[b + (a+1)*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
+              fptr[b + (a+1)*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp1;
+
+            }
 
 #else
-              for( a=0; a<numdirs_c; a++)
-              {
-                calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
-              }
-#endif
+            for( a=0; a<numdirs_c; a++)
+            {
+              calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
             }
+#endif
+          }
 
 
 
 #if 0 //WALSH_NS_ON
-          } 
+        } 
 #endif
 
 
-          // Finally, save results back to global memory in the local node.  The
-          // ordering was already corrected in the first step, so nothing to worry
-          // about here.
+        // Finally, save results back to global memory in the local node.  The
+        // ordering was already corrected in the first step, so nothing to worry
+        // about here.
 
-          for( a=0; a<numdirs_c; a++)
-          {
-            set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
-                , subs
-                , i,j,k,n
-                , 0, 0, 0
-                , a, fptr[b + a*blocksize_c]);
-          }
+        for( a=0; a<numdirs_c; a++)
+        {
+          set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+              , subs
+              , i,j,k,n
+              , 0, 0, 0
+              , a, fptr[b + a*blocksize_c]);
+        }
 
 #if INAMURO_SIGMA_COMPONENT
-        }
+      }
 #endif
 
-      }  /*for( subs=0; subs<numsubs_c; subs++)*/
+    }  /*for( subs=0; subs<numsubs_c; subs++)*/
 
-
-      for( subs=0; subs<numsubs_c; subs++)
-      {
+#if 0
+    for( subs=0; subs<numsubs_c; subs++)
+    {
 
 
 #if (INAMURO_SIGMA_COMPONENT)
-        if( subs != 1 || (time_c >= sigma_t_on_c && time_c <= sigma_t_off_c))
-        {
+      if( subs != 1 || (time_c >= sigma_t_on_c && time_c <= sigma_t_off_c))
+      {
 #endif
 
-          // Calculate macroscopic variables after the collision step, for the
-          // purpose of writing these to host arrays and output files.  Note that
-          // for the purpose of efficiency, this (and possibly between sc and s in
-          // k_scs) should be the only place in the code at which macroscopic variables
-          // are either stored in device global memory or transferred to the host.
+        // Calculate macroscopic variables after the collision step, for the
+        // purpose of writing these to host arrays and output files.  Note that
+        // for the purpose of efficiency, this (and possibly between sc and s in
+        // k_scs) should be the only place in the code at which macroscopic variables
+        // are either stored in device global memory or transferred to the host.
 
-          if( is_end_of_frame_mem_c)
+        if( is_end_of_frame_mem_c)
+        {
+          for( a=0; a<numdirs_c; a++)
           {
-            for( a=0; a<numdirs_c; a++)
-            {
-              fptr[b + a*blocksize_c]
-                = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
-                    , subs
-                    , i,j,k,n
-                    , 0,0,0
-                    , a, 0);
-            }
+            fptr[b + a*blocksize_c]
+              = get_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
+                  , subs
+                  , i,j,k,n
+                  , 0,0,0
+                  , a, 0);
+          }
 
 
 #if INAMURO_SIGMA_COMPONENT 
-            if( subs == 1)
+          if( subs == 1)
+          {
+            // Initialize shared memory values for calculating rho.
+            fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
+
+            // Note that the velocity macroscopic variables are already
+            // set from substance 0, so we don't need to touch them
+
+            // Calculate rho
+            for( a=0; a<numdirs_c; a++)
             {
-              // Initialize shared memory values for calculating rho.
-              fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
-
-              // Note that the velocity macroscopic variables are already
-              // set from substance 0, so we don't need to touch them
-
-              // Calculate rho
-              for( a=0; a<numdirs_c; a++)
-              {
-                fptr[b + (numdirs_c+0)*blocksize_c]
-                  += fptr[b + a*blocksize_c];
-              }
+              fptr[b + (numdirs_c+0)*blocksize_c]
+                += fptr[b + a*blocksize_c];
+            }
 #if 0
-              for( a=1; a<=numdims_c; a++)
-              {
-                // Velocity of subs 1 is identical to that of subs 0
-                fptr[b + (numdirs_c + a)*blocksize_c] = get_mv_d( mv_mem_d
-                    , 0, n, a);
-              }
+            for( a=1; a<=numdims_c; a++)
+            {
+              // Velocity of subs 1 is identical to that of subs 0
+              fptr[b + (numdirs_c + a)*blocksize_c] = get_mv_d( mv_mem_d
+                  , 0, n, a);
+            }
 #endif
-            }
-            else
-            {
+          }
+          else
+          {
 #endif  // INAMURO_SIGMA_COMPONENT
 
-              // Initialize shared memory values for calculating macro vars.
-              fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
-              fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
-              fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
-              if( numdims_c==3)
-              {
-                fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
-              }
-
-              // Calculate macroscopic variables.
-              for( a=0; a<numdirs_c; a++)
-              {
-                fptr[b + (numdirs_c+0)*blocksize_c]
-                  += fptr[b + a*blocksize_c];
-
-                if( /*debug*/0)
-                {
-                  fptr[b + (numdirs_c+0)*blocksize_c] = 9.;
-                }
-
-                fptr[b + (numdirs_c+1)*blocksize_c]
-                  += vx_c[a]*fptr[b + a*blocksize_c];
-
-                fptr[b + (numdirs_c+2)*blocksize_c]
-                  += vy_c[a]*fptr[b + a*blocksize_c];
-
-                if( numdims_c==3)
-                {
-                  fptr[b + (numdirs_c+3)*blocksize_c]
-                    += vz_c[a]*fptr[b + a*blocksize_c];
-                }
-              }
-
-              fptr[b + (numdirs_c+1)*blocksize_c] /=
-                fptr[b + (numdirs_c+0)*blocksize_c];
-
-              fptr[b + (numdirs_c+2)*blocksize_c] /=
-                fptr[b + (numdirs_c+0)*blocksize_c];
-
-              if( numdims_c==3)
-              {
-                fptr[b + (numdirs_c+3)*blocksize_c] /=
-                  fptr[b + (numdirs_c+0)*blocksize_c];
-              }
-
-#if INAMURO_SIGMA_COMPONENT
-            }
-#endif  // INAMURO_SIGMA_COMPONENT
-#if 1
-            //if( !d_skip_updating_macrovars())
-            // {
-            // Store macroscopic variables in global memory.
-            for( a=0; a<=numdims_c; a++)
+            // Initialize shared memory values for calculating macro vars.
+            fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
+            fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
+            fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
+            if( numdims_c==3)
             {
-              set_mv_d( mv_mem_d
-                  , subs, n, a
-                  , fptr[b + (numdirs_c + a)*blocksize_c]);
+              fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
+            }
+
+            // Calculate macroscopic variables.
+            for( a=0; a<numdirs_c; a++)
+            {
+              fptr[b + (numdirs_c+0)*blocksize_c]
+                += fptr[b + a*blocksize_c];
 
               if( /*debug*/0)
               {
-                set_mv_d( mv_mem_d, subs, n, a, f_mem_d[cumul_stride_c[1]+n]);
+                fptr[b + (numdirs_c+0)*blocksize_c] = 9.;
+              }
+
+              fptr[b + (numdirs_c+1)*blocksize_c]
+                += vx_c[a]*fptr[b + a*blocksize_c];
+
+              fptr[b + (numdirs_c+2)*blocksize_c]
+                += vy_c[a]*fptr[b + a*blocksize_c];
+
+              if( numdims_c==3)
+              {
+                fptr[b + (numdirs_c+3)*blocksize_c]
+                  += vz_c[a]*fptr[b + a*blocksize_c];
               }
             }
-            //}
-#endif
+
+            fptr[b + (numdirs_c+1)*blocksize_c] /=
+              fptr[b + (numdirs_c+0)*blocksize_c];
+
+            fptr[b + (numdirs_c+2)*blocksize_c] /=
+              fptr[b + (numdirs_c+0)*blocksize_c];
+
+            if( numdims_c==3)
+            {
+              fptr[b + (numdirs_c+3)*blocksize_c] /=
+                fptr[b + (numdirs_c+0)*blocksize_c];
+            }
+
+#if INAMURO_SIGMA_COMPONENT
           }
+#endif  // INAMURO_SIGMA_COMPONENT
+#if 1
+          //if( !d_skip_updating_macrovars())
+          // {
+          // Store macroscopic variables in global memory.
+          for( a=0; a<=numdims_c; a++)
+          {
+            set_mv_d( mv_mem_d
+                , subs, n, a
+                , fptr[b + (numdirs_c + a)*blocksize_c]);
+
+            if( /*debug*/0)
+            {
+              set_mv_d( mv_mem_d, subs, n, a, f_mem_d[cumul_stride_c[1]+n]);
+            }
+          }
+          //}
+#endif
+        }
 
 #if (INAMURO_SIGMA_COMPONENT)
-        }
+      }
 #endif
 
-      }         // subs loop
+    }         // subs loop
+
+#endif
 
 #if !(COMPUTE_ON_SOLIDS)
-    }  /*if( d_is_not_solid(solids_mem_d, n))*/
+  }  /*if( d_is_not_solid(solids_mem_d, n))*/
 #endif
 
 
 #if __CUDA_ARCH__ < 200
-  }  /*for( klc=0; klc < kloop_c; klc++)*/
+}  /*for( klc=0; klc < kloop_c; klc++)*/
 #endif
 
 }

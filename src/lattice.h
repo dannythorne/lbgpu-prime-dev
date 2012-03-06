@@ -469,9 +469,15 @@ struct param_struct
   //
   int    bc_sigma_slip;
 #endif /* INAMURO_SIGMA_COMPONENT */
+  int bc_ramp_start;
+  int bc_ramp_stop;
   int  GZL;
   int  PressureBC;
   int AllBoundaryPeriodic;
+
+  real sink;
+  real pfmul;
+  real pfadd;
   // Flags for pressure and velocity boundaries.
   int    pressure_t_in[  NUM_FLUID_COMPONENTS];
   int    pressure_b_in[  NUM_FLUID_COMPONENTS];

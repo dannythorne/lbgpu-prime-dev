@@ -2216,6 +2216,7 @@ __constant__ real wt_c[19];    //
 __constant__ int cumul_stride_c[20]; // For variable stride created by boundary regions
 
 __constant__ int is_end_of_frame_mem_c;
+__constant__ int pest_output_flag_c;
 
 __constant__ real tau_c[2];    // Hardcoded for up to 2 fluid components
 __constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
@@ -2241,6 +2242,10 @@ __constant__ int numnodes_c;
 __constant__ int subs_c;
 
 __constant__ real fixed_bound_var_c;
+
+__constant__ real sink_c;
+__constant__ real pfmul_c;
+__constant__ real pfadd_c;
 
 #if INAMURO_SIGMA_COMPONENT
 __constant__ int time_c;
