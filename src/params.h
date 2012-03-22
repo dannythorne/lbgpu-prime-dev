@@ -137,6 +137,8 @@ void read_params( lattice_ptr lattice, const char *infile)
   skip_label( in); fscanf( in, "%d ",   &blank                         );
   skip_label( in); fscanf( in, "%d ",   &blank                         );
   skip_label( in); fscanf( in, "%d ",   &blank                         );
+  skip_label( in); fscanf( in, "%d ",   &blank                         );
+  skip_label( in); fscanf( in, "%d ",   &blank                         );
 #endif /* INAMURO_SIGMA_COMPONENT */
   skip_label( in); fscanf( in, "%d ",&( lattice->param.GZL   )         );
   skip_label( in); fscanf( in, "%d ",&( lattice->param.PressureBC)     );
@@ -393,6 +395,8 @@ void read_params( lattice_ptr lattice, const char *infile)
   lattice->NumNodes =
     lattice->param.LX*lattice->param.LY*lattice->param.LZ;
 
+  // Even-valued frame rate is no longer a restriction
+#if 0
   if( (lattice->param.FrameRate)%2)
   {
     printf("%s %d >> read_params() -- "
@@ -407,6 +411,7 @@ void read_params( lattice_ptr lattice, const char *infile)
         );
     lattice->param.FrameRate++;
   }
+#endif
 
   lattice->NumTimeSteps =
     lattice->param.NumFrames * lattice->param.FrameRate;

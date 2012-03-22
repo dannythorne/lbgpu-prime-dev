@@ -285,30 +285,36 @@ void bcs_1( lattice_ptr lattice
     if( get_proc_id( lattice) == get_num_procs( lattice)-1
         && lattice->param.pressure_n_in[subs] )
     {
-      real rho;
+      real rho, ramp_factor;
 
       if( lattice->param.pressure_n_in[subs]==2)
       {
+        //   printf("\n %f\n",lattice->param.pfmul);
+
+
         rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_n_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
+              + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
       }
       else
       {
         rho = lattice->param.rho_in;
       }
 
-      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_start >= 0)
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
       {
         if( get_time( lattice) < lattice->param.bc_ramp_start)
         {
-          rho = lattice->param.rho_A[subs];
+          rho = get_rho_A( lattice, subs);
         }
         else if( get_time( lattice) < lattice->param.bc_ramp_stop)
         {
-          rho *= ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
-          / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
         }
       }
+
 
       cudaMemcpyToSymbol( fixed_bound_var_c
           , &rho, sizeof(real));
@@ -339,9 +345,29 @@ void bcs_1( lattice_ptr lattice
     if( get_proc_id( lattice) == get_num_procs( lattice)-1
         && lattice->param.pressure_n_out[subs] )
     {
-      cudaMemcpyToSymbol( fixed_bound_var_c
-          , &(lattice->param.rho_out), sizeof(real));
 
+      real rho, ramp_factor;
+
+      rho = lattice->param.rho_out;
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = get_rho_A( lattice, subs);
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
+        }
+      }
+
+
+      cudaMemcpyToSymbol( fixed_bound_var_c
+          , &rho, sizeof(real));
       checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
       // Kernel for setting system boundary conditions
       k_sysbound_pressure_n_1
@@ -369,33 +395,36 @@ void bcs_1( lattice_ptr lattice
         && lattice->param.pressure_s_in[subs] )
     {
 
-      real rho;
+      real rho, ramp_factor;
       if( lattice->param.pressure_s_in[subs]==2)
       {
         rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_s_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_s_in0(lattice,subs)));
+              + get_time(lattice)%num_pressure_s_in0(lattice,subs)));
 
 
-       // rho = *( pressure_s_in0( lattice, subs)
-       //     + get_time(lattice)%num_pressure_s_in0(lattice,subs));
+        // rho = *( pressure_s_in0( lattice, subs)
+        //     + get_time(lattice)%num_pressure_s_in0(lattice,subs));
       }
       else
       {
         rho = lattice->param.rho_in;
       }
 
-      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_start >= 0)
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
       {
         if( get_time( lattice) < lattice->param.bc_ramp_start)
         {
-          rho = lattice->param.rho_A[subs];
+          rho = get_rho_A( lattice, subs);
         }
         else if( get_time( lattice) < lattice->param.bc_ramp_stop)
         {
-          rho *= ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
-          / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
         }
       }
+
 
 
       cudaMemcpyToSymbol( fixed_bound_var_c
@@ -427,8 +456,28 @@ void bcs_1( lattice_ptr lattice
     if( get_proc_id( lattice) == 0
         && lattice->param.pressure_s_out[subs] )
     {
+      real rho, ramp_factor;
+
+      rho = lattice->param.rho_out;
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = get_rho_A( lattice, subs);
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
+        }
+      }
+
+
       cudaMemcpyToSymbol( fixed_bound_var_c
-          , &(lattice->param.rho_out), sizeof(real));
+          , &rho, sizeof(real));
 
       checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
       // Kernel for setting system boundary conditions
@@ -1188,20 +1237,36 @@ void bcs_2( lattice_ptr lattice
     if( get_proc_id( lattice) == get_num_procs( lattice)-1
         && lattice->param.pressure_n_in[subs] )
     {
-      real rho;
+      real rho, ramp_factor;
 
       if( lattice->param.pressure_n_in[subs]==2)
       {
         rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_n_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
+              + get_time(lattice)%num_pressure_n_in0(lattice,subs)));
 
-//        rho = *( pressure_n_in0( lattice, subs)
- //           + get_time(lattice)%num_pressure_n_in0(lattice,subs));
+        //        rho = *( pressure_n_in0( lattice, subs)
+        //           + get_time(lattice)%num_pressure_n_in0(lattice,subs));
       }
       else
       {
         rho = lattice->param.rho_in;
       }
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = get_rho_A( lattice, subs);
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
+        }
+      }
+
 
       cudaMemcpyToSymbol( fixed_bound_var_c
           , &rho, sizeof(real));
@@ -1232,8 +1297,28 @@ void bcs_2( lattice_ptr lattice
     if( get_proc_id( lattice) == get_num_procs( lattice)-1
         && lattice->param.pressure_n_out[subs] )
     {
+      real rho, ramp_factor;
+
+      rho = lattice->param.rho_out;
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = get_rho_A( lattice, subs);
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
+        }
+      }
+
+
       cudaMemcpyToSymbol( fixed_bound_var_c
-          , &(lattice->param.rho_out), sizeof(real));
+          , &rho, sizeof(real));
 
       checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
       // Kernel for setting system boundary conditions
@@ -1261,18 +1346,33 @@ void bcs_2( lattice_ptr lattice
     if( get_proc_id( lattice) == 0
         && lattice->param.pressure_s_in[subs] )
     {
-      real rho;
+      real rho, ramp_factor;
       if( lattice->param.pressure_s_in[subs]==2)
       {
         rho = lattice->param.pfadd + lattice->param.pfmul*(*( pressure_s_in0( lattice, subs)
-            + get_time(lattice)%num_pressure_s_in0(lattice,subs)));
+              + get_time(lattice)%num_pressure_s_in0(lattice,subs)));
 
-//        rho = *( pressure_s_in0( lattice, subs)
-  //          + get_time(lattice)%num_pressure_s_in0(lattice,subs));
+        //        rho = *( pressure_s_in0( lattice, subs)
+        //          + get_time(lattice)%num_pressure_s_in0(lattice,subs));
       }
       else
       {
         rho = lattice->param.rho_in;
+      }
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = get_rho_A( lattice, subs);
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
+        }
       }
 
       cudaMemcpyToSymbol( fixed_bound_var_c
@@ -1304,8 +1404,29 @@ void bcs_2( lattice_ptr lattice
     if( get_proc_id( lattice) == 0
         && lattice->param.pressure_s_out[subs] )
     {
+      real rho, ramp_factor;
+
+      rho = lattice->param.rho_out;
+
+      if( lattice->param.bc_ramp_start >= 0 && lattice->param.bc_ramp_stop >= 0)
+      {
+        if( get_time( lattice) < lattice->param.bc_ramp_start)
+        {
+          rho = get_rho_A( lattice, subs);
+        }
+        else if( get_time( lattice) < lattice->param.bc_ramp_stop)
+        {
+          ramp_factor = ((real) (get_time( lattice) - lattice->param.bc_ramp_start))
+            / ((real) (lattice->param.bc_ramp_stop - lattice->param.bc_ramp_start));
+          rho *= ramp_factor;
+          rho += (1. - ramp_factor) * get_rho_A( lattice,subs);
+        }
+      }
+
+
+
       cudaMemcpyToSymbol( fixed_bound_var_c
-          , &(lattice->param.rho_out), sizeof(real));
+          , &rho, sizeof(real));
 
       checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
       // Kernel for setting system boundary conditions

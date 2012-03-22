@@ -2096,6 +2096,18 @@ int is_end_of_frame( lattice_ptr lattice, int time)
   return !(time%get_FrameRate(lattice));
 }
 
+int is_final_frame( lattice_ptr lattice, int frame)
+{
+  if( get_NumFrames( lattice) == frame)
+  {
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 real get_gaccel_ux( lattice_ptr lattice, int subs)
 {
   return lattice->param.gforce[subs][0];
@@ -2208,7 +2220,7 @@ real* get_ns_ptr( lattice_ptr lattice, const int n)
 
 
 #ifdef __CUDACC__
-
+#if 1
 __constant__ int vx_c[19];     //
 __constant__ int vy_c[19];     // Enough space for D3Q19; first 9
 __constant__ int vz_c[19];     // components constitute D2Q9 model
@@ -2252,7 +2264,7 @@ __constant__ int time_c;
 __constant__ int sigma_t_on_c;
 __constant__ int sigma_t_off_c;
 #endif
-
+#endif
 #if TEXTURE_FETCH
 texture<unsigned char, 1, cudaReadModeElementType> tex_solid;
 #endif
@@ -2846,26 +2858,29 @@ __device__ void calc_f_tilde_d(
     f_temp[thread + dir*block_size] += wt_c[dir]
       * f_temp[ thread + numdirs_c*block_size]
       * ( 1. + 3.*vdotu) / tau_c[subs];
-
-    return;
   }
+  else
+  {
 #endif
 
-  f_temp[thread + dir*block_size] *= (1. - 1. / tau_c[subs]);
+    f_temp[thread + dir*block_size] *= (1. - 1. / tau_c[subs]);
 
-  real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
-    + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*block_size];
-  if( numdims_c==3)
-  {
-    vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*block_size];
+    real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
+      + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*block_size];
+    if( numdims_c==3)
+    {
+      vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*block_size];
+    }
+
+    f_temp[thread + dir*block_size] += wt_c[dir]
+      * f_temp[ thread + numdirs_c*block_size]
+      * ( 1. + 3.*vdotu
+          + 4.5*vdotu*vdotu
+          - 1.5*usq
+        ) / tau_c[subs];
+#if INAMURO_SIGMA_COMPONENT
   }
-
-  f_temp[thread + dir*block_size] += wt_c[dir]
-    * f_temp[ thread + numdirs_c*block_size]
-    * ( 1. + 3.*vdotu
-        + 4.5*vdotu*vdotu
-        - 1.5*usq
-      ) / tau_c[subs];
+#endif
 }
 // Maybe later an equivalent function for the forcing term in the LBE, as per
 // Guo.

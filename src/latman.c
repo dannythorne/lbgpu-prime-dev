@@ -39,7 +39,6 @@ void process_matrix( struct lattice_struct *lattice, int **matrix)
     for( i=0; i<=ei; i++, n++)
     {
       set_is_solid( lattice, n, matrix[j][i]);
-
     } /* for( i=0; i<=ei; i++, n++) */
 
   } /* for( j=0; j<=ej; j++) */
@@ -225,11 +224,19 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( cumul_stride_c, cumul_stride, 20*sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
+  
+//  printf(" \n\n tau values on host:  %f    %f   \n\n", *(get_tau_ptr( *lattice)), *(get_tau_ptr( *lattice) + 1));
   cudaMemcpyToSymbol( tau_c
       , get_tau_ptr( *lattice)
       , get_NumSubs(*lattice)*sizeof(real) );
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
+//  real temptau[2];
+//
+//  cudaMemcpyFromSymbol( temptau, tau_c, get_NumSubs(*lattice)*sizeof(real));
+// checkCUDAError( __FILE__, __LINE__, "cudaMemcpyFromSymbol");
+
+// printf(" \n\n tau values after copy:  %f    %f   \n\n", temptau[0], temptau[1]);
   /*  printf(" \n\n %f %f %f %f %f %f \n\n", *((*lattice)->param.gforce[0])
       , *((*lattice)->param.gforce[0]+1)
       , *((*lattice)->param.gforce[0]+2)
@@ -336,6 +343,13 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   cudaMemcpyToSymbol( sigma_t_off_c, &(( *lattice)->param.sigma_t_off), sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 #endif
+
+  temp = 0;
+  cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( pest_output_flag_c, &temp, sizeof(int));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+
 
 #endif
 
@@ -532,6 +546,15 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       }
       fclose(in);
 
+#if 1
+      printf("\n");
+      for( i=0; i<num_pressure_n_in0(*lattice,0); i+=10)
+      {
+        printf("%f\n", *(pressure_n_in0(*lattice,0) + i));
+      }
+
+      printf("\n");
+#endif
       //for( i=0; i<num_pressure_n_in0(*lattice,0); i++)
       //{
       //  printf("%f\n",*( pressure_n_in0(*lattice,0) + i));
@@ -1287,11 +1310,11 @@ void init_problem( lattice_ptr lattice)
 #endif
                         )
                         {
-                          *rho = lattice->param.rho_A[0];
+                          *rho = lattice->param.rho_B[0];
                         }
                     else
                     {
-                      *rho = lattice->param.rho_B[0];
+                      *rho = lattice->param.rho_A[0];
                     }
                     break;
                   }
@@ -1301,7 +1324,7 @@ void init_problem( lattice_ptr lattice)
 #if INAMURO_SIGMA_COMPONENT
                     if( subs == 0)
                     {
-                      *rho = lattice->param.rho_A[0];
+                      *rho = lattice->param.rho_A[subs];
                     }
                     else
                     {
@@ -1363,11 +1386,11 @@ void init_problem( lattice_ptr lattice)
 #endif
                         )
                         {
-                          *rho = lattice->param.rho_A[subs];
+                          *rho = lattice->param.rho_B[subs];
                         }
                     else
                     {
-                      *rho = lattice->param.rho_B[subs];
+                      *rho = lattice->param.rho_A[subs];
                     }
                     break;
 
@@ -1667,7 +1690,7 @@ void init_problem( lattice_ptr lattice)
 #if 1
             *(fptr[0]) = ( /*feq[a]*/
                 W0*rho_val*(1. - 1.5*usq)
-                ) / get_tau(lattice,subs);
+                );// / get_tau(lattice,subs);
 
             for( a=1; a<=4; a++)
             {
@@ -1677,7 +1700,7 @@ void init_problem( lattice_ptr lattice)
 
               *(fptr[a]) = ( /*feq[a]*/
                   W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                  ) / get_tau(lattice,subs);
+                  );// / get_tau(lattice,subs);
             }
 
             for( ; a<=8; a++)
@@ -1688,7 +1711,7 @@ void init_problem( lattice_ptr lattice)
 
               *(fptr[a]) = ( /*feq[a]*/
                   W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                  ) / get_tau(lattice,subs);
+                  );// / get_tau(lattice,subs);
             }
 
             if( get_NumDims(lattice)==3)
@@ -1701,7 +1724,7 @@ void init_problem( lattice_ptr lattice)
 
                 *(fptr[a]) = ( /*feq[a]*/
                     W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                    ) / get_tau(lattice,subs);
+                    );// / get_tau(lattice,subs);
               }
 
               for( ; a<get_NumVelDirs(lattice); a++)
@@ -1712,7 +1735,7 @@ void init_problem( lattice_ptr lattice)
 
                 *(fptr[a]) = ( /*feq[a]*/
                     W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                    ) / get_tau(lattice,subs);
+                    );// / get_tau(lattice,subs);
               }
             }
 #else

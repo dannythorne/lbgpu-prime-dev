@@ -23,6 +23,52 @@ unsigned char* solids_mem_d;
 real* ns_mem_d;
 int solids_mem_size;
 
+#if 0
+__constant__ int vx_c[19];     //
+__constant__ int vy_c[19];     // Enough space for D3Q19; first 9
+__constant__ int vz_c[19];     // components constitute D2Q9 model
+__constant__ real wt_c[19];    // 
+__constant__ int cumul_stride_c[20]; // For variable stride created by boundary regions
+
+__constant__ int is_end_of_frame_mem_c;
+__constant__ int pest_output_flag_c;
+
+__constant__ real tau_c[2];    // Hardcoded for up to 2 fluid components
+__constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
+
+__constant__ int numsubs_c;
+__constant__ int numdims_c;
+__constant__ int numdirs_c;
+__constant__ int numbounddirs_c;
+__constant__ int numunbounddirs_c;
+__constant__ int end_bound_c;
+__constant__ int proc_id_c;
+__constant__ int num_procs_c;
+__constant__ int ni_c;
+__constant__ int nj_c;
+__constant__ int nk_c;
+__constant__ int kloop_c;
+__constant__ int bixbj_c;
+__constant__ int bjxbk_c;
+__constant__ int bixbk_c;
+__constant__ int nixnj_c;
+__constant__ int blocksize_c;
+__constant__ int numnodes_c;
+__constant__ int subs_c;
+
+__constant__ real fixed_bound_var_c;
+
+__constant__ real sink_c;
+__constant__ real pfmul_c;
+__constant__ real pfadd_c;
+
+#if INAMURO_SIGMA_COMPONENT
+__constant__ int time_c;
+__constant__ int sigma_t_on_c;
+__constant__ int sigma_t_off_c;
+#endif
+#endif
+
 #if BOUNDARY_KERNEL
 real* pos_dir_send_ptr_d;
 real* pos_dir_recv_ptr_d;
@@ -277,11 +323,6 @@ int main( int argc, char **argv)
 #endif  // ifdef __CUDACC__
 
 
-  //cudaEvent_t start, stop;
-  //real timertime;
-  //real totaltime = 0.;
-  //cudaEventCreate(&start);
-  //cudaEventCreate(&stop);
 
   read_PEST_in_files( &lattice, argc, argv);
 
@@ -295,14 +336,11 @@ int main( int argc, char **argv)
     checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 #endif
 
-    // TODO: All of the boundary swap stuff should be part of the
-    // mpi sendrecv functions.  For the case of CUDA without MPI, 
-    // the periodic boundary conditions implemented within get_f1
-    // should be restored using #if !(PARALLEL)
-    // Do boundary swaps
+//------------------------------------------------------//    
+// Write boundary cells to buffers and send to host     //
+//------------------------------------------------------//
 #if PARALLEL
 #ifdef __CUDACC__
-    //cudaEventRecord(start,0);
 #if BOUNDARY_KERNEL
     k_bound_DtH_1
       <<<
@@ -330,13 +368,6 @@ int main( int argc, char **argv)
 #else   // !(BOUNDARY_KERNEL)
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-#if 0
-      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
-      {
-        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
-            , subs, dir, time, DEVICE_TO_HOST);
-      }
-#else
       // For D2Q9 and D3Q19, NumUnboundDirs is odd
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
       {
@@ -348,23 +379,25 @@ int main( int argc, char **argv)
         pdf_bound_DtH_even_1( lattice, f_mem_d, cumul_stride
             , subs, dir);
       }
-#endif
     }
 
 #endif  //BOUNDARY_KERNEL
-    //cudaEventRecord(stop, 0);
-    //cudaEventSynchronize(stop);
-    //cudaEventElapsedTime(&timertime,start,stop);
-    //totaltime += timertime;
 #endif  // #ifdef __CUDACC__
+
+//------------------------------------------------------//    
+// Send boundary buffers to neighboring processes       //
+//------------------------------------------------------//
+
     // Buffers now large enough to deal with all substances in one transfer.
     // Currently, send a receives are activated if __CUDACC__ not defined,
     // but that's bad because for that case they're totally broken.
     process_send_recv_begin( lattice, 0);
     process_send_recv_end(lattice, 0);
 
+//------------------------------------------------------//    
+// Write boundary cells to buffers and send to device   //
+//------------------------------------------------------//
 #ifdef __CUDACC__
-    //cudaEventRecord(start,0);
 #if BOUNDARY_KERNEL
 #if !(POINTER_MAPPING)
     cudaMemcpy( pos_dir_recv_ptr_d
@@ -393,13 +426,6 @@ int main( int argc, char **argv)
 #else   // !(BOUNDARY_KERNEL)
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-#if 0
-      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
-      {
-        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
-            , subs, dir, time, HOST_TO_DEVICE);
-      }
-#else
       // For D2Q9 and D3Q19, NumUnboundDirs is odd
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
       {
@@ -411,35 +437,16 @@ int main( int argc, char **argv)
         pdf_bound_HtD_even_1( lattice, f_mem_d, cumul_stride
             , subs, dir);
       }
-#endif
     }
 
 #endif  // BOUNDARY_KERNEL
-    //cudaEventRecord(stop, 0);
-    //cudaEventSynchronize(stop);
-    //cudaEventElapsedTime(&timertime,start,stop);
-    //totaltime += timertime;
-
 #endif  // #ifdef __CUDACC__
-
-
-#else   // if !(PARALLEL)
-    // Implement this inside get_f1_d functions,
-    // as per the old method
-#if 0   
-#ifdef __CUDACC__
-    for( subs = 0; subs < get_NumSubs( lattice); subs++)
-    {
-      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
-      {
-        pdf_boundary_swap( lattice, f_mem_d, cumul_stride
-            , subs, dir, time);
-      }
-    }
-#endif
-#endif
 #endif  // if (PARALLEL)
 
+
+//------------------------------------------------------//    
+// Apply system boundary conditions                     //
+//------------------------------------------------------//
 #if 1
     // Only implemented in 2D right now
     if( get_NumDims( lattice) == 2)
@@ -484,7 +491,7 @@ int main( int argc, char **argv)
 
     write_PEST_out_data( &lattice, mv_mem_d, argc, argv);
 
-    if( temp_frame_switch)
+    if( is_end_of_frame(lattice,time))
     {
 
       // Although it is necessary to copy device arrays to host at this point,
@@ -539,11 +546,18 @@ int main( int argc, char **argv)
       display_etime( lattice);
       temp_frame_switch = 0;
       cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
+
+      if( is_final_frame( lattice, frame))
+      {
+        printf("\n breaking out of time loop on frame %d\n", frame);
+        break;
+      }
     }
 #else   // ifndef __CUDACC__
     stream_collide_stream( lattice);
 #endif  // ifdef __CUDACC__
-
+ 
+        printf("\n breaking out of time loop failed on frame %d\n", frame);
     set_time( lattice, ++time);
 
 #if INAMURO_SIGMA_COMPONENT
@@ -552,10 +566,11 @@ int main( int argc, char **argv)
 #endif
 
 
-    // Do boundary swaps.
+//------------------------------------------------------//    
+// Write boundary cells to buffers and send to host     //
+//------------------------------------------------------//
 #if PARALLEL
 #ifdef __CUDACC__
-    //cudaEventRecord(start, 0);
 #if BOUNDARY_KERNEL
     k_bound_DtH_2
       <<<
@@ -584,13 +599,6 @@ int main( int argc, char **argv)
 #else   // !(BOUNDARY_KERNEL)
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-#if 0
-      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
-      {
-        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
-            , subs, dir, time, DEVICE_TO_HOST);
-      }
-#else
       // For D2Q9 and D3Q19, NumUnboundDirs is odd
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
       {
@@ -602,14 +610,14 @@ int main( int argc, char **argv)
         pdf_bound_DtH_even_2( lattice, f_mem_d, cumul_stride
             , subs, dir);
       }
-#endif
     }
 #endif  // BOUNDARY KERNEL
-    //cudaEventRecord(stop, 0);
-    //cudaEventSynchronize(stop);
-    //cudaEventElapsedTime(&timertime,start,stop);
-    //totaltime += timertime;
 #endif  // #ifdef __CUDACC__
+
+
+//------------------------------------------------------//    
+// Send buffers to neighboring processes                //
+//------------------------------------------------------//
 
     // Buffers now large enough to deal with all substances in one transfer.
     // Currently, send a receives are activated if __CUDACC__ not defined,
@@ -617,8 +625,12 @@ int main( int argc, char **argv)
     process_send_recv_begin( lattice, 0);
     process_send_recv_end(lattice, 0);
 
+
+//------------------------------------------------------//    
+// Write boundary cells to buffers and send to device   //
+//------------------------------------------------------//
+
 #ifdef __CUDACC__
-    //cudaEventRecord(start, 0);
 #if BOUNDARY_KERNEL
 #if !(POINTER_MAPPING)
     cudaMemcpy( pos_dir_recv_ptr_d
@@ -647,13 +659,6 @@ int main( int argc, char **argv)
 #else   // !(BOUNDARY_KERNEL)
     for( subs = 0; subs < get_NumSubs( lattice); subs++)
     {
-#if 0
-      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
-      {
-        pdf_boundary_parallel( lattice, f_mem_d, cumul_stride
-            , subs, dir, time, HOST_TO_DEVICE);
-      }
-#else
       // For D2Q9 and D3Q19, NumUnboundDirs is odd
       for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir+=2)
       {
@@ -665,41 +670,14 @@ int main( int argc, char **argv)
         pdf_bound_HtD_even_2( lattice, f_mem_d, cumul_stride
             , subs, dir);
       }
-#endif
     }
 #endif  // BOUNDARY_KERNEL
-    //cudaEventRecord(stop, 0);
-    //cudaEventSynchronize(stop);
-    //cudaEventElapsedTime(&timertime,start,stop);
-    //totaltime += timertime;
-
-#if 0
-    // Only implemented in 2D right now
-    if( get_NumDims( lattice) == 2)
-    {
-      // Implement boundary conditions
-      bcs_2( lattice, f_mem_d, solids_mem_d); 
-    }
-#endif
-
 #endif  // #ifdef __CUDACC__
-#else   // if !(PARALLEL)
-    // Implement this inside get_f1_d functions,
-    // as per the old method
-#if 0   
-
-#ifdef __CUDACC__
-    for( subs = 0; subs < get_NumSubs( lattice); subs++)
-    {
-      for( dir=get_NumUnboundDirs( lattice); dir < get_NumVelDirs( lattice); dir++)
-      {
-        pdf_boundary_swap( lattice, f_mem_d, cumul_stride
-            , subs, dir, time);
-      }
-    }
-#endif
-#endif
 #endif  // if PARALLEL
+
+//------------------------------------------------------//    
+// Apply system boundary conditions                     //
+//------------------------------------------------------//
 
 #if 1
     // Only implemented in 2D right now
@@ -735,7 +713,7 @@ int main( int argc, char **argv)
 
     write_PEST_out_data( &lattice, mv_mem_d, argc, argv);
 
-    if( temp_frame_switch)
+    if( is_end_of_frame(lattice,time))
     {
       // Although it is necessary to copy device arrays to host at this point,
       // it is inefficient to write them to file here. Rather, we write to file
@@ -787,9 +765,9 @@ int main( int argc, char **argv)
 
 
 
-      output_frame( lattice);
-      process_toc( lattice);
-      display_etime( lattice);
+//      output_frame( lattice);
+//      process_toc( lattice);
+//      display_etime( lattice);
 
       temp_frame_switch = 0;
       cudaMemcpyToSymbol( is_end_of_frame_mem_c, &temp_frame_switch, sizeof(int));
@@ -800,19 +778,21 @@ int main( int argc, char **argv)
     collide( lattice);
 #endif  // ifdef __CUDACC__
 
-#if 0
     if( is_end_of_frame(lattice,time))
     { 
+
+
       // Although it is necessary to copy device arrays to host at this point,
       // it is inefficient to write them to file here. Rather, we write to file
       // immediately after the first kernel, to allow concurrent host and
       // device execution.  On the last frame of course, it is necessary to
       // write to file here.
-      set_frame( lattice, ++frame);
 
 #ifdef __CUDACC__
       for( subs = 0; subs < get_NumSubs( lattice); subs++)
       {
+
+#if 0
         printf("Transferring subs %d "
             "macrovars from device to host for output. \n", subs);
         cudaMemcpy( get_rho_ptr(lattice, subs, 0)
@@ -850,6 +830,7 @@ int main( int argc, char **argv)
           checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
 
         }
+#endif
         if( do_write_f_txt_file( lattice))
         {  
           // In the final version, the CPU arrays may well have
@@ -879,10 +860,7 @@ int main( int argc, char **argv)
         }
       }
 #endif  // ifdef __CUDACC__
-      if( frame == get_NumFrames( lattice))
-      {
-        output_frame( lattice);
-      }
+      output_frame( lattice);
       process_toc( lattice);
       display_etime( lattice);
 
@@ -892,10 +870,11 @@ int main( int argc, char **argv)
       printf("**************\n");
 #endif
     }
-#endif
+
 
   } /* for( time=1; time<=lattice->NumTimeSteps; time++) */
 
+        printf("\n broken out of time loop\n");
   write_PEST_out_file( &lattice, argc, argv);
 
   // Explicit GPU thread exit call

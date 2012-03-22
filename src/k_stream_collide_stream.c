@@ -14,31 +14,32 @@ void k_stream_collide_stream(
 
   int a, subs, k, n, b;
 
-#if __CUDA_ARCH__ < 200
-  int klc;
-  for( klc=0; klc < kloop_c; klc++)
+  for( subs=0; subs<numsubs_c; subs++)
   {
-    k = threadIdx.z + klc*blockDim.z;
-#else
-    k = threadIdx.z + blockIdx.z*blockDim.z;
-#endif
-
-    n = i + j * ni_c + k * nixnj_c;
-
-#if !(COMPUTE_ON_SOLIDS)
-    if( d_is_not_solid( solids_mem_d, n + end_bound_c))
+#if (INAMURO_SIGMA_COMPONENT)
+    if( subs != 1 || (time_c >= sigma_t_on_c && time_c <= sigma_t_off_c))
     {
 #endif
-      b = threadIdx.x + threadIdx.y*blockDim.x
-        + threadIdx.z*bixbj_c;
 
-      for( subs=0; subs<numsubs_c; subs++)
+#if __CUDA_ARCH__ < 200
+      int klc;
+      for( klc=0; klc < kloop_c; klc++)
       {
+        k = threadIdx.z + klc*blockDim.z;
+#else
+        k = threadIdx.z + blockIdx.z*blockDim.z;
+#endif
 
-#if (INAMURO_SIGMA_COMPONENT)
-        if( subs != 1 || (time_c >= sigma_t_on_c && time_c <= sigma_t_off_c))
+        n = i + j * ni_c + k * nixnj_c;
+
+#if !(COMPUTE_ON_SOLIDS)
+        if( d_is_not_solid( solids_mem_d, n + end_bound_c))
         {
 #endif
+          b = threadIdx.x + threadIdx.y*blockDim.x
+            + threadIdx.z*bixbj_c;
+
+
 
           // Populate shared memory for a given node with global memory values from
           // surrounding nodes.  This is a streaming operation. Splitting to odd and
@@ -98,12 +99,14 @@ void k_stream_collide_stream(
               fptr[b + (numdirs_c+0)*blocksize_c]
                 += fptr[b + a*blocksize_c];
 
+
+
               if( /*debug*/0)
               {
-                fptr[b + (numdirs_c+0)*blocksize_c] = 8.;
+                fptr[b + (numdirs_c+0)*blocksize_c] = fptr[b+5*blocksize_c];
               }
             }
-
+          
             if( numdims_c == 2)
             {
               fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
@@ -114,18 +117,18 @@ void k_stream_collide_stream(
                 for( a=0; a<numdirs_c; a++)
                 {
                   fptr[b + (numdirs_c+1)*blocksize_c]
-                    += vx_c[a]*fptr[b + a*blocksize_c];
+                    += ((real) vx_c[a])*fptr[b + a*blocksize_c];
 
                   fptr[b + (numdirs_c+2)*blocksize_c]
-                    += vy_c[a]*fptr[b + a*blocksize_c];
+                    += ((real) vy_c[a])*fptr[b + a*blocksize_c];
                 }
 
 #if WALSH_NS_ON
                 fptr[b + (numdirs_c+1)*blocksize_c] *=
-                  1. - ns_mem_d[n + end_bound_c];
+                  (1. - ns_mem_d[n + end_bound_c]);
 
                 fptr[b + (numdirs_c+2)*blocksize_c] *=
-                  1. - ns_mem_d[n + end_bound_c];
+                  (1. - ns_mem_d[n + end_bound_c]);
 #endif
 
                 fptr[b + (numdirs_c+1)*blocksize_c] /=
@@ -146,25 +149,25 @@ void k_stream_collide_stream(
                 for( a=0; a<numdirs_c; a++)
                 {
                   fptr[b + (numdirs_c+1)*blocksize_c]
-                    += vx_c[a]*fptr[b + a*blocksize_c];
+                    += ((real) vx_c[a])*fptr[b + a*blocksize_c];
 
                   fptr[b + (numdirs_c+2)*blocksize_c]
-                    += vy_c[a]*fptr[b + a*blocksize_c];
+                    += ((real) vy_c[a])*fptr[b + a*blocksize_c];
 
                   fptr[b + (numdirs_c+3)*blocksize_c]
-                    += vz_c[a]*fptr[b + a*blocksize_c];
+                    += ((real) vz_c[a])*fptr[b + a*blocksize_c];
 
                 }
 
 #if WALSH_NS_ON
                 fptr[b + (numdirs_c+1)*blocksize_c] *=
-                  1. - ns_mem_d[n + end_bound_c];
+                  (1. - ns_mem_d[n + end_bound_c]);
 
                 fptr[b + (numdirs_c+2)*blocksize_c] *=
-                  1. - ns_mem_d[n + end_bound_c];
+                  (1. - ns_mem_d[n + end_bound_c]);
 
                 fptr[b + (numdirs_c+3)*blocksize_c] *=
-                  1. - ns_mem_d[n + end_bound_c];
+                  (1. - ns_mem_d[n + end_bound_c]);
 
 #endif
 
@@ -181,9 +184,9 @@ void k_stream_collide_stream(
             }     // numdims_c == 2
 
 #if INAMURO_SIGMA_COMPONENT
-          }
+        }
 #endif  // INAMURO_SIGMA_COMPONENT
-
+          
           if( !d_skip_body_force_term())
           {
             // Modify macroscopic variables with a body force
@@ -206,9 +209,7 @@ void k_stream_collide_stream(
 #endif
 
           }
-
-#if 1
-
+          
           if( is_end_of_frame_mem_c)
           {
             // Store macroscopic variables in global memory.
@@ -220,7 +221,7 @@ void k_stream_collide_stream(
 
               if( /*debug*/0)
               {
-                set_mv_d( mv_mem_d, subs, n, a, 6.);
+                set_mv_d( mv_mem_d, subs, n, a, pfmul_c);
               }
             }
           }
@@ -233,91 +234,63 @@ void k_stream_collide_stream(
                   , fptr[ b + (numdirs_c + 0)*blocksize_c] );
             }
           }
-#endif
 
-#if 0 //WALSH_NS_ON
-          if( d_is_solid( solids_mem_d, n + end_bound_c))
+          if( !d_skip_collision_step())
           {
-            real temp;
-            for( a=1; a<numdirs_c; a+=2)
-            { 
-              temp = fptr[b + (a+1)*blocksize_c];
-            }
-            for( a=2; a<numdirs_c; a+=2)
-            { 
-              fptr[b + a*blocksize_c] = fptr[b + (a-1)*blocksize_c];
-            }
-            for( a=1; a<numdirs_c; a+=2)
-            { 
-              fptr[b + a*blocksize_c] = temp;
-            }
 
-          }
-          else
-          {
-#endif
-            if( !d_skip_collision_step())
+            // Calculate u-squared since it is used many times
+            real usq;
+
+#if INAMURO_SIGMA_COMPONENT
+            if( subs != 1)
             {
+#endif
+              usq = fptr[b + (numdirs_c+1)*blocksize_c]
+                * fptr[b + (numdirs_c+1)*blocksize_c]
 
-              // Calculate u-squared since it is used many times
-              real usq;
+                + fptr[b + (numdirs_c+2)*blocksize_c]
+                * fptr[b + (numdirs_c+2)*blocksize_c];
 
-#if INAMURO_SIGMA_COMPONENT
-              if( subs != 1)
+              if( numdims_c==3)
               {
-#endif
-                usq = fptr[b + (numdirs_c+1)*blocksize_c]
-                  * fptr[b + (numdirs_c+1)*blocksize_c]
-
-                  + fptr[b + (numdirs_c+2)*blocksize_c]
-                  * fptr[b + (numdirs_c+2)*blocksize_c];
-
-                if( numdims_c==3)
-                {
-                  usq += fptr[b + (numdirs_c+3)*blocksize_c]
-                    * fptr[b + (numdirs_c+3)*blocksize_c];
-                }
-#if INAMURO_SIGMA_COMPONENT
+                usq += fptr[b + (numdirs_c+3)*blocksize_c]
+                  * fptr[b + (numdirs_c+3)*blocksize_c];
               }
+#if INAMURO_SIGMA_COMPONENT
+            }
 #endif
-              // Calculate the collision operator and add to f resulting from first
-              // streaming (TODO: Why do we pass f_mem_d to this function?)
+            // Calculate the collision operator and add to f resulting from first
+            // streaming (TODO: Why do we pass f_mem_d to this function?)
 
 #if WALSH_NS_ON
-              real temp1, temp2;
+            real temp1, temp2;
 
-              temp1 = fptr[b];
-              calc_f_tilde_d( f_mem_d, subs, 0, b, blocksize_c, fptr, usq);
-              fptr[b] *= 1. - ns_mem_d[ n + end_bound_c];
-              fptr[b] += ns_mem_d[ n + end_bound_c] * temp1;
+            temp1 = fptr[b];
+            calc_f_tilde_d( f_mem_d, subs, 0, b, blocksize_c, fptr, usq);
+            fptr[b] *= 1. - ns_mem_d[ n + end_bound_c];
+            fptr[b] += ns_mem_d[ n + end_bound_c] * temp1;
 
-              for( a=1; a<numdirs_c; a+=2)
-              {
-                temp1 = fptr[b + a*blocksize_c];
-                temp2 = fptr[b + (a+1)*blocksize_c];
-                calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
-                calc_f_tilde_d( f_mem_d, subs, a+1, b, blocksize_c, fptr, usq);
+            for( a=1; a<numdirs_c; a+=2)
+            {
+              temp1 = fptr[b + a*blocksize_c];
+              temp2 = fptr[b + (a+1)*blocksize_c];
+              calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
+              calc_f_tilde_d( f_mem_d, subs, a+1, b, blocksize_c, fptr, usq);
 
-                fptr[b + a*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
-                fptr[b + a*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp2;
-                fptr[b + (a+1)*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
-                fptr[b + (a+1)*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp1;
+              fptr[b + a*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
+              fptr[b + a*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp2;
+              fptr[b + (a+1)*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
+              fptr[b + (a+1)*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp1;
 
-              }
-
-#else
-              for( a=0; a<numdirs_c; a++)
-              {
-                calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
-              }
-#endif
             }
 
-
-#if 0 //WALSH_NS_ON
-          } 
+#else
+            for( a=0; a<numdirs_c; a++)
+            {
+              calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
+            }
 #endif
-
+          }
 
           // Finally, save results back to global memory in adjacent nodes.  This is
           // a second streaming operation.  Note that the 'swap' that occurs in the
@@ -351,21 +324,21 @@ void k_stream_collide_stream(
                 , a-1, fptr[b + a*blocksize_c]);
           }
 
-
-#if (INAMURO_SIGMA_COMPONENT)
+#if !(COMPUTE_ON_SOLIDS)
         }
 #endif
 
 
-      }  /* subs loop */
-
-#if !(COMPUTE_ON_SOLIDS)
-    }
-#endif
-
-
 #if __CUDA_ARCH__ < 200
-  }  /*for( klc=0; klc < kloop_c; klc++)*/
+      }  /*for( klc=0; klc < kloop_c; klc++)*/
 #endif
+
+#if (INAMURO_SIGMA_COMPONENT)
+    }       // if( subs!=1)
+#endif
+
+
+  }  /* subs loop */
+
 
 }
