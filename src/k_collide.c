@@ -76,6 +76,8 @@ void k_collide(
                   , a-1, 0);
           }
 
+
+
 #if INAMURO_SIGMA_COMPONENT 
           if( subs == 1)
           {

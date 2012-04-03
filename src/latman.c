@@ -349,7 +349,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( pest_output_flag_c, &temp, sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
-
+ 
 
 #endif
 
@@ -546,7 +546,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       }
       fclose(in);
 
-#if 1
+#if 0
       printf("\n");
       for( i=0; i<num_pressure_n_in0(*lattice,0); i+=10)
       {
@@ -1033,8 +1033,8 @@ void PEST_gpu_switch( lattice_ptr *lattice
   if((*lattice)->concentration_data[(*lattice)->array_position].timestep 
       == (*lattice)->time)
   {
-      int gpu_switch = 1;
-      cudaMemcpyToSymbol( pest_output_flag_c, &gpu_switch, sizeof(int));
+    int gpu_switch = 1;
+    cudaMemcpyToSymbol( pest_output_flag_c, &gpu_switch, sizeof(int));
   }
 #endif
 
@@ -1067,6 +1067,7 @@ void write_PEST_out_data( lattice_ptr *lattice
     int gpu_switch = 0;
     cudaMemcpyToSymbol( pest_output_flag_c, &gpu_switch, sizeof(int));
 
+#if 0    
     printf("Transferring subs %d "
         "macrovars from device to host for PEST file writing. \n", 1);
     cudaMemcpy( get_rho_ptr(*lattice, 1, 0)
@@ -1076,6 +1077,23 @@ void write_PEST_out_data( lattice_ptr *lattice
         , get_NumNodes( *lattice)*sizeof(real)
         , cudaMemcpyDeviceToHost);
     checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+    cudaMemcpy( get_ux_ptr(*lattice, 0, 0)
+        , mv_mem_d
+        + 0*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
+        + 1*get_NumNodes( *lattice)
+        , get_NumNodes( *lattice)*sizeof(real)
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+    cudaMemcpy( get_uy_ptr(*lattice, 0, 0)
+        , mv_mem_d
+        + 0*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
+        + 2*get_NumNodes( *lattice)
+        , get_NumNodes( *lattice)*sizeof(real)
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+#endif
 
   }
 #endif
@@ -1100,8 +1118,44 @@ void write_PEST_out_data( lattice_ptr *lattice
       * get_LX(*lattice)
       + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
 
+#if 1
+    printf("Transferring subs %d "
+        "macrovars from device to host for PEST file writing. \n", 1);
+    cudaMemcpy( get_rho_ptr(*lattice, 1, n)
+        , mv_mem_d
+        + 1*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
+        + 0*get_NumNodes( *lattice)
+        + n
+        , sizeof(real)
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+    cudaMemcpy( get_ux_ptr(*lattice, 0, n)
+        , mv_mem_d
+        + 0*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
+        + 1*get_NumNodes( *lattice)
+        + n
+        , sizeof(real)
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+
+    cudaMemcpy( get_uy_ptr(*lattice, 0, n)
+        , mv_mem_d
+        + 0*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
+        + 2*get_NumNodes( *lattice)
+        + n
+        , sizeof(real)
+        , cudaMemcpyDeviceToHost);
+    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+#endif
+
+    real tux = get_ux( *lattice, 0, n);
+    real tuy = get_uy( *lattice, 0, n);
+
     (*lattice)->concentration_data[(*lattice)->array_position].norm_conc 
       = get_rho( *lattice, 1, n);
+    (*lattice)->concentration_data[(*lattice)->array_position].norm_vel 
+      = sqrt(tux*tux + tuy*tuy);
     (*lattice)->array_position++;
 
   }
@@ -1143,6 +1197,21 @@ void write_PEST_out_file( lattice_ptr *lattice, int argc, char **argv)
     fprintf(fp,"%20.17f\n", (*lattice)->concentration_data[aa].norm_conc);
   }
   fclose(fp);
+
+  sprintf( filename, "./out/vel_data_proc%04d.dat", (*lattice)->process.id);
+  fp=fopen(filename, "w+");
+  if( !( fp = fopen(filename,"w+")))
+  {
+    printf("%s %d >> WARNING: Can't load \"%s\".\n",
+        __FILE__,__LINE__,filename);
+    return;
+  }
+  for( aa = 0; aa < (*lattice)->conc_array_size; aa++)
+  {
+    fprintf(fp,"%20.17f\n", (*lattice)->concentration_data[aa].norm_vel);
+  }
+  fclose(fp);
+
   sprintf( filename, "./out/conc_order_proc%04d.dat", (*lattice)->process.id);
   fp=fopen(filename, "w+");
   if( !( fp = fopen(filename,"w+")))

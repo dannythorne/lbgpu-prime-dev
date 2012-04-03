@@ -557,7 +557,7 @@ int main( int argc, char **argv)
     stream_collide_stream( lattice);
 #endif  // ifdef __CUDACC__
  
-        printf("\n breaking out of time loop failed on frame %d\n", frame);
+       // printf("\n breaking out of time loop failed on frame %d\n", frame);
     set_time( lattice, ++time);
 
 #if INAMURO_SIGMA_COMPONENT

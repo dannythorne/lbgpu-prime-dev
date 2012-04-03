@@ -1,6 +1,7 @@
 // Should be already defined in ./src/system_boundary_kernels.c
-//extern __shared__ real fptr[];
-
+#if 0
+extern __shared__ real fptr[];
+#endif
 __global__
 void k_stream_collide_stream(
     real* f_mem_d
@@ -67,6 +68,7 @@ void k_stream_collide_stream(
                 , -vx_c[a],-vy_c[a],-vz_c[a]
                 , a, -1);
           }
+
 
 #if INAMURO_SIGMA_COMPONENT 
           if( subs == 1)

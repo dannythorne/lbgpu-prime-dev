@@ -1,3 +1,4 @@
+
 extern __shared__ real fptr[];
 #if 1
 __global__

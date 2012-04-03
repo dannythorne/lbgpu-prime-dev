@@ -29,6 +29,9 @@
 // Flag: SAY_HI
 #define SAY_HI 1
 
+// Set MPI buffers directly from main kernels (not even sure whether this can be done)
+//#define SET_MPI_BUF_DIRECT 1 
+
 // INTEGER_IC_BOUND forces x0, y0, z0, r0 and x1, x2, y1, y2, z1, z2 to be
 // integer values.  Since the lattice can't resolve shapes with non-integer
 // dimensions, using integers makes sense.  This flag is particularly

@@ -2264,6 +2264,10 @@ __constant__ int time_c;
 __constant__ int sigma_t_on_c;
 __constant__ int sigma_t_off_c;
 #endif
+
+// For boundary conditions implemented on the device
+
+
 #endif
 #if TEXTURE_FETCH
 texture<unsigned char, 1, cudaReadModeElementType> tex_solid;

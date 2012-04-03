@@ -51,6 +51,7 @@ struct conc_data_struct
   int x_coord;
   int y_coord;
   double norm_conc;
+  double norm_vel;
 };
 #endif
 
