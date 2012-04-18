@@ -172,11 +172,11 @@ void k_sysbound_pressure_n_2(
       fptr[b + S*bixbk_c] = fptr[b + N*bixbk_c] 
         - (2./3.) * fptr[b + numdirs_c*bixbk_c];
 
-      fptr[b + SE*bixbk_c] = fptr[b + NW*bixbk_c] 
+      fptr[b + SW*bixbk_c] = fptr[b + NE*bixbk_c] 
         + (1./2.) * (fptr[b + E*bixbk_c]-fptr[b + W*bixbk_c])
         - (1./6.) * fptr[b + numdirs_c*bixbk_c];
 
-      fptr[b + SW*bixbk_c] = fptr[b + NE*bixbk_c] 
+      fptr[b + SE*bixbk_c] = fptr[b + NW*bixbk_c] 
         + (1./2.) * (fptr[b + W*bixbk_c]-fptr[b + E*bixbk_c])
         - (1./6.) * fptr[b + numdirs_c*bixbk_c];
 
