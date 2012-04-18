@@ -2231,6 +2231,7 @@ __constant__ int is_end_of_frame_mem_c;
 __constant__ int pest_output_flag_c;
 
 __constant__ real tau_c[2];    // Hardcoded for up to 2 fluid components
+__constant__ real inv_tau_c[2];    // Hardcoded for up to 2 fluid components
 __constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
 
 __constant__ int numsubs_c;
@@ -2848,7 +2849,7 @@ __device__ void calc_f_tilde_d(
 #if INAMURO_SIGMA_COMPONENT
   if( subs == 1)
   {
-    f_temp[thread + dir*block_size] *= (1. - 1. / tau_c[subs]);
+    f_temp[thread + dir*block_size] *= (1. - inv_tau_c[subs]);
 
     real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
       + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*block_size];
@@ -2861,13 +2862,13 @@ __device__ void calc_f_tilde_d(
 
     f_temp[thread + dir*block_size] += wt_c[dir]
       * f_temp[ thread + numdirs_c*block_size]
-      * ( 1. + 3.*vdotu) / tau_c[subs];
+      * ( 1. + 3.*vdotu) * inv_tau_c[subs];
   }
   else
   {
 #endif
 
-    f_temp[thread + dir*block_size] *= (1. - 1. / tau_c[subs]);
+    f_temp[thread + dir*block_size] *= (1. - inv_tau_c[subs]);
 
     real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
       + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*block_size];
@@ -2881,7 +2882,7 @@ __device__ void calc_f_tilde_d(
       * ( 1. + 3.*vdotu
           + 4.5*vdotu*vdotu
           - 1.5*usq
-        ) / tau_c[subs];
+        ) * inv_tau_c[subs];
 #if INAMURO_SIGMA_COMPONENT
   }
 #endif

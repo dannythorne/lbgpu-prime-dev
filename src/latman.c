@@ -231,12 +231,24 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       , get_NumSubs(*lattice)*sizeof(real) );
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
-//  real temptau[2];
-//
-//  cudaMemcpyFromSymbol( temptau, tau_c, get_NumSubs(*lattice)*sizeof(real));
-// checkCUDAError( __FILE__, __LINE__, "cudaMemcpyFromSymbol");
+  real temptau[2];
 
-// printf(" \n\n tau values after copy:  %f    %f   \n\n", temptau[0], temptau[1]);
+  for (a=0; a<get_NumSubs( *lattice); a++)
+  {
+    temptau[a] = 1. / get_tau( *lattice, a);
+  }
+
+  cudaMemcpyToSymbol( inv_tau_c
+      , temptau
+      , get_NumSubs(*lattice)*sizeof(real) );
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+
+
+  //
+  //  cudaMemcpyFromSymbol( temptau, tau_c, get_NumSubs(*lattice)*sizeof(real));
+  // checkCUDAError( __FILE__, __LINE__, "cudaMemcpyFromSymbol");
+
+  // printf(" \n\n tau values after copy:  %f    %f   \n\n", temptau[0], temptau[1]);
   /*  printf(" \n\n %f %f %f %f %f %f \n\n", *((*lattice)->param.gforce[0])
       , *((*lattice)->param.gforce[0]+1)
       , *((*lattice)->param.gforce[0]+2)
@@ -349,7 +361,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
   cudaMemcpyToSymbol( pest_output_flag_c, &temp, sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
- 
+
 
 #endif
 
