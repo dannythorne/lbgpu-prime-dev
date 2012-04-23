@@ -2225,6 +2225,7 @@ __constant__ int vx_c[19];     //
 __constant__ int vy_c[19];     // Enough space for D3Q19; first 9
 __constant__ int vz_c[19];     // components constitute D2Q9 model
 __constant__ real wt_c[19];    // 
+__constant__ real wt_div_c;
 __constant__ int cumul_stride_c[20]; // For variable stride created by boundary regions
 
 __constant__ int is_end_of_frame_mem_c;
@@ -2860,9 +2861,9 @@ __device__ void calc_f_tilde_d(
 
     //vdotu = 0.;
 
-    f_temp[thread + dir*block_size] += wt_c[dir]
+    f_temp[thread + dir*block_size] += (wt_c[dir]
       * f_temp[ thread + numdirs_c*block_size]
-      * ( 1. + 3.*vdotu) * inv_tau_c[subs];
+      * ( 1. + 3.*vdotu) * inv_tau_c[subs]) / wt_div_c;
   }
   else
   {
@@ -2877,12 +2878,12 @@ __device__ void calc_f_tilde_d(
       vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*block_size];
     }
 
-    f_temp[thread + dir*block_size] += wt_c[dir]
+    f_temp[thread + dir*block_size] += (wt_c[dir]
       * f_temp[ thread + numdirs_c*block_size]
       * ( 1. + 3.*vdotu
           + 4.5*vdotu*vdotu
           - 1.5*usq
-        ) * inv_tau_c[subs];
+        ) * inv_tau_c[subs]) / wt_div_c;
 #if INAMURO_SIGMA_COMPONENT
   }
 #endif

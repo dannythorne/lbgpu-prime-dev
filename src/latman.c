@@ -160,9 +160,9 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
   if( get_NumDims( *lattice)==2)
   {
-    real W0 = 4./9.;
-    real W1 = 1./9.;
-    real W2 = 1./36.;
+    real W0 = 4.0/9.0;
+    real W1 = 1.0/9.0;
+    real W2 = 1.0/36.0;
     // wt = { W0
     //      , W1, W1, W1, W1
     //      , W2, W2, W2, W2
@@ -172,14 +172,14 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     for( a=1; a<5 ; a++) { wt[a] = W1;}
     for(    ; a<9 ; a++) { wt[a] = W2;}
     for(    ; a<19; a++) { wt[a] = 0.;}
-
+    wt_div = 1.0;
   }
 
   if( get_NumDims( *lattice) == 3)
   {
-    real W0 = 1./3.;
-    real W1 = 1./18.;
-    real W2 = 1./36.;
+    real W0 = 3.;
+    real W1 = 0.5;
+    real W2 = 0.25;
     // wt = { W0
     //      , W1, W1, W1, W1
     //      , W2, W2, W2, W2
@@ -190,6 +190,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     for(    ; a<9 ; a++) { wt[a] = W2;}
     for(    ; a<11; a++) { wt[a] = W1;}
     for(    ; a<19; a++) { wt[a] = W2;}
+    wt_div = 9.0;
   }
 
   // For direction a, cumul_stride[a] is the 'cumulative stride',
@@ -221,6 +222,9 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     + get_EndBoundSize( *lattice);
   cudaMemcpyToSymbol( wt_c, wt, 19*sizeof(real));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+  cudaMemcpyToSymbol( wt_div_c, &wt_div, sizeof(real));
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+
   cudaMemcpyToSymbol( cumul_stride_c, cumul_stride, 20*sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
@@ -538,11 +542,11 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       }
       *(num_pressure_n_in0_ptr(*lattice,0)) = 0;
       real temp;
-      fscanf(in,"%lf",&temp);
+      fscanf(in,"%e",&temp);
       while( !feof(in))
       {
         (*(num_pressure_n_in0_ptr(*lattice,0)))++;
-        fscanf(in,"%lf",&temp);
+        fscanf(in,"%e",&temp);
       }
 
       printf("num_pressure_n_in0_ptr = %d\n", num_pressure_n_in0(*lattice,0));
@@ -554,7 +558,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       int i;
       for( i=0; i<num_pressure_n_in0(*lattice,0); i++)
       {
-        fscanf(in,"%lf", pressure_n_in0(*lattice,0) + i);
+        fscanf(in,"%e", pressure_n_in0(*lattice,0) + i);
       }
       fclose(in);
 
@@ -591,11 +595,11 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       }
       *(num_pressure_s_in0_ptr(*lattice,0)) = 0;
       real temp;
-      fscanf(in,"%lf",&temp);
+      fscanf(in,"%e",&temp);
       while( !feof(in))
       {
         (*(num_pressure_s_in0_ptr(*lattice,0)))++;
-        fscanf(in,"%lf",&temp);
+        fscanf(in,"%e",&temp);
       }
 
       printf("num_pressure_s_in0_ptr = %d\n", num_pressure_s_in0(*lattice,0));
@@ -607,7 +611,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       int i;
       for( i=0; i<num_pressure_s_in0(*lattice,0); i++)
       {
-        fscanf(in,"%lf", pressure_s_in0(*lattice,0) + i);
+        fscanf(in,"%e", pressure_s_in0(*lattice,0) + i);
       }
       fclose(in);
 
@@ -911,11 +915,11 @@ void read_PEST_in_files( lattice_ptr *lattice, int argc, char **argv)
 
   (*lattice)->conc_array_size = 0;
 
-  fscanf(in,"%lf",&temp);
+  fscanf(in,"%d",&temp);
   while( !feof(in))
   {
     (*lattice)->conc_array_size++;
-    fscanf(in,"%lf",&temp);
+    fscanf(in,"%d",&temp);
   }
 
   printf("Number of PEST points = %d\n", (*lattice)->conc_array_size);

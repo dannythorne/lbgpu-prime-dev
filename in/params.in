@@ -6,7 +6,7 @@ BY                     3
 BZ                     1
 characteristic_length  40
 NumFrames              8
-FrameRate              151200
+FrameRate              800
 tau[0]                 0.6
 gforce_x[0]            0.0000
 gforce_y[0]            0.00000
@@ -20,8 +20,8 @@ end_grav[1]            0
 buoyancy               0
 incompressible         0
 simple_diffusion       0
-rho_A                  1.00
-rho_B                  1.00
+rho_A                  2.25
+rho_B                  2.25
 rho_sigma              6250.00000
 rho_sigma_in           0.0
 rho_sigma_out          0.0
@@ -39,7 +39,7 @@ PressureBC             0
 AllBoundaryPeriodic    0
 sink                   1.0E-6
 pfmul                  0.01000
-pfadd                  1.0
+pfadd                  2.25
 rho_in                 1.00001
 rho_out                0.99999
 ux_in                  0.00

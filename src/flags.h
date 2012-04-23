@@ -6,7 +6,6 @@
 //
 //  - Preprocessor flags for lbgpu_prime.
 
-#define EPSILON 1.0e-6
 
 // set SAVE_MEMO to use the version of only ftemp without
 // save the feq, f, in the momory.
@@ -40,11 +39,11 @@
 
 // If COMPUTE_ON_SOLIDS is on, the f's will be set to zero on solid nodes
 // and the macroscopic variables will be computed.
-#define COMPUTE_ON_SOLIDS 1
+#define COMPUTE_ON_SOLIDS 0
 
 // WALSH_NS_ON implements the partial bounceback boundary conditions found
 // in Walsh et al., Computers & Geosciences, 35 (2009) 1186–1193
-#define WALSH_NS_ON (1 && COMPUTE_ON_SOLIDS)
+#define WALSH_NS_ON (0 && COMPUTE_ON_SOLIDS)
 
 // PEST_OUTPUT_ON enables the output of a concentration list at various
 // timesteps and coordinates for use with PEST
@@ -54,8 +53,13 @@
 
 // Use double precision (or not)
 
-#define DP_ON 1
+#define DP_ON 0
 
+#if DP_ON
+#define EPSILON 1.0e-12
+#else
+#define EPSILON 1.0e-6
+#endif
 // Use 1D texture fetching for boundaries
 
 #define TEXTURE_FETCH 0

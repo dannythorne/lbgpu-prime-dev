@@ -1,7 +1,4 @@
-// Should be already defined in ./src/system_boundary_kernels.c
-#if 0
-extern __shared__ real fptr[];
-#endif
+
 __global__
 void k_stream_collide_stream(
     real* f_mem_d
