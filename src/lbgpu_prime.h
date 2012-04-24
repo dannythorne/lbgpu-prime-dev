@@ -86,7 +86,6 @@ int vz[19] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,-1, 1,-1, 1,-1, 1,-1, 1,-1};
 //                            E  W  W  E        E  W  W  E  N  S  S  N
 
 real wt[19];
-real wt_div;
 int cumul_stride[20];
 
 #define C  0

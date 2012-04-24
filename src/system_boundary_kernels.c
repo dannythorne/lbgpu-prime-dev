@@ -55,13 +55,21 @@ void k_sysbound_pressure_n_1(
             , a, -1);
       }
 
-      fptr[b + numdirs_c*bixbk_c] = -fixed_bound_var_c
-        + fptr[b + C*bixbk_c]
+      fptr[b + numdirs_c*bixbk_c] =
+        fptr[b + C*bixbk_c]
         + fptr[b + E*bixbk_c]
         + fptr[b + W*bixbk_c]
-        + 2. * (fptr[b + N*bixbk_c]
-            + fptr[b + NE*bixbk_c]
-            + fptr[b + NW*bixbk_c]);
+        + fptr[b + N*bixbk_c]
+        + fptr[b + N*bixbk_c]
+        + fptr[b + NE*bixbk_c]
+        + fptr[b + NE*bixbk_c]
+        + fptr[b + NW*bixbk_c] 
+        + fptr[b + NW*bixbk_c];
+
+      fptr[b + numdirs_c*bixbk_c] -= fixed_bound_var_c;
+#if BASTIEN_CHOPARD
+      fptr[b + numdirs_c*bixbk_c] += rho_A_c[subs_c];
+#endif
 
       fptr[b + S*bixbk_c] = fptr[b + N*bixbk_c] 
         - (2./3.) * fptr[b + numdirs_c*bixbk_c];
@@ -160,14 +168,22 @@ void k_sysbound_pressure_n_2(
               , a-1, 0);
       }
 
-
-      fptr[b + numdirs_c*bixbk_c] = -fixed_bound_var_c
-        + fptr[b + C*bixbk_c]
+      fptr[b + numdirs_c*bixbk_c] =
+        fptr[b + C*bixbk_c]
         + fptr[b + E*bixbk_c]
         + fptr[b + W*bixbk_c]
-        + 2. * (fptr[b + N*bixbk_c]
-            + fptr[b + NE*bixbk_c]
-            + fptr[b + NW*bixbk_c]);
+        + fptr[b + N*bixbk_c]
+        + fptr[b + N*bixbk_c]
+        + fptr[b + NE*bixbk_c]
+        + fptr[b + NE*bixbk_c]
+        + fptr[b + NW*bixbk_c] 
+        + fptr[b + NW*bixbk_c];
+
+      fptr[b + numdirs_c*bixbk_c] -= fixed_bound_var_c;
+#if BASTIEN_CHOPARD
+      fptr[b + numdirs_c*bixbk_c] += rho_A_c[subs_c];
+#endif
+
 
       fptr[b + S*bixbk_c] = fptr[b + N*bixbk_c] 
         - (2./3.) * fptr[b + numdirs_c*bixbk_c];
@@ -263,13 +279,21 @@ void k_sysbound_pressure_s_1(
             , a, -1);
       }
 
-      fptr[b + numdirs_c*bixbk_c] = fixed_bound_var_c
+      fptr[b + numdirs_c*bixbk_c] =
         - fptr[b + C*bixbk_c]
         - fptr[b + E*bixbk_c]
         - fptr[b + W*bixbk_c]
-        - 2. * (fptr[b + S*bixbk_c]
-            + fptr[b + SE*bixbk_c]
-            + fptr[b + SW*bixbk_c]);
+        - fptr[b + S*bixbk_c]
+        - fptr[b + S*bixbk_c]
+        - fptr[b + SE*bixbk_c]
+        - fptr[b + SE*bixbk_c]
+        - fptr[b + SW*bixbk_c] 
+        - fptr[b + SW*bixbk_c];
+
+      fptr[b + numdirs_c*bixbk_c] += fixed_bound_var_c;
+#if BASTIEN_CHOPARD
+      fptr[b + numdirs_c*bixbk_c] -= rho_A_c[subs_c];
+#endif
 
       fptr[b + N*bixbk_c] = fptr[b + S*bixbk_c] 
         + (2./3.) * fptr[b + numdirs_c*bixbk_c];
@@ -369,13 +393,22 @@ void k_sysbound_pressure_s_2(
               , a-1, 0);
       }
 
-      fptr[b + numdirs_c*bixbk_c] = fixed_bound_var_c
+      fptr[b + numdirs_c*bixbk_c] =
         - fptr[b + C*bixbk_c]
         - fptr[b + E*bixbk_c]
         - fptr[b + W*bixbk_c]
-        - 2. * (fptr[b + S*bixbk_c]
-            + fptr[b + SE*bixbk_c]
-            + fptr[b + SW*bixbk_c]);
+        - fptr[b + S*bixbk_c]
+        - fptr[b + S*bixbk_c]
+        - fptr[b + SE*bixbk_c]
+        - fptr[b + SE*bixbk_c]
+        - fptr[b + SW*bixbk_c] 
+        - fptr[b + SW*bixbk_c];
+
+      fptr[b + numdirs_c*bixbk_c] += fixed_bound_var_c;
+#if BASTIEN_CHOPARD
+      fptr[b + numdirs_c*bixbk_c] -= rho_A_c[subs_c];
+#endif
+
 
       fptr[b + N*bixbk_c] = fptr[b + S*bixbk_c] 
         + (2./3.) * fptr[b + numdirs_c*bixbk_c];
@@ -473,14 +506,14 @@ void k_sysbound_zeroconcgrad_n_1(
       }
 
       fptr[b + numdirs_c*bixbk_c] =
-        wt_div_c * ((fptr[b + N*bixbk_c]
+        (fptr[b + N*bixbk_c]
          + fptr[b + NE*bixbk_c]
          + fptr[b + NW*bixbk_c])
-        / ( wt_c[S]+wt_c[SW]+wt_c[SE]));
+        / ( wt_c[S]+wt_c[SW]+wt_c[SE]);
 
-      fptr[b + S*bixbk_c] = wt_c[S]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
-      fptr[b + SW*bixbk_c] = wt_c[SW]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;;
-      fptr[b + SE*bixbk_c] = wt_c[SE]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
+      fptr[b + S*bixbk_c] = wt_c[S]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + SW*bixbk_c] = wt_c[SW]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + SE*bixbk_c] = wt_c[SE]*fptr[b + numdirs_c*bixbk_c];
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
@@ -569,14 +602,14 @@ void k_sysbound_zeroconcgrad_n_2(
       }
 
       fptr[b + numdirs_c*bixbk_c] =
-        wt_div_c * ((fptr[b + N*bixbk_c]
+        (fptr[b + N*bixbk_c]
          + fptr[b + NE*bixbk_c]
          + fptr[b + NW*bixbk_c])
-        / ( wt_c[S]+wt_c[SW]+wt_c[SE]));
+        / ( wt_c[S]+wt_c[SW]+wt_c[SE]);
 
-      fptr[b + S*bixbk_c] = wt_c[S]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
-      fptr[b + SW*bixbk_c] = wt_c[SW]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
-      fptr[b + SE*bixbk_c] = wt_c[SE]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
+      fptr[b + S*bixbk_c] = wt_c[S]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + SW*bixbk_c] = wt_c[SW]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + SE*bixbk_c] = wt_c[SE]*fptr[b + numdirs_c*bixbk_c];
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
@@ -662,14 +695,14 @@ void k_sysbound_zeroconcgrad_s_1(
       }
 
       fptr[b + numdirs_c*bixbk_c] =
-        wt_div_c * ((fptr[b + S*bixbk_c]
+        (fptr[b + S*bixbk_c]
          + fptr[b + SW*bixbk_c]
          + fptr[b + SE*bixbk_c])
-        / ( wt_c[N]+wt_c[NE]+wt_c[NW]));
+        / ( wt_c[N]+wt_c[NE]+wt_c[NW]);
 
-      fptr[b + N*bixbk_c] = wt_c[N]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
-      fptr[b + NE*bixbk_c] = wt_c[NE]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
-      fptr[b + NW*bixbk_c] = wt_c[NW]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
+      fptr[b + N*bixbk_c] = wt_c[N]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + NE*bixbk_c] = wt_c[NE]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + NW*bixbk_c] = wt_c[NW]*fptr[b + numdirs_c*bixbk_c];
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
@@ -759,14 +792,14 @@ void k_sysbound_zeroconcgrad_s_2(
       }
 
       fptr[b + numdirs_c*bixbk_c] =
-        wt_div_c * ((fptr[b + S*bixbk_c]
+        (fptr[b + S*bixbk_c]
          + fptr[b + SW*bixbk_c]
          + fptr[b + SE*bixbk_c])
-        / ( wt_c[N]+wt_c[NE]+wt_c[NW]));
+        / ( wt_c[N]+wt_c[NE]+wt_c[NW]);
 
-      fptr[b + N*bixbk_c] = wt_c[N]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
-      fptr[b + NE*bixbk_c] = wt_c[NE]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
-      fptr[b + NW*bixbk_c] = wt_c[NW]*fptr[b + numdirs_c*bixbk_c] / wt_div_c;
+      fptr[b + N*bixbk_c] = wt_c[N]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + NE*bixbk_c] = wt_c[NE]*fptr[b + numdirs_c*bixbk_c];
+      fptr[b + NW*bixbk_c] = wt_c[NW]*fptr[b + numdirs_c*bixbk_c];
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c

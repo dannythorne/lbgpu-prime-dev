@@ -160,9 +160,9 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
 
   if( get_NumDims( *lattice)==2)
   {
-    real W0 = 4.0/9.0;
-    real W1 = 1.0/9.0;
-    real W2 = 1.0/36.0;
+    real W0 = 4./9.;
+    real W1 = 1./9.;
+    real W2 = 1./36.;
     // wt = { W0
     //      , W1, W1, W1, W1
     //      , W2, W2, W2, W2
@@ -172,14 +172,13 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     for( a=1; a<5 ; a++) { wt[a] = W1;}
     for(    ; a<9 ; a++) { wt[a] = W2;}
     for(    ; a<19; a++) { wt[a] = 0.;}
-    wt_div = 1.0;
   }
 
   if( get_NumDims( *lattice) == 3)
   {
-    real W0 = 3.;
-    real W1 = 0.5;
-    real W2 = 0.25;
+    real W0 = 1./3.;
+    real W1 = 1./18.;
+    real W2 = 1./36.;
     // wt = { W0
     //      , W1, W1, W1, W1
     //      , W2, W2, W2, W2
@@ -190,7 +189,6 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     for(    ; a<9 ; a++) { wt[a] = W2;}
     for(    ; a<11; a++) { wt[a] = W1;}
     for(    ; a<19; a++) { wt[a] = W2;}
-    wt_div = 9.0;
   }
 
   // For direction a, cumul_stride[a] is the 'cumulative stride',
@@ -222,9 +220,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
     + get_EndBoundSize( *lattice);
   cudaMemcpyToSymbol( wt_c, wt, 19*sizeof(real));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
-  cudaMemcpyToSymbol( wt_div_c, &wt_div, sizeof(real));
-  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
-
+  
   cudaMemcpyToSymbol( cumul_stride_c, cumul_stride, 20*sizeof(int));
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
 
@@ -243,6 +239,16 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
   }
 
   cudaMemcpyToSymbol( inv_tau_c
+      , temptau
+      , get_NumSubs(*lattice)*sizeof(real) );
+  checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
+
+  for (a=0; a<get_NumSubs( *lattice); a++)
+  {
+    temptau[a] = get_rho_A( *lattice, a);
+  }
+
+  cudaMemcpyToSymbol( rho_A_c
       , temptau
       , get_NumSubs(*lattice)*sizeof(real) );
   checkCUDAError( __FILE__, __LINE__, "cudaMemcpyToSymbol");
@@ -523,6 +529,8 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
         (*lattice)->vars[subs].macrovars_memblock + i*get_NumNodes(*lattice);
     }
 
+    // Store different scanf format specifier for single and double precision.
+    const char* rspec = ((sizeof(real)==sizeof(float))?("%f"):("%lf"));
 
 
     //for reading north boundary pressure from file ./in/pressure_n_in0.in
@@ -542,11 +550,11 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       }
       *(num_pressure_n_in0_ptr(*lattice,0)) = 0;
       real temp;
-      fscanf(in,"%e",&temp);
+      fscanf(in,rspec,&temp);
       while( !feof(in))
       {
         (*(num_pressure_n_in0_ptr(*lattice,0)))++;
-        fscanf(in,"%e",&temp);
+        fscanf(in,rspec,&temp);
       }
 
       printf("num_pressure_n_in0_ptr = %d\n", num_pressure_n_in0(*lattice,0));
@@ -558,7 +566,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       int i;
       for( i=0; i<num_pressure_n_in0(*lattice,0); i++)
       {
-        fscanf(in,"%e", pressure_n_in0(*lattice,0) + i);
+        fscanf(in,rspec, pressure_n_in0(*lattice,0) + i);
       }
       fclose(in);
 
@@ -595,11 +603,11 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       }
       *(num_pressure_s_in0_ptr(*lattice,0)) = 0;
       real temp;
-      fscanf(in,"%e",&temp);
+      fscanf(in,rspec,&temp);
       while( !feof(in))
       {
         (*(num_pressure_s_in0_ptr(*lattice,0)))++;
-        fscanf(in,"%e",&temp);
+        fscanf(in,rspec,&temp);
       }
 
       printf("num_pressure_s_in0_ptr = %d\n", num_pressure_s_in0(*lattice,0));
@@ -611,7 +619,7 @@ void construct_lattice( lattice_ptr *lattice, int argc, char **argv)
       int i;
       for( i=0; i<num_pressure_s_in0(*lattice,0); i++)
       {
-        fscanf(in,"%e", pressure_s_in0(*lattice,0) + i);
+        fscanf(in,rspec, pressure_s_in0(*lattice,0) + i);
       }
       fclose(in);
 
@@ -911,15 +919,15 @@ void read_PEST_in_files( lattice_ptr *lattice, int argc, char **argv)
   }
 
 
-  real temp;
+  int tempint;
 
   (*lattice)->conc_array_size = 0;
 
-  fscanf(in,"%d",&temp);
+  fscanf(in,"%d",&tempint);
   while( !feof(in))
   {
     (*lattice)->conc_array_size++;
-    fscanf(in,"%d",&temp);
+    fscanf(in,"%d",&tempint);
   }
 
   printf("Number of PEST points = %d\n", (*lattice)->conc_array_size);
@@ -987,7 +995,6 @@ void read_PEST_in_files( lattice_ptr *lattice, int argc, char **argv)
 
   //Now we must reduce our arrays so that they only contain concs valid for the local domain
 
-  int tempint;
 
   for( i=0; i<(*lattice)->conc_array_size; i++)
   {
@@ -1773,6 +1780,59 @@ void init_problem( lattice_ptr lattice)
             usq = ux_val*ux_val + uy_val*uy_val + uz_val*uz_val;
 
 #if 1
+#if BASTIEN_CHOPARD
+            *(fptr[0]) = ( /*feq[a]*/
+                W0*rho_val*(- 1.5*usq)
+                );// / get_tau(lattice,subs);
+
+            for( a=1; a<=4; a++)
+            {
+              udotx = ((real)vx[a]*ux_val
+                  +(real)vy[a]*uy_val
+                  +(real)vz[a]*uz_val);
+
+              *(fptr[a]) = ( /*feq[a]*/
+                  W1*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                  );// / get_tau(lattice,subs);
+            }
+
+            for( ; a<=8; a++)
+            {
+              udotx = ((real)vx[a]*ux_val
+                  +(real)vy[a]*uy_val
+                  +(real)vz[a]*uz_val);
+
+              *(fptr[a]) = ( /*feq[a]*/
+                  W2*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                  );// / get_tau(lattice,subs);
+            }
+
+            if( get_NumDims(lattice)==3)
+            {
+              for( ; a<=10; a++)
+              {
+                udotx = ((real)vx[a]*ux_val
+                    +(real)vy[a]*uy_val
+                    +(real)vz[a]*uz_val);
+
+                *(fptr[a]) = ( /*feq[a]*/
+                    W1*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                    );// / get_tau(lattice,subs);
+              }
+
+              for( ; a<get_NumVelDirs(lattice); a++)
+              {
+                udotx = ((real)vx[a]*ux_val
+                    +(real)vy[a]*uy_val
+                    +(real)vz[a]*uz_val);
+
+                *(fptr[a]) = ( /*feq[a]*/
+                    W2*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                    );// / get_tau(lattice,subs);
+              }
+            }
+
+#else
             *(fptr[0]) = ( /*feq[a]*/
                 W0*rho_val*(1. - 1.5*usq)
                 );// / get_tau(lattice,subs);
@@ -1823,6 +1883,7 @@ void init_problem( lattice_ptr lattice)
                     );// / get_tau(lattice,subs);
               }
             }
+#endif
 #else
             // Just assign the weighted rho_val for debugging.
             *(fptr[0]) = W0*rho_val;

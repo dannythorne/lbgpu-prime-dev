@@ -217,6 +217,46 @@ int main( int argc, char **argv)
   checkCUDAError( __FILE__, __LINE__, "solid swap");
 #endif  // if PARALLEL
 
+  // Make correction if not periodic boundaries.  This is just a fast fix.
+
+#if 1
+  printf(" \n end bound size is %d \n", get_EndBoundSize( lattice));
+
+  unsigned char *temp_array;
+  temp_array = (unsigned char*) malloc( get_EndBoundSize( lattice) * sizeof(unsigned char));
+  int aa;
+
+  for( aa = 0; aa < get_EndBoundSize( lattice); aa++)
+  {
+    temp_array[aa] = 0;
+  }
+
+  if( get_proc_id( lattice) == 0)
+  {
+    // South / Bottom end
+    cudaMemcpy( solids_mem_d
+        , temp_array
+        , get_EndBoundSize( lattice)*sizeof(unsigned char)
+        , cudaMemcpyHostToDevice);
+
+    checkCUDAError( __FILE__, __LINE__, "solid swap");
+  }
+
+  if( get_proc_id( lattice) == get_num_procs( lattice)-1)
+  {
+    // North / Top end
+    cudaMemcpy( solids_mem_d + get_EndBoundSize( lattice) + get_NumNodes( lattice)
+        , temp_array
+        , get_EndBoundSize( lattice)*sizeof(unsigned char)
+        , cudaMemcpyHostToDevice);
+
+    checkCUDAError( __FILE__, __LINE__, "solid swap");
+  }
+
+  free(temp_array);
+#endif
+
+
   // Same as above, but for the array of ns values
 #if WALSH_NS_ON
   cudaMemcpy( ns_mem_d + get_EndBoundSize( lattice)

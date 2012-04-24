@@ -82,13 +82,13 @@ void k_collide(
           if( subs == 1)
           {
             // Initialize shared memory values for calculating rho.
-            fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
+            fptr[b + (numdirs_c+0)*blocksize_c] = fptr[b];
 
             // Note that the velocity macroscopic variables are already
             // set from substance 0, so we don't need to touch them
 
             // Calculate rho
-            for( a=0; a<numdirs_c; a++)
+            for( a=1; a<numdirs_c; a++)
             {
               fptr[b + (numdirs_c+0)*blocksize_c]
                 += fptr[b + a*blocksize_c];
@@ -102,10 +102,10 @@ void k_collide(
 #endif  // INAMURO_SIGMA_COMPONENT
 
             // Initialize shared memory values for calculating macro vars.
-            fptr[b + (numdirs_c+0)*blocksize_c] = 0.;
+            fptr[b + (numdirs_c+0)*blocksize_c] = fptr[b];
 
             // Calculate macroscopic variables.
-            for( a=0; a<numdirs_c; a++)
+            for( a=1; a<numdirs_c; a++)
             {
               fptr[b + (numdirs_c+0)*blocksize_c]
                 += fptr[b + a*blocksize_c];
@@ -115,6 +115,10 @@ void k_collide(
                 fptr[b + (numdirs_c+0)*blocksize_c] = 8.;
               }
             }
+
+#if BASTIEN_CHOPARD
+            fptr[b + (numdirs_c+0)*blocksize_c] += rho_A_c[subs];
+#endif
 
             if( numdims_c == 2)
             {
@@ -203,7 +207,7 @@ void k_collide(
 #endif
               for( a=1; a<=numdims_c; a++)
               {
-                apply_accel_mv( subs, a, b, blocksize_c, n, fptr, ns_mem_d);
+                apply_accel_mv( subs, a, b, n, fptr, ns_mem_d);
               }
 #if INAMURO_SIGMA_COMPONENT
             }
@@ -236,12 +240,33 @@ void k_collide(
           }
           else
           {
-            if( pest_output_flag_c && subs == 1)
+            if( pest_output_flag_c)
             {
-              set_mv_d( mv_mem_d
-                  , subs, n, 0
-                  , fptr[ b + (numdirs_c + 0)*blocksize_c] );
-            }
+              if( subs == 0)
+              {    
+                set_mv_d( mv_mem_d
+                    , subs, n, 1
+                    , fptr[ b + (numdirs_c + 1)*blocksize_c] );
+
+                set_mv_d( mv_mem_d
+                    , subs, n, 2
+                    , fptr[ b + (numdirs_c + 2)*blocksize_c] );
+
+                if( numdims_c == 3)
+                {
+                  set_mv_d( mv_mem_d
+                      , subs, n, 3
+                      , fptr[ b + (numdirs_c + 3)*blocksize_c] );
+                }
+              }
+              else
+              {
+                set_mv_d( mv_mem_d
+                    , subs, n, 0
+                    , fptr[ b + (numdirs_c + 0)*blocksize_c] );
+
+              }
+            } 
           }
 
 #endif
@@ -277,7 +302,7 @@ void k_collide(
             real temp1, temp2;
 
             temp1 = fptr[b];
-            calc_f_tilde_d( f_mem_d, subs, 0, b, blocksize_c, fptr, usq);
+            calc_f_tilde_d( subs, 0, b, n, fptr, usq);
             fptr[b] *= 1. - ns_mem_d[ n + end_bound_c];
             fptr[b] += ns_mem_d[ n + end_bound_c] * temp1;
 
@@ -285,8 +310,8 @@ void k_collide(
             {
               temp1 = fptr[b + a*blocksize_c];
               temp2 = fptr[b + (a+1)*blocksize_c];
-              calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
-              calc_f_tilde_d( f_mem_d, subs, a+1, b, blocksize_c, fptr, usq);
+              calc_f_tilde_d( subs, a, b, n, fptr, usq);
+              calc_f_tilde_d( subs, a+1, b, n, fptr, usq);
 
               fptr[b + a*blocksize_c] *= 1. - ns_mem_d[ n + end_bound_c];
               fptr[b + a*blocksize_c] += ns_mem_d[ n + end_bound_c] * temp2;
@@ -298,7 +323,7 @@ void k_collide(
 #else
             for( a=0; a<numdirs_c; a++)
             {
-              calc_f_tilde_d( f_mem_d, subs, a, b, blocksize_c, fptr, usq);
+              calc_f_tilde_d( subs, a, b, n, fptr, usq);
             }
 #endif
           }

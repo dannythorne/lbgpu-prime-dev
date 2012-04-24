@@ -2225,12 +2225,12 @@ __constant__ int vx_c[19];     //
 __constant__ int vy_c[19];     // Enough space for D3Q19; first 9
 __constant__ int vz_c[19];     // components constitute D2Q9 model
 __constant__ real wt_c[19];    // 
-__constant__ real wt_div_c;
 __constant__ int cumul_stride_c[20]; // For variable stride created by boundary regions
 
 __constant__ int is_end_of_frame_mem_c;
 __constant__ int pest_output_flag_c;
 
+__constant__ real rho_A_c[2];
 __constant__ real tau_c[2];    // Hardcoded for up to 2 fluid components
 __constant__ real inv_tau_c[2];    // Hardcoded for up to 2 fluid components
 __constant__ real gaccel_c[6]; // Hardcoded for up to 2 3D fluid components
@@ -2839,51 +2839,64 @@ __device__ void set_f1d_d(
 
 }
 __device__ void calc_f_tilde_d(
-    real* f_mem_d
-    , int subs
+    int subs
     , int dir
     , int thread
-    , int block_size
+    , int n
     , real* f_temp
     , real usq)
 {
 #if INAMURO_SIGMA_COMPONENT
   if( subs == 1)
   {
-    f_temp[thread + dir*block_size] *= (1. - inv_tau_c[subs]);
+    f_temp[thread + dir*blocksize_c] *= (1. - inv_tau_c[subs]);
 
-    real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
-      + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*block_size];
+    real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*blocksize_c]
+      + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*blocksize_c];
     if( numdims_c==3)
     {
-      vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*block_size];
+      vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*blocksize_c];
     }
 
     //vdotu = 0.;
 
-    f_temp[thread + dir*block_size] += (wt_c[dir]
-      * f_temp[ thread + numdirs_c*block_size]
-      * ( 1. + 3.*vdotu) * inv_tau_c[subs]) / wt_div_c;
+    f_temp[thread + dir*blocksize_c] += wt_c[dir]
+      * f_temp[ thread + numdirs_c*blocksize_c]
+      * ( 1. + 3.*vdotu) * inv_tau_c[subs];
   }
   else
   {
 #endif
 
-    f_temp[thread + dir*block_size] *= (1. - inv_tau_c[subs]);
+    f_temp[thread + dir*blocksize_c] *= (1. - inv_tau_c[subs]);
 
-    real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*block_size]
-      + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*block_size];
+    real vdotu = ((real) vx_c[dir])*f_temp[thread + (numdirs_c+1)*blocksize_c]
+      + ((real) vy_c[dir])*f_temp[thread + (numdirs_c+2)*blocksize_c];
     if( numdims_c==3)
     {
-      vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*block_size];
+      vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*blocksize_c];
     }
 
-    f_temp[thread + dir*block_size] += (wt_c[dir]
-      * f_temp[ thread + numdirs_c*block_size]
+#if BASTIEN_CHOPARD
+    f_temp[thread + dir*blocksize_c] += wt_c[dir]
+      * ( f_temp[ thread + numdirs_c*blocksize_c]
+          - rho_A_c[subs]) * inv_tau_c[subs];
+
+    f_temp[thread + dir*blocksize_c] += wt_c[dir]
+      * f_temp[ thread + numdirs_c*blocksize_c]
+      * ( 3.*vdotu
+          + 4.5*vdotu*vdotu
+          - 1.5*usq
+        ) * inv_tau_c[subs];
+
+#else
+    f_temp[thread + dir*blocksize_c] += wt_c[dir]
+      * f_temp[ thread + numdirs_c*blocksize_c]
       * ( 1. + 3.*vdotu
           + 4.5*vdotu*vdotu
           - 1.5*usq
-        ) * inv_tau_c[subs]) / wt_div_c;
+        ) * inv_tau_c[subs];
+#endif
 #if INAMURO_SIGMA_COMPONENT
   }
 #endif
@@ -2895,17 +2908,16 @@ __device__ void apply_accel_mv(
     int subs
     , int cmpnt   //1, 2 or 3
     , int thread
-    , int block_size
     , int n
     , real* f_temp
     , real* ns_mem_d)
 {
 #if WALSH_NS_ON
-  f_temp[thread + (numdirs_c+cmpnt)*block_size]
+  f_temp[thread + (numdirs_c+cmpnt)*blocksize_c]
     += (1. - ns_mem_d[n + end_bound_c]) 
     * tau_c[ subs] * gaccel_c[ subs*3 + cmpnt-1];
 #else
-  f_temp[thread + (numdirs_c+cmpnt)*block_size]
+  f_temp[thread + (numdirs_c+cmpnt)*blocksize_c]
     += tau_c[ subs] * gaccel_c[ subs*3 + cmpnt-1];
 #endif
 }

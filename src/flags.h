@@ -31,6 +31,17 @@
 // Set MPI buffers directly from main kernels (not even sure whether this can be done)
 //#define SET_MPI_BUF_DIRECT 1 
 
+// BASTIEN_CHOPARD implements a version of LBGK in which one calculates deviations
+// of f away from w_i * rho, where rho is the density.  This improves accuracy, in a large
+// part because it replaces the O(1)+O(Ma) summation in f_eq with a summation of O(Ma).
+
+#define BASTIEN_CHOPARD 1
+
+// KAHAN_SUMMATION implements Kahan's summation algorithm in which low order bits lost
+// are kept track of and restored at the end.
+
+#define KAHAN_SUMMATION 1
+
 // INTEGER_IC_BOUND forces x0, y0, z0, r0 and x1, x2, y1, y2, z1, z2 to be
 // integer values.  Since the lattice can't resolve shapes with non-integer
 // dimensions, using integers makes sense.  This flag is particularly
@@ -53,7 +64,7 @@
 
 // Use double precision (or not)
 
-#define DP_ON 0
+#define DP_ON 1
 
 #if DP_ON
 #define EPSILON 1.0e-12
