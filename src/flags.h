@@ -37,10 +37,16 @@
 
 #define BASTIEN_CHOPARD 1
 
+// COMPRESSIBLE implements the traditional LBGK method that yields the Navier-Stokes
+// equations in the limit of small compressibility.  Turning this off gives the He-Luo
+// incompressible LBM method
+
+#define COMPRESSIBLE 0
+
 // KAHAN_SUMMATION implements Kahan's summation algorithm in which low order bits lost
 // are kept track of and restored at the end.
 
-#define KAHAN_SUMMATION 1
+#define KAHAN_SUMMATION 0
 
 // INTEGER_IC_BOUND forces x0, y0, z0, r0 and x1, x2, y1, y2, z1, z2 to be
 // integer values.  Since the lattice can't resolve shapes with non-integer

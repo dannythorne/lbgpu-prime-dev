@@ -2838,6 +2838,7 @@ __device__ void set_f1d_d(
 #endif
 
 }
+
 __device__ void calc_f_tilde_d(
     int subs
     , int dir
@@ -2879,11 +2880,15 @@ __device__ void calc_f_tilde_d(
 
 #if BASTIEN_CHOPARD
     f_temp[thread + dir*blocksize_c] += wt_c[dir]
-      * ( f_temp[ thread + numdirs_c*blocksize_c]
-          - rho_A_c[subs]) * inv_tau_c[subs];
+      * f_temp[ thread + numdirs_c*blocksize_c]
+      * inv_tau_c[subs];
 
     f_temp[thread + dir*blocksize_c] += wt_c[dir]
-      * f_temp[ thread + numdirs_c*blocksize_c]
+      * (rho_A_c[subs]
+#if COMPRESSIBLE
+          + f_temp[ thread + numdirs_c*blocksize_c]
+#endif
+          )
       * ( 3.*vdotu
           + 4.5*vdotu*vdotu
           - 1.5*usq
@@ -2892,7 +2897,15 @@ __device__ void calc_f_tilde_d(
 #else
     f_temp[thread + dir*blocksize_c] += wt_c[dir]
       * f_temp[ thread + numdirs_c*blocksize_c]
-      * ( 1. + 3.*vdotu
+      * inv_tau_c[subs];
+
+    f_temp[thread + dir*blocksize_c] += wt_c[dir]
+#if COMPRESSIBLE
+      * f_temp[ thread + numdirs_c*blocksize_c]
+#else
+      * rho_a_c[subs]
+#endif
+      * ( 3.*vdotu
           + 4.5*vdotu*vdotu
           - 1.5*usq
         ) * inv_tau_c[subs];
@@ -3069,6 +3082,31 @@ int* num_pressure_s_in0_ptr( lattice_ptr lattice, int subs)
   return &( lattice->bcs_in[subs].num_pressure_s_in0);
 }
 
+//-------------------------------------------------------------//
+// From Dr Dobbs "Floating-point Summation"                    //
+// http://www.drdobbs.com/cpp/184403224?pgno=8                 //
+//-------------------------------------------------------------//
+
+#if 1
+__device__ void fk_add(real* flt_arr, int thread)
+{
+  int i;
+  real correction, corrected_next_term, new_sum;
+
+  flt_arr[thread + (numdirs_c+0)*blocksize_c] = flt_arr[thread];
+  correction = 0.0;
+  for (i = 1; i < numdirs_c; i++)
+  {
+    corrected_next_term = flt_arr[thread + i*blocksize_c] - correction;
+    new_sum = flt_arr[thread + (numdirs_c+0)*blocksize_c] + corrected_next_term;
+    correction = (new_sum - flt_arr[thread + (numdirs_c+0)*blocksize_c])
+      - corrected_next_term;
+    flt_arr[thread + (numdirs_c+0)*blocksize_c] = new_sum;
+  }
+}
+#else
+
+#endif
 
 //-------------------------------------------------------------//
 // From Dr Dobbs "CUDA: Supercomputing for the masses, Part 3" //

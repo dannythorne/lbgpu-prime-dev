@@ -89,24 +89,25 @@ void k_stream_collide_stream(
           {
 #endif  // INAMURO_SIGMA_COMPONENT
 
+
+#if KAHAN_SUMMATION
+            fk_add( fptr, b);
+#else
             // Initialize shared memory values for calculating macro vars.
             fptr[b + (numdirs_c+0)*blocksize_c] = fptr[b];
             // Calculate macroscopic variables.
+
+
             for( a=1; a<numdirs_c; a++)
             {
               fptr[b + (numdirs_c+0)*blocksize_c]
                 += fptr[b + a*blocksize_c];
-
-
 
               if( /*debug*/0)
               {
                 fptr[b + (numdirs_c+0)*blocksize_c] = fptr[b+5*blocksize_c];
               }
             }
-         
-#if BASTIEN_CHOPARD
-            fptr[b + (numdirs_c+0)*blocksize_c] += rho_A_c[subs];
 #endif
 
             if( numdims_c == 2)
@@ -114,8 +115,8 @@ void k_stream_collide_stream(
               fptr[b + (numdirs_c+1)*blocksize_c] = 0.;
               fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
 
-              if( fptr[b + (numdirs_c+0)*blocksize_c] > EPSILON)
-              {
+              //if( fptr[b + (numdirs_c+0)*blocksize_c] > EPSILON)
+              //{
                 for( a=0; a<numdirs_c; a++)
                 {
                   fptr[b + (numdirs_c+1)*blocksize_c]
@@ -134,11 +135,29 @@ void k_stream_collide_stream(
 #endif
 
                 fptr[b + (numdirs_c+1)*blocksize_c] /=
-                  fptr[b + (numdirs_c+0)*blocksize_c];
+#if COMPRESSIBLE
+#if BASTIEN_CHOPARD
+                  ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
+#else
+                  ( fptr[b + (numdirs_c+0)*blocksize_c]);
+#endif
+#else
+                  ( rho_A_c[subs]);
+#endif
 
                 fptr[b + (numdirs_c+2)*blocksize_c] /=
-                  fptr[b + (numdirs_c+0)*blocksize_c];
-              }   //rho > EPSILON
+#if COMPRESSIBLE
+#if BASTIEN_CHOPARD
+                  ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
+#else
+                  ( fptr[b + (numdirs_c+0)*blocksize_c]);
+#endif
+#else
+                  ( rho_A_c[subs]);
+#endif
+
+
+              //}   //rho > EPSILON
             }
             else  // numdims_c == 3
             {
@@ -146,8 +165,8 @@ void k_stream_collide_stream(
               fptr[b + (numdirs_c+2)*blocksize_c] = 0.;
               fptr[b + (numdirs_c+3)*blocksize_c] = 0.;
 
-              if( fptr[b + (numdirs_c+0)*blocksize_c] > EPSILON)
-              {
+              //if( fptr[b + (numdirs_c+0)*blocksize_c] > EPSILON)
+              //{
                 for( a=0; a<numdirs_c; a++)
                 {
                   fptr[b + (numdirs_c+1)*blocksize_c]
@@ -174,15 +193,43 @@ void k_stream_collide_stream(
 #endif
 
                 fptr[b + (numdirs_c+1)*blocksize_c] /=
-                  fptr[b + (numdirs_c+0)*blocksize_c];
+#if COMPRESSIBLE
+#if BASTIEN_CHOPARD
+                  ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
+#else
+                  ( fptr[b + (numdirs_c+0)*blocksize_c]);
+#endif
+#else
+                  ( rho_A_c[subs]);
+#endif
+
 
                 fptr[b + (numdirs_c+2)*blocksize_c] /=
-                  fptr[b + (numdirs_c+0)*blocksize_c];
+#if COMPRESSIBLE
+#if BASTIEN_CHOPARD
+                  ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
+#else
+                  ( fptr[b + (numdirs_c+0)*blocksize_c]);
+#endif
+#else
+                  ( rho_A_c[subs]);
+#endif
+
 
                 fptr[b + (numdirs_c+3)*blocksize_c] /=
-                  fptr[b + (numdirs_c+0)*blocksize_c];
+#if COMPRESSIBLE
+#if BASTIEN_CHOPARD
+                  ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
+#else
+                  ( fptr[b + (numdirs_c+0)*blocksize_c]);
+#endif
+#else
+                  ( rho_A_c[subs]);
+#endif
 
-              }   //rho > EPSILON
+
+
+              //}   //rho > EPSILON
             }     // numdims_c == 2
 
 #if INAMURO_SIGMA_COMPONENT
@@ -214,8 +261,36 @@ void k_stream_collide_stream(
           
           if( is_end_of_frame_mem_c)
           {
+#if INAMURO_SIGMA_COMPONENT
+            if( subs == 0)
+            {
+              set_mv_d( mv_mem_d
+                  , subs, n, 0
+                  , fptr[ b + (numdirs_c + 0)*blocksize_c]
+#if BASTIEN_CHOPARD
+                  + rho_A_c[subs]
+#endif
+                  );
+            }
+            else
+            {
+              set_mv_d( mv_mem_d
+                  , subs, n, 0
+                  , fptr[ b + (numdirs_c + 0)*blocksize_c] );
+            }
+#else
+            set_mv_d( mv_mem_d
+                , subs, n, 0
+                  , fptr[ b + (numdirs_c + 0)*blocksize_c]
+#if BASTIEN_CHOPARD
+                  + rho_A_c[subs]
+#endif
+                  );
+
+#endif
+
             // Store macroscopic variables in global memory.
-            for( a=0; a<=numdims_c; a++)
+            for( a=1; a<=numdims_c; a++)
             {
               set_mv_d( mv_mem_d
                   , subs, n, a

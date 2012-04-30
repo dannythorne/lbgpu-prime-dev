@@ -1142,17 +1142,20 @@ void write_PEST_out_data( lattice_ptr *lattice
       + (*lattice)->concentration_data[(*lattice)->array_position].x_coord;
 
 #if 1
-    printf("Transferring subs %d "
-        "macrovars from device to host for PEST file writing. \n", 1);
-    cudaMemcpy( get_rho_ptr(*lattice, 1, n)
-        , mv_mem_d
-        + 1*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
-        + 0*get_NumNodes( *lattice)
-        + n
-        , sizeof(real)
-        , cudaMemcpyDeviceToHost);
-    checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+    if( get_NumSubs( *lattice) == 2)
+    {
 
+      printf("Transferring subs %d "
+          "macrovars from device to host for PEST file writing. \n", 1);
+      cudaMemcpy( get_rho_ptr(*lattice, 1, n)
+          , mv_mem_d
+          + 1*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
+          + 0*get_NumNodes( *lattice)
+          + n
+          , sizeof(real)
+          , cudaMemcpyDeviceToHost);
+      checkCUDAError( __FILE__, __LINE__, "cudaMemcpy");
+    }
     cudaMemcpy( get_ux_ptr(*lattice, 0, n)
         , mv_mem_d
         + 0*get_NumNodes( *lattice)*( 1 + get_NumDims( *lattice))
@@ -1780,36 +1783,15 @@ void init_problem( lattice_ptr lattice)
             usq = ux_val*ux_val + uy_val*uy_val + uz_val*uz_val;
 
 #if 1
-#if BASTIEN_CHOPARD
-            *(fptr[0]) = ( /*feq[a]*/
-                W0*rho_val*(- 1.5*usq)
-                );// / get_tau(lattice,subs);
-
-            for( a=1; a<=4; a++)
+            if( (subs == 0 && INAMURO_SIGMA_COMPONENT && BASTIEN_CHOPARD)
+                || (BASTIEN_CHOPARD && !(INAMURO_SIGMA_COMPONENT)))
             {
-              udotx = ((real)vx[a]*ux_val
-                  +(real)vy[a]*uy_val
-                  +(real)vz[a]*uz_val);
 
-              *(fptr[a]) = ( /*feq[a]*/
-                  W1*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+              *(fptr[0]) = ( /*feq[a]*/
+                  W0*rho_val*(- 1.5*usq)
                   );// / get_tau(lattice,subs);
-            }
 
-            for( ; a<=8; a++)
-            {
-              udotx = ((real)vx[a]*ux_val
-                  +(real)vy[a]*uy_val
-                  +(real)vz[a]*uz_val);
-
-              *(fptr[a]) = ( /*feq[a]*/
-                  W2*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                  );// / get_tau(lattice,subs);
-            }
-
-            if( get_NumDims(lattice)==3)
-            {
-              for( ; a<=10; a++)
+              for( a=1; a<=4; a++)
               {
                 udotx = ((real)vx[a]*ux_val
                     +(real)vy[a]*uy_val
@@ -1820,7 +1802,7 @@ void init_problem( lattice_ptr lattice)
                     );// / get_tau(lattice,subs);
               }
 
-              for( ; a<get_NumVelDirs(lattice); a++)
+              for( ; a<=8; a++)
               {
                 udotx = ((real)vx[a]*ux_val
                     +(real)vy[a]*uy_val
@@ -1830,38 +1812,39 @@ void init_problem( lattice_ptr lattice)
                     W2*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
                     );// / get_tau(lattice,subs);
               }
+
+              if( get_NumDims(lattice)==3)
+              {
+                for( ; a<=10; a++)
+                {
+                  udotx = ((real)vx[a]*ux_val
+                      +(real)vy[a]*uy_val
+                      +(real)vz[a]*uz_val);
+
+                  *(fptr[a]) = ( /*feq[a]*/
+                      W1*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                      );// / get_tau(lattice,subs);
+                }
+
+                for( ; a<get_NumVelDirs(lattice); a++)
+                {
+                  udotx = ((real)vx[a]*ux_val
+                      +(real)vy[a]*uy_val
+                      +(real)vz[a]*uz_val);
+
+                  *(fptr[a]) = ( /*feq[a]*/
+                      W2*rho_val*(3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                      );// / get_tau(lattice,subs);
+                }
+              }
             }
-
-#else
-            *(fptr[0]) = ( /*feq[a]*/
-                W0*rho_val*(1. - 1.5*usq)
-                );// / get_tau(lattice,subs);
-
-            for( a=1; a<=4; a++)
+            else
             {
-              udotx = ((real)vx[a]*ux_val
-                  +(real)vy[a]*uy_val
-                  +(real)vz[a]*uz_val);
-
-              *(fptr[a]) = ( /*feq[a]*/
-                  W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+              *(fptr[0]) = ( /*feq[a]*/
+                  W0*rho_val*(1. - 1.5*usq)
                   );// / get_tau(lattice,subs);
-            }
 
-            for( ; a<=8; a++)
-            {
-              udotx = ((real)vx[a]*ux_val
-                  +(real)vy[a]*uy_val
-                  +(real)vz[a]*uz_val);
-
-              *(fptr[a]) = ( /*feq[a]*/
-                  W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
-                  );// / get_tau(lattice,subs);
-            }
-
-            if( get_NumDims(lattice)==3)
-            {
-              for( ; a<=10; a++)
+              for( a=1; a<=4; a++)
               {
                 udotx = ((real)vx[a]*ux_val
                     +(real)vy[a]*uy_val
@@ -1872,7 +1855,7 @@ void init_problem( lattice_ptr lattice)
                     );// / get_tau(lattice,subs);
               }
 
-              for( ; a<get_NumVelDirs(lattice); a++)
+              for( ; a<=8; a++)
               {
                 udotx = ((real)vx[a]*ux_val
                     +(real)vy[a]*uy_val
@@ -1882,8 +1865,32 @@ void init_problem( lattice_ptr lattice)
                     W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
                     );// / get_tau(lattice,subs);
               }
+
+              if( get_NumDims(lattice)==3)
+              {
+                for( ; a<=10; a++)
+                {
+                  udotx = ((real)vx[a]*ux_val
+                      +(real)vy[a]*uy_val
+                      +(real)vz[a]*uz_val);
+
+                  *(fptr[a]) = ( /*feq[a]*/
+                      W1*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                      );// / get_tau(lattice,subs);
+                }
+
+                for( ; a<get_NumVelDirs(lattice); a++)
+                {
+                  udotx = ((real)vx[a]*ux_val
+                      +(real)vy[a]*uy_val
+                      +(real)vz[a]*uz_val);
+
+                  *(fptr[a]) = ( /*feq[a]*/
+                      W2*rho_val*(1. + 3.*udotx + 4.5 *udotx*udotx - 1.5*usq)
+                      );// / get_tau(lattice,subs);
+                }
+              }
             }
-#endif
 #else
             // Just assign the weighted rho_val for debugging.
             *(fptr[0]) = W0*rho_val;
