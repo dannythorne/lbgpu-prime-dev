@@ -31,11 +31,11 @@
 // Set MPI buffers directly from main kernels (not even sure whether this can be done)
 //#define SET_MPI_BUF_DIRECT 1 
 
-// BASTIEN_CHOPARD implements a version of LBGK in which one calculates deviations
+// ACCURATE implements a version of LBGK in which one calculates deviations
 // of f away from w_i * rho, where rho is the density.  This improves accuracy, in a large
 // part because it replaces the O(1)+O(Ma) summation in f_eq with a summation of O(Ma).
 
-#define BASTIEN_CHOPARD 1
+#define ACCURATE 1
 
 // COMPRESSIBLE implements the traditional LBGK method that yields the Navier-Stokes
 // equations in the limit of small compressibility.  Turning this off gives the He-Luo

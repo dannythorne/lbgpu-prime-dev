@@ -136,7 +136,7 @@ void k_stream_collide_stream(
 
                 fptr[b + (numdirs_c+1)*blocksize_c] /=
 #if COMPRESSIBLE
-#if BASTIEN_CHOPARD
+#if ACCURATE
                   ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
 #else
                   ( fptr[b + (numdirs_c+0)*blocksize_c]);
@@ -147,7 +147,7 @@ void k_stream_collide_stream(
 
                 fptr[b + (numdirs_c+2)*blocksize_c] /=
 #if COMPRESSIBLE
-#if BASTIEN_CHOPARD
+#if ACCURATE
                   ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
 #else
                   ( fptr[b + (numdirs_c+0)*blocksize_c]);
@@ -194,7 +194,7 @@ void k_stream_collide_stream(
 
                 fptr[b + (numdirs_c+1)*blocksize_c] /=
 #if COMPRESSIBLE
-#if BASTIEN_CHOPARD
+#if ACCURATE
                   ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
 #else
                   ( fptr[b + (numdirs_c+0)*blocksize_c]);
@@ -206,7 +206,7 @@ void k_stream_collide_stream(
 
                 fptr[b + (numdirs_c+2)*blocksize_c] /=
 #if COMPRESSIBLE
-#if BASTIEN_CHOPARD
+#if ACCURATE
                   ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
 #else
                   ( fptr[b + (numdirs_c+0)*blocksize_c]);
@@ -218,7 +218,7 @@ void k_stream_collide_stream(
 
                 fptr[b + (numdirs_c+3)*blocksize_c] /=
 #if COMPRESSIBLE
-#if BASTIEN_CHOPARD
+#if ACCURATE
                   ( rho_A_c[subs] + fptr[b + (numdirs_c+0)*blocksize_c]);
 #else
                   ( fptr[b + (numdirs_c+0)*blocksize_c]);
@@ -267,7 +267,7 @@ void k_stream_collide_stream(
               set_mv_d( mv_mem_d
                   , subs, n, 0
                   , fptr[ b + (numdirs_c + 0)*blocksize_c]
-#if BASTIEN_CHOPARD
+#if ACCURATE
                   + rho_A_c[subs]
 #endif
                   );
@@ -282,7 +282,7 @@ void k_stream_collide_stream(
             set_mv_d( mv_mem_d
                 , subs, n, 0
                   , fptr[ b + (numdirs_c + 0)*blocksize_c]
-#if BASTIEN_CHOPARD
+#if ACCURATE
                   + rho_A_c[subs]
 #endif
                   );

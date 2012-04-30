@@ -2878,7 +2878,7 @@ __device__ void calc_f_tilde_d(
       vdotu += ((real) vz_c[dir])*f_temp[thread + (numdirs_c+3)*blocksize_c];
     }
 
-#if BASTIEN_CHOPARD
+#if ACCURATE
     f_temp[thread + dir*blocksize_c] += wt_c[dir]
       * f_temp[ thread + numdirs_c*blocksize_c]
       * inv_tau_c[subs];

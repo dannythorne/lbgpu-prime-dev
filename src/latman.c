@@ -1783,8 +1783,8 @@ void init_problem( lattice_ptr lattice)
             usq = ux_val*ux_val + uy_val*uy_val + uz_val*uz_val;
 
 #if 1
-            if( (subs == 0 && INAMURO_SIGMA_COMPONENT && BASTIEN_CHOPARD)
-                || (BASTIEN_CHOPARD && !(INAMURO_SIGMA_COMPONENT)))
+            if( (subs == 0 && INAMURO_SIGMA_COMPONENT && ACCURATE)
+                || (ACCURATE && !(INAMURO_SIGMA_COMPONENT)))
             {
 
               *(fptr[0]) = ( /*feq[a]*/

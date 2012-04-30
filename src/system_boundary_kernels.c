@@ -67,7 +67,7 @@ void k_sysbound_pressure_n_1(
         + fptr[b + NW*bixbk_c];
 
       fptr[b + numdirs_c*bixbk_c] -= fixed_bound_var_c;
-#if BASTIEN_CHOPARD
+#if ACCURATE
       fptr[b + numdirs_c*bixbk_c] += rho_A_c[subs_c];
 #endif
 
@@ -180,7 +180,7 @@ void k_sysbound_pressure_n_2(
         + fptr[b + NW*bixbk_c];
 
       fptr[b + numdirs_c*bixbk_c] -= fixed_bound_var_c;
-#if BASTIEN_CHOPARD
+#if ACCURATE
       fptr[b + numdirs_c*bixbk_c] += rho_A_c[subs_c];
 #endif
 
@@ -291,7 +291,7 @@ void k_sysbound_pressure_s_1(
         - fptr[b + SW*bixbk_c];
 
       fptr[b + numdirs_c*bixbk_c] += fixed_bound_var_c;
-#if BASTIEN_CHOPARD
+#if ACCURATE
       fptr[b + numdirs_c*bixbk_c] -= rho_A_c[subs_c];
 #endif
 
@@ -405,7 +405,7 @@ void k_sysbound_pressure_s_2(
         - fptr[b + SW*bixbk_c];
 
       fptr[b + numdirs_c*bixbk_c] += fixed_bound_var_c;
-#if BASTIEN_CHOPARD
+#if ACCURATE
       fptr[b + numdirs_c*bixbk_c] -= rho_A_c[subs_c];
 #endif
 
