@@ -86,19 +86,19 @@ void k_sysbound_pressure_n_1(
           , subs_c
           , i,j,k,n
           , -vx_c[S],-vy_c[S],-vz_c[S]
-          , S, fptr[b + S*bixbk_c]);
+          , S, 0, fptr[b + S*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[SE],-vy_c[SE],-vz_c[SE]
-          , SE, fptr[b + SE*bixbk_c]);
+          , SE, 0, fptr[b + SE*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[SW],-vy_c[SW],-vz_c[SW]
-          , SW, fptr[b + SW*bixbk_c]);
+          , SW, 0, fptr[b + SW*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }
@@ -200,19 +200,19 @@ void k_sysbound_pressure_n_2(
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , N, fptr[b + S*bixbk_c]);
+          , N, 0, fptr[b + S*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , NW, fptr[b + SE*bixbk_c]);
+          , NW, 0, fptr[b + SE*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , NE, fptr[b + SW*bixbk_c]);
+          , NE, 0, fptr[b + SW*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }
@@ -310,19 +310,19 @@ void k_sysbound_pressure_s_1(
           , subs_c
           , i,j,k,n
           , -vx_c[N],-vy_c[N],-vz_c[N]
-          , N, fptr[b + N*bixbk_c]);
+          , N, 0, fptr[b + N*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[NW],-vy_c[NW],-vz_c[NW]
-          , NW, fptr[b + NW*bixbk_c]);
+          , NW, 0, fptr[b + NW*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[NE],-vy_c[NE],-vz_c[NE]
-          , NE, fptr[b + NE*bixbk_c]);
+          , NE, 0, fptr[b + NE*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }
@@ -425,19 +425,19 @@ void k_sysbound_pressure_s_2(
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , S, fptr[b + N*bixbk_c]);
+          , S, 0, fptr[b + N*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , SE, fptr[b + NW*bixbk_c]);
+          , SE, 0, fptr[b + NW*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , SW, fptr[b + NE*bixbk_c]);
+          , SW, 0, fptr[b + NE*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }
@@ -519,19 +519,19 @@ void k_sysbound_zeroconcgrad_n_1(
           , subs_c
           , i,j,k,n
           , -vx_c[S],-vy_c[S],-vz_c[S]
-          , S, fptr[b + S*bixbk_c]);
+          , S, 0, fptr[b + S*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[SE],-vy_c[SE],-vz_c[SE]
-          , SE, fptr[b + SE*bixbk_c]);
+          , SE, 0, fptr[b + SE*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[SW],-vy_c[SW],-vz_c[SW]
-          , SW, fptr[b + SW*bixbk_c]);
+          , SW, 0, fptr[b + SW*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }
@@ -615,19 +615,19 @@ void k_sysbound_zeroconcgrad_n_2(
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , N, fptr[b + S*bixbk_c]);
+          , N, 0, fptr[b + S*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , NW, fptr[b + SE*bixbk_c]);
+          , NW, 0, fptr[b + SE*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , NE, fptr[b + SW*bixbk_c]);
+          , NE, 0, fptr[b + SW*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }
@@ -708,19 +708,19 @@ void k_sysbound_zeroconcgrad_s_1(
           , subs_c
           , i,j,k,n
           , -vx_c[N],-vy_c[N],-vz_c[N]
-          , N, fptr[b + N*bixbk_c]);
+          , N, 0, fptr[b + N*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[NW],-vy_c[NW],-vz_c[NW]
-          , NW, fptr[b + NW*bixbk_c]);
+          , NW, 0, fptr[b + NW*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , -vx_c[NE],-vy_c[NE],-vz_c[NE]
-          , NE, fptr[b + NE*bixbk_c]);
+          , NE, 0, fptr[b + NE*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }
@@ -805,19 +805,19 @@ void k_sysbound_zeroconcgrad_s_2(
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , S, fptr[b + N*bixbk_c]);
+          , S, 0, fptr[b + N*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , SE, fptr[b + NW*bixbk_c]);
+          , SE, 0, fptr[b + NW*bixbk_c]);
 
       set_f1d_d( f_mem_d, solids_mem_d, ns_mem_d
           , subs_c
           , i,j,k,n
           , 0,0,0
-          , SW, fptr[b + NE*bixbk_c]);
+          , SW, 0, fptr[b + NE*bixbk_c]);
 
 #if !(COMPUTE_ON_SOLIDS)
     }

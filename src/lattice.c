@@ -2774,7 +2774,8 @@ __device__ void set_f1d_d(
     , int di
     , int dj
     , int dk
-    , int a 
+    , int a
+    , int da 
     , real value)
 {
   // Setting f to node (i+di,j+dj,k+dk). The 'd_is_not_solid' conditional
@@ -2810,7 +2811,7 @@ __device__ void set_f1d_d(
 
 #if WALSH_NS_ON
   f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-    + cumul_stride_c[a] + n] = value;
+    + cumul_stride_c[a+da] + n] = value;
 
 #else   // !(WALSH_NS_ON)
 #if COMPUTE_ON_SOLIDS
@@ -2819,12 +2820,14 @@ __device__ void set_f1d_d(
     if( d_is_not_solid( solids_mem_d, n + end_bound_c))
     {
       f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-        + cumul_stride_c[a] + n] = value;
+        + cumul_stride_c[a+da] + n] = value;
     }
     else
     {
       f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-        + cumul_stride_c[a] + n] = 0.;
+        + cumul_stride_c[a+da] + n] = 0.;
+      f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+        + cumul_stride_c[a] + n0] = value;
     }
   }
 
@@ -2832,7 +2835,12 @@ __device__ void set_f1d_d(
   if( d_is_not_solid( solids_mem_d, n + end_bound_c))
   {
     f_mem_d[ subs*cumul_stride_c[numdirs_c] 
-      + cumul_stride_c[a] + n] = value;
+      + cumul_stride_c[a+da] + n] = value;
+  }
+  else
+  {
+    f_mem_d[ subs*cumul_stride_c[numdirs_c] 
+      + cumul_stride_c[a] + n0] = value;
   }
 #endif  // COMPUTE_ON_SOLIDS
 #endif

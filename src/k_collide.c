@@ -411,7 +411,7 @@ void k_collide(
                 , subs
                 , i,j,k,n
                 , 0, 0, 0
-                , a, fptr[b + a*blocksize_c]);
+                , a, 0,fptr[b + a*blocksize_c]);
           }
 
 

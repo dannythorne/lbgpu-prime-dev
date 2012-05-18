@@ -402,7 +402,7 @@ void k_stream_collide_stream(
               , subs
               , i,j,k,n
               , vx_c[0],vy_c[0],vz_c[0]
-              , 0, fptr[b + 0*blocksize_c]);
+              , 0, 0, fptr[b + 0*blocksize_c]);
 
           for( a=1; a<numdirs_c; a+=2)
           {
@@ -410,7 +410,7 @@ void k_stream_collide_stream(
                 , subs
                 , i,j,k,n
                 , vx_c[a],vy_c[a],vz_c[a]
-                , a+1, fptr[b + a*blocksize_c]);
+                , a, 1, fptr[b + a*blocksize_c]);
           }
 
           for( a=2; a<numdirs_c; a+=2)
@@ -419,7 +419,7 @@ void k_stream_collide_stream(
                 , subs
                 , i,j,k,n
                 , vx_c[a],vy_c[a],vz_c[a]
-                , a-1, fptr[b + a*blocksize_c]);
+                , a, -1, fptr[b + a*blocksize_c]);
           }
 
 #if !(COMPUTE_ON_SOLIDS)
