@@ -1,0 +1,1 @@
+The goal of this project is to combine LB2D\_Prime and LB3D\_Prime and add support for GPUs.
